@@ -1,5 +1,9 @@
-class IncorrectHTTPMethodError(Exception):
+'''
+Error classes for pyoseo.
+'''
+
+class NoRequestFoundError(Exception):
     pass
 
-class NoQueryStringFoundError(Exception):
+class InvalidRequestError(Exception):
     pass
