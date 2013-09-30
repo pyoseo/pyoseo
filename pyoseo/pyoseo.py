@@ -27,6 +27,7 @@ class PyOSEO(object):
     '''
 
     def __init__(self):
+        module_dir = os.path.dirname(os.path.realpath(__file__))
         settings_file = os.path.join(module_dir, 'settings.cfg')
         self.settings = self._read_settings(settings_file)
 
