@@ -6,7 +6,7 @@ A testing wsgi server, following the tutorial available at:
 
 from wsgiref.simple_server import make_server
 import sys
-sys.path.append('/home/ricardo/dev/pyoseo') # find a clean way to import pyoseo
+sys.path.append('../') # find a clean way to import pyoseo
 
 from pyoseo import wsgi
 

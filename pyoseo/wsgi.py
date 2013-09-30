@@ -1,7 +1,6 @@
 import pyoseo
 import errors
 
-HTTP_GET = 'GET'
 HTTP_POST = 'POST'
 
 # TODO
@@ -23,9 +22,13 @@ def application(environ, start_response):
             status = '202 Accepted'
             response_body = 'No operation has been requested.'
             response_headers = _error_headers(response_body)
-        except errors.InvalidRequestError:
+        except errors.InvalidRequestError as e:
             status = '400 Bad Request'
-            response_body = 'Invalid request'
+            response_body = 'Invalid request - %s' % e
+            response_headers = _error_headers(response_body)
+        except NotImplementedError:
+            status = '501 Not Implemented'
+            response_body = '%s request is not implemented yet.' % e
             response_headers = _error_headers(response_body)
     else:
         status = '405 Method Not Allowed'
@@ -33,7 +36,6 @@ def application(environ, start_response):
         response_headers = _error_headers(response_body)
     start_response(status, response_headers)
     return [response_body]
-
 
 def _success_headers(response_body):
     response_headers = [
@@ -76,4 +78,3 @@ def _parse_content_type(server_environ):
         key, sep, value = parameter.strip().partition('=')
         content_parameters[key] = value
     return content_type, content_parameters
-
