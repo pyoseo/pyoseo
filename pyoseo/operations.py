@@ -1,15 +1,19 @@
 import re
+import logging
 import xml.sax
 
 import pyxb.bundles.opengis.oseo as oseo
 
 import errors
 
-def get_operation(request_xml):
+module_logger = logging.getLogger(__name__)
+
+def get_operation(request_xml, server=None):
     '''
     A factory to create the correct operation from a pyxb object.
     '''
 
+    global module_logger
     request_name = ''
     request_pattern = re.compile(r'^<(\w+) ')
     re_obj = request_pattern.search(request_xml)
@@ -28,13 +32,18 @@ def get_operation(request_xml):
         #'CancelResponse': CancelResponse,
     }
     operation = operations[request_name]
-    return operation(request_xml)
+    module_logger.debug('operation: %s' % operation.__name__)
+    return operation(request_xml, server)
 
 class OSEOOperation(object):
 
     operation = None
+    server = None
 
-    def __init__(self, operation_xml=None):
+    def __init__(self, operation_xml=None, server=None):
+        self.logger = logging.getLogger('.'.join((__name__,
+                                        self.__class__.__name__)))
+        self.server = server
         if operation_xml is not None:
             self.operation = self._parse_xml(operation_xml)
 
@@ -56,8 +65,12 @@ class OSEOOperation(object):
             raise
         result = None
         if request_object.validateBinding():
+            self.logger.info('request was successfully parsed')
             result = request_object
         return result
+
+    def validate(self):
+        raise NotImplementedError
 
     def process(self):
         raise NotImplementedError
@@ -65,7 +78,37 @@ class OSEOOperation(object):
 
 class GetCapabilities(OSEOOperation):
 
+    def validate(self):
+        valid_request = False
+        # check various parameters of the request to make sure
+        # they match server capabilities
+        valid_version = self._validate_accept_versions()
+        if valid_version:
+            valid_request = True
+        return valid_request
+
+    def _validate_accept_versions(self):
+        '''
+        Validate the AcceptVersions parameter.
+
+        This parameter is optional, so in case it is not present the
+        request is still considered valid.
+        '''
+
+        validates = False
+        if self.operation.AcceptVersions is not None:
+            request_accept_versions = [v.value for v in \
+                self.operation.AcceptVersions.orderedContent()]
+            self.logger.debug('request_accept_versions: %s' % \
+                              request_accept_versions)
+            self.logger.debug('server version: %s' % self.server.version)
+            if self.server.version in request_accept_versions:
+                validates = True
+        else:
+            validates = True
+        return validates
+
     def process(self):
-        # create a Capabilities instance and populate it with correct values,
-        # which are taken from the server's settings
-        return self.operation.toxml(encoding='utf-8')
+        capabilities = oseo.Capabilities()
+        capabilities.version = self.server.version
+        return capabilities.toxml(encoding=self.server.encoding)

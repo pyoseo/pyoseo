@@ -15,6 +15,7 @@ import os
 import logging
 import ConfigParser
 
+import errors
 import operations
 
 class PyOSEO(object):
@@ -45,10 +46,13 @@ class PyOSEO(object):
         '''
 
         self.logger.debug('About to parse the request')
-        operation = operations.get_operation(request_xml)
+        operation = operations.get_operation(request_xml, self)
         self.logger.info('Parsed the request')
         self.logger.info('About to process the request')
-        response = operation.process()
+        if operation.validate():
+            response = operation.process()
+        else:
+            raise errors.InvalidRequestError
         self.logger.info('Processed the request')
         return response
 
