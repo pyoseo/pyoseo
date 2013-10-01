@@ -1,28 +1,65 @@
-from fabric.api import local
+'''
+This fabric fabfile will automate local installation of dependencies to PyOSEO.
 
-def initial_setup():
-    venv_name = 'venv'
-    pip_command = '%s/bin/pip' % venv_name
-    requirements_file = 'requirements.txt'
-    _create_virtualenv(venv_name)
-    _local_install_pip_requirements(pip_command, requirements_file)
-    _local_download_pyxb(pip_command)
-    _local_configure_pyxb_schemas()
+There are some tricky dependencies:
+
+    - pyxb. We are using pyxb to validate the OGC schemas. For that we need to
+      configure pyxb with the opengis bundle and enable the OSEO schema.
+      This must be done before installation.
+'''
+
+import re
+import os
+
+from fabric.api import local
+from fabric.context_managers import lcd, shell_env
+
+VENV_NAME = 'venv'
+REQUIREMENTS_FILE = 'requirements.txt'
+LOCAL_DIR = os.path.dirname(os.path.realpath(__file__))
+LOCAL_PIP = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'pip')
+
+def local_initial_setup():
+    _local_create_virtualenv()
+    _local_install_pip_requirements()
     _local_install_pyxb()
 
-def _create_virtualenv(name):
-    local('virtualenv %s' % name)
+def _local_create_virtualenv():
+    global VENV_NAME
+    local('virtualenv %s' % VENV_NAME)
 
-def _local_download_pyxb(pip_command):
-    local('%s install --no-install pyxb' % pip_command)
+def _local_install_pip_requirements():
+    global LOCAL_PIP
+    global REQUIREMENTS_FILE
+    local('%s install -r %s' % (LOCAL_PIP, REQUIREMENTS_FILE))
 
-def _local_configure_pyxb_schemas():
-    with open('venv/build/pyxb/pyxb/bundles/opengis/scripts/genbind', 'w') as \
-            fh:
-        pass
-
-def _local_install_pip_requirements(pip_command, requirements):
-    local('%s install -r %s' % (pip_command, requirements))
-
-def _local_install_pyxb(pip_command):
-    pass
+def _local_install_pyxb():
+    global VENV_NAME
+    global LOCAL_PIP
+    global LOCAL_DIR
+    local('%s install --no-install pyxb' % LOCAL_PIP)
+    build_dir = os.path.join(LOCAL_DIR, VENV_NAME, 'build', 'pyxb')
+    with lcd(build_dir):
+        genbind_path = '%s/pyxb/bundles/opengis/scripts/genbind' % build_dir
+        pattern = re.compile(r'^\$\{SCHEMA_DIR\}')
+        new_contents = []
+        section_started = False
+        with open(genbind_path) as fh:
+            for line in fh:
+                if pattern.search(line) is not None:
+                    if not section_started:
+                        section_started = True
+                else:
+                    if section_started:
+                        # add the new line to the end of the section
+                        new_line = '${SCHEMA_DIR}/oseo/1.0/oseo.xsd oseo\n'
+                        new_contents.append(new_line)
+                        section_started = False
+                new_contents.append(line)
+        with open(genbind_path, 'w') as fh:
+            fh.writelines(new_contents)
+        local('chmod 755 %s/scripts/pyxbgen' % build_dir)
+        local('chmod 755 %s' % genbind_path)
+        with shell_env(PYXB_ROOT=build_dir):
+            local(genbind_path)
+            local('%s install --no-download pyxb' % LOCAL_PIP)
