@@ -12,14 +12,10 @@ Or with the python requests module:
 '''
 
 import os
-import re
-import xml.sax
+import logging
 import ConfigParser
 
-import pyxb
-import pyxb.bundles.opengis.oseo as oseo
-
-import errors
+import operations
 
 class PyOSEO(object):
     '''
@@ -29,7 +25,9 @@ class PyOSEO(object):
     def __init__(self):
         module_dir = os.path.dirname(os.path.realpath(__file__))
         settings_file = os.path.join(module_dir, 'settings.cfg')
-        self.settings = self._read_settings(settings_file)
+        self._read_settings(settings_file)
+        self.logger = logging.getLogger('.'.join((__name__,
+                                        self.__class__.__name__)))
 
     def process_request(self, request_xml):
         '''
@@ -46,101 +44,17 @@ class PyOSEO(object):
         A string with the response body to send to the web server.
         '''
 
-        request = self._parse_oseo_request(request_xml)
-        request_name = self._get_request_name(request_xml)
-        processing_methods = {
-            'GetCapabilities': self.process_get_capabilities,
-            'GetOptions': self.process_get_options,
-            'GetQuotation': self.process_get_quotation,
-            'GetQuotationResponse': self.process_get_quotation_response,
-            'Submit': self.process_submit,
-            'SubmitResponse': self.process_submit_response,
-            'GetStatus': self.process_get_status,
-            'DescribeResultAccess': self.process_describe_result_access,
-            'Cancel': self.process_cancel,
-            'CancelResponse': self.process_cancel_response,
-        }
-        process_to_execute = processing_methods[request_name]
-        response = process_to_execute(request)
+        self.logger.debug('About to parse the request')
+        operation = operations.get_operation(request_xml)
+        self.logger.info('Parsed the request')
+        self.logger.info('About to process the request')
+        response = operation.process()
+        self.logger.info('Processed the request')
         return response
-
-    def process_get_capabilities(self, request):
-        '''
-        Inputs:
-
-            request - a valid pyxb GetCapabilities object.
-        '''
-
-        response = ''
-        capabilities = oseo.Capabilities()
-        capabilities.version = self.version
-        if capabilities.validateBinding():
-            response = capabilities.toxml(encoding=self.encoding)
-        return response
-
-    def process_get_options(self, request):
-        raise NotImplementedError
-
-    def process_get_quotation(self, request):
-        raise NotImplementedError
-
-    def process_get_quotation_response(self, request):
-        raise NotImplementedError
-
-    def process_submit(self, request):
-        raise NotImplementedError
-
-    def process_submit_response(self, request):
-        raise NotImplementedError
-
-    def process_get_status(self, request):
-        raise NotImplementedError
-
-    def process_describe_result_access(self, request):
-        raise NotImplementedError
-
-    def process_cancel(self, request):
-        raise NotImplementedError
-
-    def process_cancel_response(self, request):
-        raise NotImplementedError
-
-    def _get_request_name(self, text_data):
-        '''
-        Extract the request name from the raw data.
-        '''
-
-        name = ''
-        request_pattern = re.compile(r'^<(\w+) ')
-        re_obj = request_pattern.search(text_data)
-        if re_obj is not None:
-            name = re_obj.group(1)
-        return name
-
-    def _parse_oseo_request(self, request_xml):
-        '''
-        Parse the request body as a valid OSEO request.
-        '''
-
-        try:
-            request_object = oseo.CreateFromDocument(request_xml)
-        except pyxb.UnrecognizedDOMRootNodeError:
-            raise errors.InvalidRequestError('Unrecognized OSEO request')
-        except pyxb.AttributeChangeError:
-            raise errors.InvalidRequestError('Unrecognized service name')
-        except xml.sax.SAXParseException:
-            raise errors.InvalidRequestError('Invalid syntax')
-        except:
-            # some other validation error
-            raise
-        result = None
-        if request_object.validateBinding():
-            result = request_object
-        return result
 
     def _read_settings(self, filename):
         config = ConfigParser.ConfigParser()
         with open(filename) as fh:
             config.readfp(fh)
-        self.version = unicode(config.get('General', 'version', '1.0.0'))
-        self.encoding = unicode(config.get('General', 'encoding', 'utf-8'))
+        self.version = unicode(config.get('general', 'version', '1.0.0'))
+        self.encoding = unicode(config.get('general', 'encoding', 'utf-8'))
