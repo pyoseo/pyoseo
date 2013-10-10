@@ -37,7 +37,9 @@ def _local_install_pyxb():
     global VENV_NAME
     global LOCAL_PIP
     global LOCAL_DIR
-    local('%s install --no-install pyxb' % LOCAL_PIP)
+    pyxb_location = 'pyxb'
+    #pyxb_location = 'git+http://git.code.sf.net/p/pyxb/code#egg=pyxb'
+    local('%s install --no-install %s' % (LOCAL_PIP, pyxb_location))
     build_dir = os.path.join(LOCAL_DIR, VENV_NAME, 'build', 'pyxb')
     with lcd(build_dir):
         genbind_path = '%s/pyxb/bundles/opengis/scripts/genbind' % build_dir
@@ -52,8 +54,11 @@ def _local_install_pyxb():
                 else:
                     if section_started:
                         # add the new line to the end of the section
-                        new_line = '${SCHEMA_DIR}/oseo/1.0/oseo.xsd oseo\n'
-                        new_contents.append(new_line)
+                        new_lines = [
+                            '${SCHEMA_DIR}/oseo/1.0/oseo.xsd oseo\n',
+                            '${SCHEMA_DIR}/wps/1.0.0/wpsAll.xsd wps\n',
+                        ]
+                        new_contents.extend(new_lines)
                         section_started = False
                 new_contents.append(line)
         with open(genbind_path, 'w') as fh:
