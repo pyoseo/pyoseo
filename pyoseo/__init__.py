@@ -12,9 +12,11 @@ Fire up an ipython shell and type:
 
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
+from flaskext.enterprise import Enterprise
 
 app = Flask(__name__)
 app.config.from_object('pyoseo.config')
 db = SQLAlchemy(app)
+enterprise = Enterprise(app)
 
 from pyoseo import views, models, admin
