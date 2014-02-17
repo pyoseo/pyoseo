@@ -22,7 +22,7 @@ LOCAL_PIP = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'pip')
 def local_initial_setup():
     _local_create_virtualenv()
     _local_install_pip_requirements()
-    _local_install_pyxb()
+    local_install_pyxb()
 
 def _local_create_virtualenv():
     global VENV_NAME
@@ -33,7 +33,7 @@ def _local_install_pip_requirements():
     global REQUIREMENTS_FILE
     local('%s install -r %s' % (LOCAL_PIP, REQUIREMENTS_FILE))
 
-def _local_install_pyxb():
+def local_install_pyxb():
     global VENV_NAME
     global LOCAL_PIP
     global LOCAL_DIR
