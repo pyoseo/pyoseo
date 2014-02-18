@@ -4,11 +4,11 @@
 import logging
 
 from lxml import etree
-import pyxb.bundles.opengis.oseo as oseo_bindings
+import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 import sqlalchemy.orm.exc
 
-from pyoseo import app, models, errors
+from pyoseo import app, models
 
 # TODO
 # Implement the remaining Getstatus functinality
@@ -81,36 +81,41 @@ class OseoServer(object):
         '''
 
         status_code = 200
-        if request.orderId is not None:
-            # an 'order retrieve' type of request
+        if request.orderId is not None: # 'order retrieve' type of request
             try:
                 record = models.Order.query.filter_by(
                     id=int(request.orderId)).one()
-                response = oseo_bindings.GetStatusResponse(status='success')
-                order_monitor = oseo_bindings.CommonOrderMonitorSpecification()
-                order_monitor.orderId = str(record.id)
-                order_monitor.orderDateTime = record.creation_date
-                status_info = oseo_bindings.StatusType(record.status)
                 if request.presentation == 'full':
                     raise NotImplementedError
-                order_monitor.append(status_info)
-                response.append(order_monitor)
+                response = oseo.GetStatusResponse(
+                    status='success',
+                    orderMonitorSpecification=[
+                        oseo.CommonOrderMonitorSpecification(
+                            orderId=str(record.id),
+                            orderType='PRODUCT_ORDER',
+                            orderStatusInfo=oseo.StatusType(
+                                status=record.status
+                            )
+                        )
+                    ]
+                )
                 if is_soap:
                     result = self._wrap_soap(response)
                 else:
                     result = response.toxml(encoding=self._encoding)
             except sqlalchemy.orm.exc.NoResultFound:
-                result = self._create_exception_report('InvalidOrderIdentifier',
-                                                       'Invalid value for order',
-                                                       is_soap,
-                                                       locator=request.orderId)
+                result = self._create_exception_report(
+                    'InvalidOrderIdentifier',
+                    'Invalid value for order',
+                    is_soap,
+                    locator=request.orderId
+                )
                 status_code = 400
-        else:
-            # an 'order search' type of request
+        else: # 'order search' type of request
             raise NotImplementedError
         return result, status_code
 
-    def parse_request(self, request_data):
+    def process_request(self, request_data):
         '''
         :arg request_data: The raw request data, as was captured by Flask
         :type request_data: str
@@ -132,7 +137,7 @@ class OseoServer(object):
             is_soap = False
             data = element
             response_headers['Content-Type'] = 'application/xml'
-        schema_instance = self._parse_xml(element)
+        schema_instance = self._parse_xml(data)
         op_map = {
             'GetStatusRequestType': self.get_status,
         }
@@ -162,7 +167,7 @@ class OseoServer(object):
 
         document = etree.tostring(xml, encoding=self._encoding,
                                   pretty_print=True)
-        oseo_request = oseo_bindings.CreateFromDocument(document)
+        oseo_request = oseo.CreateFromDocument(document)
         return oseo_request
 
     def _create_exception_report(self, code, text, soap, locator=None):
@@ -193,13 +198,25 @@ class OseoServer(object):
             result = exception_report.toxml(encoding=self._encoding)
         return result
 
+    def _get_soap_data(self, element):
+        '''
+        :arg element: The full request object
+        :type element: lxml.etree.Element
+        :return: The contents of the soap:Body element.
+        :rtype: lxml.etree.Element
+        '''
+
+        xml_element = element.xpath('/soap:Envelope/soap:Body/*[1]',
+                                     namespaces=self._namespaces)
+        return xml_element[0]
+
     def _wrap_soap(self, response):
         '''
         :arg response: the XML response
         :type response: str
         '''
 
-        raise NotImplementeError
+        raise NotImplementedError
 
     def _wrap_soap_fault(self, exception_report, soap_code):
         '''
