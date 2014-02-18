@@ -48,8 +48,7 @@ class MassiveOrder(db.Model):
 
 class Order(db.Model):
     id = db.Column(db.Integer, db.Sequence('order_id_seq'), primary_key=True)
-    state = db.Column(db.Enum(*PROCESSING_STATES),
-                      nullable=False)
+    status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
     creation_date = db.Column(db.DateTime(), nullable=False)
     completion_date = db.Column(db.DateTime())
     order_type = db.Column(db.String(50), nullable=False)
