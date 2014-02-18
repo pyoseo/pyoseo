@@ -10,6 +10,10 @@ import sqlalchemy.orm.exc
 
 from pyoseo import app, models, errors
 
+# TODO
+# Implement the remaining Getstatus functinality
+# Test it!
+
 class OseoServer(object):
 
     _oseo_version = '1.0.0'
@@ -24,6 +28,50 @@ class OseoServer(object):
 
     def get_status(self, request, is_soap):
         '''
+        Implements the OSEO Getstatus operation.
+
+        See section 14 of the OSEO specification for details on the
+        Getstatus operation.
+
+        GetStatus can be used in two ways:
+
+        * Order search, when the request has the filteringCriteria element.
+          Supports the folowing criteria:
+
+            * lastUpdate
+            * lastUpdateEnd
+            * orderStatus
+            * orderReference
+
+        * Order retrieve, when the request has the orderId element
+
+        GetStatus results can be presented in two ways:
+
+        * brief
+        * full
+
+        The OSEO specification reccomends brief be used with order search
+        and full with order retrieve, but this is not mandatory
+
+        The response to a GetStatus request shall return:
+
+        * all the order parameters specified in the previous Submit operation
+        * Plus the status of the specified order
+
+        The response to a Getstatus with brief presentation shall return
+        overall order onitoring information but not any information on specific
+        order items
+
+        The response to a GetStatus with full presentation should return all
+        the information returned by the brief presentation plus the status
+        information of every order item
+
+        The response to a GetStatus shall return the order date and time
+
+        The response shall include the order type (PRODUCT_ORDER,
+        SUBSCRIPTION_ORDER, TASKING_ORDER)
+
+
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
         :arg is_soap: Should the response be wrapped in a SOAP envelop?
@@ -33,15 +81,33 @@ class OseoServer(object):
         '''
 
         status_code = 200
-        try:
-            record = models.Order.query.filter_by(id=request.orderId).one()
-            result = record.state
-        except sqlalchemy.orm.exc.NoResultFound:
-            result = self._create_exception_report('InvalidOrderIdentifier',
-                                                   'Invalid value for order',
-                                                   is_soap,
-                                                   locator=request.orderId)
-            status_code = 400
+        if request.orderId is not None:
+            # an 'order retrieve' type of request
+            try:
+                record = models.Order.query.filter_by(
+                    id=int(request.orderId)).one()
+                response = oseo_bindings.GetStatusResponse(status='success')
+                order_monitor = oseo_bindings.CommonOrderMonitorSpecification()
+                order_monitor.orderId = str(record.id)
+                order_monitor.orderDateTime = record.creation_date
+                status_info = oseo_bindings.StatusType(record.status)
+                if request.presentation == 'full':
+                    raise NotImplementedError
+                order_monitor.append(status_info)
+                response.append(order_monitor)
+                if is_soap:
+                    result = self._wrap_soap(response)
+                else:
+                    result = response.toxml(encoding=self._encoding)
+            except sqlalchemy.orm.exc.NoResultFound:
+                result = self._create_exception_report('InvalidOrderIdentifier',
+                                                       'Invalid value for order',
+                                                       is_soap,
+                                                       locator=request.orderId)
+                status_code = 400
+        else:
+            # an 'order search' type of request
+            raise NotImplementedError
         return result, status_code
 
     def parse_request(self, request_data):

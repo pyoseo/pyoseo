@@ -4,7 +4,8 @@ Database models for pyoseo.
 
 from pyoseo import db
 
-PROCESSING_STATES = ('PENDING', 'PROCESSING', 'FINISHED')
+# as defined in the OSEO specification
+PROCESSING_STATES = ['Submitted', 'Accepted', 'InProduction', 'Completed']
 
 class User(db.Model):
     id = db.Column(db.Integer, db.Sequence('user_id_seq'), primary_key=True)
