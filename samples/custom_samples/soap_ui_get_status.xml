@@ -1,0 +1,9 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ord="http://earth.esa.int/hma/ordering">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <ord:GetStatus service="OS" version="0.9.4">
+         <ord:orderId>1</ord:orderId>
+         <ord:presentation>brief</ord:presentation>
+      </ord:GetStatus>
+   </soapenv:Body>
+</soapenv:Envelope>

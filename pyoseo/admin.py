@@ -34,13 +34,17 @@ class UserView(ModelView):
     column_display_pk = True
 
 class OrderView(ModelView):
+    column_list = ['id', 'status', 'created_on', 'completed_on', 'priority',
+                   'order_type']
     column_descriptions = {
-        'creation_date': 'Date and time of creation of the order.',
-        'completion_date': 'Date and time of completion of the order.',
+        'created_on': 'Date and time of creation of the order.',
+        'completed_on': 'Date and time of completion of the order.',
         'order_type': 'Type of order. It can be one of normal_order, ' \
                       'subscription_order or massive_order_order.',
-        'state': 'Order\'s state. It can be one of PENDING, PROCESSING, ' \
-                 'FINISHED',
+        'priority': 'Order\'s priority. It can be one of %s' % ', '.join(
+                    models.PRIORITIES),
+        'status': 'Order\'s status. It can be one of %s' % ', '.join(
+                  models.PROCESSING_STATES),
     }
     column_display_pk = True
     can_create = False

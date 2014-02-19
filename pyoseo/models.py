@@ -5,7 +5,11 @@ Database models for pyoseo.
 from pyoseo import db
 
 # as defined in the OSEO specification
-PROCESSING_STATES = ['Submitted', 'Accepted', 'InProduction', 'Completed']
+PROCESSING_STATES = ['Submitted', 'Accepted', 'InProduction', 'Suspended',
+                     'Cancelled', 'Completed', 'Failed', 'Terminated',
+                     'Downloaded',]
+# as defined in the OSEO specification
+PRIORITIES = ['STANDARD', 'FAST_TRACK']
 
 class User(db.Model):
     id = db.Column(db.Integer, db.Sequence('user_id_seq'), primary_key=True)
@@ -48,10 +52,29 @@ class MassiveOrder(db.Model):
 
 class Order(db.Model):
     id = db.Column(db.Integer, db.Sequence('order_id_seq'), primary_key=True)
+    #delivery_information_id
+    #invoice_address_id
+    #delivery_options_id
     status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
+    additional_status_info = db.Column(db.Text(4000), doc='StatusType/'
+                                       'additionalStatusInfo, as defined in '
+                                       'the OSEO spec, section 7.3.13')
+    mission_specific_status_info = db.Column(
+        db.Text(4000),
+        doc='StatusType/missionSpecificStatusInfo, as defined in '
+            'the OSEO spec, section 7.3.13'
+    )
     created_on = db.Column(db.DateTime(), nullable=False)
     completed_on = db.Column(db.DateTime())
     status_changed_on = db.Column(db.DateTime(), nullable=False)
+    reference = db.Column(db.String(30), doc='orderReference, as defined in '
+                          'the OSEO spec, section 7.3.7')
+    remark = db.Column(db.Text(4000), doc='orderRemark, as defined in '
+                          'the OSEO spec, section 7.3.7')
+    packaging = db.Column(db.Enum('bzip2'), doc='packaging, as defined in '
+                          'the OSEO spec, section 7.3.7')
+    priority = db.Column(db.Enum(*PRIORITIES), doc='priority, '
+                         'as defined in the OSEO spec, section 7.3.7')
     order_type = db.Column(db.String(50), nullable=False)
     __mapper_args__ = {
         'polymorphic_on': order_type,
