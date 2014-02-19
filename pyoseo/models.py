@@ -26,7 +26,7 @@ class Subscription(db.Model):
                            lazy='joined'))
     approved = db.Column(db.Boolean(), default=False, nullable=False)
     active = db.Column(db.Boolean(), default=False, nullable=False)
-    creation_date = db.Column(db.DateTime(), nullable=False)
+    created_on = db.Column(db.DateTime(), nullable=False)
 
     def __repr__(self):
         return '%r' % self.id
@@ -40,7 +40,7 @@ class MassiveOrder(db.Model):
     approved = db.Column(db.Boolean(), default=False, nullable=False)
     status = db.Column(db.Enum(*PROCESSING_STATES),
                        nullable=False)
-    creation_date = db.Column(db.DateTime(), nullable=False)
+    created_on = db.Column(db.DateTime(), nullable=False)
     completion_date = db.Column(db.DateTime())
 
     def __repr__(self):
@@ -49,8 +49,9 @@ class MassiveOrder(db.Model):
 class Order(db.Model):
     id = db.Column(db.Integer, db.Sequence('order_id_seq'), primary_key=True)
     status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
-    creation_date = db.Column(db.DateTime(), nullable=False)
-    completion_date = db.Column(db.DateTime())
+    created_on = db.Column(db.DateTime(), nullable=False)
+    completed_on = db.Column(db.DateTime())
+    status_changed_on = db.Column(db.DateTime(), nullable=False)
     order_type = db.Column(db.String(50), nullable=False)
     __mapper_args__ = {
         'polymorphic_on': order_type,
@@ -85,7 +86,7 @@ class OrderItem(db.Model):
     id = db.Column(db.Integer, db.Sequence('order_item_id_seq'),
                    primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
-    order = db.relationship('Order', backref=db.backref('order_item',
+    order = db.relationship('Order', backref=db.backref('order_items',
                             lazy='joined'))
     catalog_id = db.Column(db.String(100), nullable=False)
 

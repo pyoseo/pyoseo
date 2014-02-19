@@ -85,20 +85,16 @@ class OseoServer(object):
             try:
                 record = models.Order.query.filter_by(
                     id=int(request.orderId)).one()
+                response = oseo.GetStatusResponse()
+                response.status='success'
+                order_monitor = oseo.CommonOrderMonitorSpecification()
+                order_monitor.orderId = str(record.id)
+                order_monitor.orderType = 'PRODUCT_ORDER'
+                order_monitor.orderStatusInfo=oseo.StatusType(
+                        status=record.status)
                 if request.presentation == 'full':
                     raise NotImplementedError
-                response = oseo.GetStatusResponse(
-                    status='success',
-                    orderMonitorSpecification=[
-                        oseo.CommonOrderMonitorSpecification(
-                            orderId=str(record.id),
-                            orderType='PRODUCT_ORDER',
-                            orderStatusInfo=oseo.StatusType(
-                                status=record.status
-                            )
-                        )
-                    ]
-                )
+                response.orderMonitorSpecification = [order_monitor]
                 if is_soap:
                     result = self._wrap_soap(response)
                 else:
@@ -181,7 +177,7 @@ class OseoServer(object):
         :type soap: bool
         :arg locator: value to display in the 'locator' field
         :type locator: str
-        :return: pyxb.bundles.opengis.raw.ows.ExceptionReport
+        :return: A string with the XML exception report
         '''
 
         exception = ows_bindings.Exception(exceptionCode=code)
@@ -212,17 +208,29 @@ class OseoServer(object):
 
     def _wrap_soap(self, response):
         '''
-        :arg response: the XML response
-        :type response: str
+        :arg response: the pyxb instance with the previously generated response
+        :type response: pyxb.bundles.opengis.oseo
+        :return: A string with the XML response
         '''
 
-        raise NotImplementedError
+        soap_env_ns = self._namespaces.copy()
+        soap_env = etree.Element('{%s}Envelope' % self._namespaces['soap'],
+                                 nsmap=soap_env_ns)
+        soap_body = etree.SubElement(soap_env, '{%s}Body' % \
+                                     self._namespaces['soap'])
+
+        response_string = response.toxml(encoding=self._encoding)
+        response_string = response_string.encode(self._encoding)
+        response_element = etree.fromstring(response_string)
+        soap_body.append(response_element)
+        return etree.tostring(soap_env, encoding=self._encoding,
+                              pretty_print=True)
 
     def _wrap_soap_fault(self, exception_report, soap_code):
         '''
-        :arg exception_report: XML string with the previously generated
-        exception report
-        :type exception_report: str
+        :arg exception_report: The pyxb instance with the previously generated
+                               exception report
+        :type exception_report: pyxb.bundles.opengis.ows.ExceptionReport
         :arg soap_code: Can be either 'server' or 'client'
         '''
 
