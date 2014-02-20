@@ -13,6 +13,8 @@ from pyoseo import app, models
 # TODO
 # Implement the remaining Getstatus functionality
 # Test it!
+# Implement the remaining values for the deliveryInformation element
+# Fix the ExceptionReport for Getstatus
 
 class OseoServer(object):
 
@@ -81,6 +83,18 @@ class OseoServer(object):
             order_monitor.orderDateTime = record.status_changed_on
             order_monitor.orderReference = record.reference
             order_monitor.orderRemark = record.remark
+            if record.delivery_information is not None:
+                delivery_info = oseo.DeliveryInformationType()
+                delivery_info.mailAddress = oseo.DeliveryAddressType(
+                    firstName=record.delivery_information.first_name,
+                    lastName=record.delivery_information.last_name,
+                    companyRef=record.delivery_information.company_ref#,
+                    #postalAddress=oseo.record.delivery_information.company_ref,
+                )
+                for online_address in record.delivery_information.online_address:
+                    pass
+                    #delivery_info.onlineAddress.append()
+                order_monitor.deliveryInformation = delivery_info
             order_monitor.packaging = record.packaging
             order_monitor.priority = record.priority
             if request.presentation == 'full':

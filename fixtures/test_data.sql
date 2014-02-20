@@ -6,6 +6,7 @@ VALUES
 (0, 'jmacedo', 'joao.macedo@ipma.pt', 'Joao Macedo', 'pyoseo'),
 (0, 'scoelho', 'sandra.coelho@ipma.pt', 'Sandra Coelho', 'pyoseo');
 
+-------------------
 INSERT INTO 'order' (status, created_on, status_changed_on, reference, remark,
                      packaging, priority, order_type, additional_status_info,
                      mission_specific_status_info)
@@ -22,6 +23,20 @@ VALUES
 'bzip2', 'STANDARD', 'normal_order', 'some additional status information',
 'some mission specific status information');
 
+-------------------
+INSERT INTO 'delivery_information' (order_id, first_name, last_name,
+                                    company_ref, telephone_number)
+VALUES
+(3, 'John', 'Doe', 'stuff inc.', '212212211'),
+(4, NULL, NULL, NULL, NULL);
+
+-------------------
+INSERT INTO 'online_address' (delivery_information_id, protocol,
+                              server_address)
+VALUES
+(2, 'ftp', 'saf1000.meteo.pt');
+
+-------------------
 INSERT INTO 'normal_order' (id, user_id)
 VALUES
 (1, 1),
@@ -30,6 +45,7 @@ VALUES
 (4, 2),
 (5, 2);
 
+-------------------
 INSERT INTO 'order_item' (order_id, catalog_id)
 VALUES 
 (1, '12345'),

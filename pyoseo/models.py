@@ -84,6 +84,62 @@ class Order(db.Model):
     def __repr__(self):
         return '%r' % self.id
 
+class DeliveryInformation(db.Model):
+    id = db.Column(db.Integer, db.Sequence('delivery_information_id_seq'),
+                   primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    order = db.relationship('Order', backref=db.backref('delivery_information',
+                            lazy='joined', uselist=False))
+    first_name = db.Column(db.String(50), doc='firstName, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    last_name = db.Column(db.String(50), doc='lastName, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    company_ref = db.Column(db.String(50), doc='companyRef, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    street_address = db.Column(db.String(50), doc='streetAddress, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    city = db.Column(db.String(50), doc='city, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    state = db.Column(db.String(50), doc='state, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    postal_code = db.Column(db.String(50), doc='postalCode, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    country = db.Column(db.String(50), doc='country, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    post_box = db.Column(db.String(50), doc='postBox, as defined '
+                         'in the OSEO spec, section 7.3.7.3')
+    telephone_number = db.Column(db.String(50), doc='telephoneNumber, as '
+                                 'defined in the OSEO spec, section 7.3.7.3')
+    fax = db.Column(db.String(50), doc='facsimileTelephoneNumber, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+
+class OnlineAddress(db.Model):
+    id = db.Column(db.Integer, db.Sequence('online_address_id_seq'),
+                   primary_key=True)
+    delivery_information_id = db.Column(
+        db.Integer,
+        db.ForeignKey('delivery_information.id'),
+        nullable=False
+    )
+    delivery_information = db.relationship(
+        'DeliveryInformation',
+        backref=db.backref('online_address', lazy='joined')
+    )
+    protocol = db.Column(db.Enum('ftp', 'sftp', 'ftps'), doc='ProtocolType, '
+                         'constrained by the acceptable values for '
+                         'FTPAddressType, as defined in the OSEO spec, '
+                         'section 7.3.7.1', nullable=False)
+    server_address = db.Column(db.String(255), doc='serverAddress, as defined '
+                               'in the OSEO spec, section 7.3.7.2',
+                               nullable=False)
+    user_name = db.Column(db.String(50), doc='userName, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+    user_password = db.Column(db.String(50), doc='userPassword, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+    path = db.Column(db.String(1024), doc='path, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+
+
 class NormalOrder(Order):
     __mapper_args__ = {'polymorphic_identity': 'normal_order'}
     id = db.Column(db.Integer, db.ForeignKey('order.id'), primary_key=True)
