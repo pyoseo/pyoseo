@@ -4,6 +4,7 @@
 import logging
 
 from lxml import etree
+import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 import sqlalchemy.orm.exc
@@ -71,35 +72,98 @@ class OseoServer(object):
         response = oseo.GetStatusResponse()
         response.status='success'
         for record in records:
-            order_monitor = oseo.CommonOrderMonitorSpecification()
-            order_monitor.orderType = self._db_order_type_map[
-                                                       record.order_type]
-            order_monitor.orderId = str(record.id)
-            order_monitor.orderStatusInfo = oseo.StatusType(
+            om = oseo.CommonOrderMonitorSpecification()
+            om.orderType = self._db_order_type_map[record.order_type]
+            om.orderId = str(record.id)
+            om.orderStatusInfo = oseo.StatusType(
                 status=record.status,
                 additionalStatusInfo=record.additional_status_info,
                 missionSpecificStatusInfo=record.mission_specific_status_info
             )
-            order_monitor.orderDateTime = record.status_changed_on
-            order_monitor.orderReference = record.reference
-            order_monitor.orderRemark = record.remark
+            om.orderDateTime = record.status_changed_on
+            om.orderReference = record.reference
+            om.orderRemark = record.remark
             if record.delivery_information is not None:
-                delivery_info = oseo.DeliveryInformationType()
-                delivery_info.mailAddress = oseo.DeliveryAddressType(
-                    firstName=record.delivery_information.first_name,
-                    lastName=record.delivery_information.last_name,
-                    companyRef=record.delivery_information.company_ref#,
-                    #postalAddress=oseo.record.delivery_information.company_ref,
-                )
-                for online_address in record.delivery_information.online_address:
-                    pass
-                    #delivery_info.onlineAddress.append()
-                order_monitor.deliveryInformation = delivery_info
-            order_monitor.packaging = record.packaging
-            order_monitor.priority = record.priority
+                om.deliveryInformation = oseo.DeliveryInformationType()
+                optional_attrs = [
+                    record.delivery_information.first_name,
+                    record.delivery_information.last_name,
+                    record.delivery_information.company_ref,
+                    record.delivery_information.street_address,
+                    record.delivery_information.city,
+                    record.delivery_information.state,
+                    record.delivery_information.postal_code,
+                    record.delivery_information.country,
+                    record.delivery_information.post_box,
+                    record.delivery_information.telephone_number,
+                    record.delivery_information.fax
+                ]
+                if any(optional_attrs):
+                    om.deliveryInformation.mailAddress = \
+                            oseo.DeliveryAddressType()
+                    om.deliveryInformation.mailAddress.firstName = \
+                            record.delivery_information.first_name
+                    om.deliveryInformation.mailAddress.lastName = \
+                            record.delivery_information.last_name
+                    om.deliveryInformation.mailAddress.companyRef= \
+                            record.delivery_information.company_ref
+                    om.deliveryInformation.mailAddress.postalAddress=pyxb.BIND()
+                    om.deliveryInformation.mailAddress.postalAddress.streetAddress=\
+                            record.delivery_information.street_address
+                    om.deliveryInformation.mailAddress.postalAddress.city=\
+                            record.delivery_information.city
+                    om.deliveryInformation.mailAddress.postalAddress.state=\
+                            record.delivery_information.state
+                    om.deliveryInformation.mailAddress.postalAddress.postalCode=\
+                            record.delivery_information.postal_code
+                    om.deliveryInformation.mailAddress.postalAddress.country=\
+                            record.delivery_information.country
+                    om.deliveryInformation.mailAddress.postalAddress.postBox=\
+                            record.delivery_information.post_box
+                    om.deliveryInformation.mailAddress.telephoneNumber = \
+                            record.delivery_information.telephone_number
+                    om.deliveryInformation.mailAddress.facsimileTelephoneNumber = \
+                            record.delivery_information.fax
+                for oa in record.delivery_information.online_address:
+                    om.deliveryInformation.onlineAddress.append(
+                            oseo.OnlineAddressType())
+                    om.deliveryInformation.onlineAddress[-1].protocol = \
+                            oa.protocol
+                    om.deliveryInformation.onlineAddress[-1].serverAddress = \
+                            oa.server_address
+                    om.deliveryInformation.onlineAddress[-1].userName = \
+                            oa.user_name
+                    om.deliveryInformation.onlineAddress[-1].userPassword = \
+                            oa.user_password
+                    om.deliveryInformation.onlineAddress[-1].path = oa.path
+
+            if record.invoice_address is not None:
+                om.invoiceAddress = oseo.DeliveryAddressType()
+                om.invoiceAddress.firstName = record.invoice_address.first_name
+                om.invoiceAddress.lastName = record.invoice_address.last_name
+                om.invoiceAddress.companyRef = record.invoice_address.company_ref
+                om.invoiceAddress.postalAddress=pyxb.BIND()
+                om.invoiceAddress.postalAddress.streetAddress=\
+                        record.invoice_address.street_address
+                om.invoiceAddress.postalAddress.city=\
+                        record.invoice_address.city
+                om.invoiceAddress.postalAddress.state=\
+                        record.invoice_address.state
+                om.invoiceAddress.postalAddress.postalCode=\
+                        record.invoice_address.postal_code
+                om.invoiceAddress.postalAddress.country=\
+                        record.invoice_address.country
+                om.invoiceAddress.postalAddress.postBox=\
+                        record.invoice_address.post_box
+                om.invoiceAddress.telephoneNumber = \
+                        record.invoice_address.telephone_number
+                om.invoiceAddress.facsimileTelephoneNumber = \
+                        record.invoice_address.fax
+            om.packaging = record.packaging
+            om.priority = record.priority
             if request.presentation == 'full':
                 raise NotImplementedError
-            response.orderMonitorSpecification.append(order_monitor)
+            response.orderMonitorSpecification.append(om)
         if soap_version is not None:
             result = self._wrap_soap(response, soap_version)
         else:

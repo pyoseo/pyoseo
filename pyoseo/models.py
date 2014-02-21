@@ -52,9 +52,6 @@ class MassiveOrder(db.Model):
 
 class Order(db.Model):
     id = db.Column(db.Integer, db.Sequence('order_id_seq'), primary_key=True)
-    #delivery_information_id
-    #invoice_address_id
-    #delivery_options_id
     status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
     additional_status_info = db.Column(db.Text(4000), doc='StatusType/'
                                        'additionalStatusInfo, as defined in '
@@ -84,12 +81,10 @@ class Order(db.Model):
     def __repr__(self):
         return '%r' % self.id
 
-class DeliveryInformation(db.Model):
+
+class DeliveryAddress(db.Model):
     id = db.Column(db.Integer, db.Sequence('delivery_information_id_seq'),
                    primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    order = db.relationship('Order', backref=db.backref('delivery_information',
-                            lazy='joined', uselist=False))
     first_name = db.Column(db.String(50), doc='firstName, as defined '
                            'in the OSEO spec, section 7.3.7.3')
     last_name = db.Column(db.String(50), doc='lastName, as defined '
@@ -112,6 +107,28 @@ class DeliveryInformation(db.Model):
                                  'defined in the OSEO spec, section 7.3.7.3')
     fax = db.Column(db.String(50), doc='facsimileTelephoneNumber, as defined '
                            'in the OSEO spec, section 7.3.7.3')
+    delivery_address_type = db.Column(db.String(50), nullable=False)
+    __mapper_args__ = {
+        'polymorphic_on': delivery_address_type,
+        'polymorphic_identity': 'delivery_address'
+    }
+
+class DeliveryInformation(DeliveryAddress):
+    __mapper_args__ = {'polymorphic_identity': 'delivery_information'}
+    id = db.Column(db.Integer, db.ForeignKey('delivery_address.id'),
+                   primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    order = db.relationship('Order', backref=db.backref('delivery_information',
+                            lazy='joined', uselist=False))
+
+class InvoiceAddress(DeliveryAddress):
+    __mapper_args__ = {'polymorphic_identity': 'invoice_address'}
+    id = db.Column(db.Integer, db.ForeignKey('delivery_address.id'),
+                   primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    order = db.relationship('Order', backref=db.backref('invoice_address',
+                            lazy='joined', uselist=False))
+
 
 class OnlineAddress(db.Model):
     id = db.Column(db.Integer, db.Sequence('online_address_id_seq'),

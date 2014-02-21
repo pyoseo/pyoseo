@@ -24,12 +24,28 @@ VALUES
 'some mission specific status information');
 
 -------------------
-INSERT INTO 'delivery_information' (order_id, first_name, last_name,
-                                    company_ref, telephone_number)
+INSERT INTO 'delivery_address' (first_name, last_name, company_ref,
+                                street_address, city, state,
+                                postal_code, country, post_box,
+                                telephone_number, fax, delivery_address_type)
 VALUES
-(3, 'John', 'Doe', 'stuff inc.', '212212211'),
-(4, NULL, NULL, NULL, NULL);
+('John', 'Doe', 'stuff inc.', 'da street', 'mira city', 'setubal', '2800',
+    'Portugal', NULL, '212212211', NULL, 'delivery_information'),
+(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    'delivery_information'),
+('John', 'Doe', 'stuff inc.', 'da street', 'mira city', 'setubal', '2800',
+    'Portugal', NULL, '212212211', NULL, 'invoice_address');
 
+-------------------
+INSERT INTO 'delivery_information' (id, order_id)
+VALUES
+(1, 3),
+(2, 4);
+
+-------------------
+INSERT INTO 'invoice_address' (id, order_id)
+VALUES
+(3, 3);
 -------------------
 INSERT INTO 'online_address' (delivery_information_id, protocol,
                               server_address)
