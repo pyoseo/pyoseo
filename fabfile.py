@@ -20,6 +20,7 @@ LOCAL_DIR = os.path.dirname(os.path.realpath(__file__))
 LOCAL_PIP = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'pip')
 
 def local_initial_setup():
+    local('sudo apt-get install rabbitmq-server')
     _local_create_virtualenv()
     _local_install_pip_requirements()
     local_install_pyxb()

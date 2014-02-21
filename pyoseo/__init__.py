@@ -30,9 +30,12 @@ pyoseo, a flask-based OGC OSEO server.
 
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
+from celery import Celery
 
 app = Flask(__name__)
 app.config.from_object('pyoseo.config')
 db = SQLAlchemy(app)
+celery_app = Celery('pyoseo')
+celery_app.conf.add_defaults(app.config)
 
-from pyoseo import views, models, admin
+from pyoseo import views, models, admin, tasks
