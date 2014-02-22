@@ -35,6 +35,32 @@ class OseoServer(object):
         'massive_order_order': 'MASSIVE_ORDER',
     }
 
+    def get_options(self, request, soap_version):
+        '''
+        Example for creating an option with pyxb:
+
+        from lxml import etree
+        import pyxb
+        import pyxb.bundles.opengis.swe_2_0 as swe
+        at = swe.AllowedTokens()
+        at.value_.append('ATS_NL_0P')
+        at.value_.append('ATS_TOA_1P')
+        c = swe.Category(updatable=False)
+        c.optional = True
+        c.definition = 'http://www.opengis.net/def/parameter/ESA/1.0/productType'
+        c.identifier = 'ProductType'
+        c.description = 'Processing for ENVISAT ATS'
+        c.constraint = pyxb.BIND()
+        c.constraint.append(at)
+        dr = swe.DataRecord()
+        dr.field.append(pyxb.BIND())
+        dr.field[0].name = 'ProductType'
+        dr.field[0].append(c)
+        print(etree.tostring(etree.fromstring(dr.toxml()), encoding='utf-8', pretty_print=True))
+        '''
+
+        raise NotImplementedError
+
     def submit(self, request, soap_version):
         '''
         Implements the OSEO Submit operation.
@@ -67,7 +93,6 @@ class OseoServer(object):
         else:
             result = response.toxml(encoding=self._encoding)
         return result, status_code
-
 
     def get_status(self, request, soap_version):
         '''
