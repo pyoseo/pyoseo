@@ -1,5 +1,48 @@
 -- Some testing data to fill up the pyoseo database while testing
 
+INSERT INTO product (id, short_name)
+VALUES
+(1, 'LST'),
+(2, 'LST10');
+
+-------------------
+INSERT INTO 'option' (id, name, type_, option_type)
+VALUES
+(1, 'dataset', 'str', 'product_option'),
+(2, 'file_format', 'str', NULL);
+
+-------------------
+INSERT INTO product_option (id, product_id)
+VALUES
+(1, 1);
+
+-------------------
+INSERT INTO option_choice (id, option_id, value)
+VALUES
+(1, 1, 'LST'),
+(2, 1, 'Q_FLAGS'),
+(3, 1, 'errorbar_LST'),
+(4, 2, 'HDF5'),
+(5, 2, 'netCDF'),
+(6, 2, 'GeoTiff');
+
+-------------------
+INSERT INTO customizable_item (id)
+VALUES
+(1),
+(2),
+(3),
+(4),
+(5);
+
+-------------------
+INSERT INTO selected_option (id, option_id, customizable_item_id, value)
+VALUES
+(1, 1, 1, 'LST'),
+(2, 1, 1, 'Q_FLAGS'),
+(3, 2, 1, 'netCDF');
+
+-------------------
 INSERT INTO 'user' ('admin', name, e_mail, full_name, password)
 VALUES 
 (1, 'ricardogsilva', 'ricardo.silva@ipma.pt', 'Ricardo Garcia Silva', 'pyoseo'),
