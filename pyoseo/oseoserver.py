@@ -2,6 +2,8 @@
 '''
 
 import logging
+import re
+import datetime as dt
 
 from lxml import etree
 import pyxb
@@ -30,9 +32,9 @@ class OseoServer(object):
             'InvalidOrderIdentifier': 'client',
     }
     _db_order_type_map = {
-        'normal_order': 'PRODUCT_ORDER',
+        'product_order': 'PRODUCT_ORDER',
         'subscription_order': 'SUBSCRIPTION_ORDER',
-        'massive_order_order': 'MASSIVE_ORDER',
+        'massive_order': 'PRODUCT_ORDER',
     }
 
     def get_options(self, request, soap_version):
@@ -126,7 +128,27 @@ class OseoServer(object):
                 )
                 status_code = 400
         else: # 'order search' type of request
-            records = []
+            query = models.Order.query
+            if request.filteringCriteria.lastUpdate is not None:
+                lu = request.filteringCriteria.lastUpdate
+                query = query.filter(models.Order.status_changed_on >= lu)
+            if request.filteringCriteria.lastUpdateEnd is not None:
+                # workaround for a bug in the oseo.xsd that does not
+                # assign a dateTime type to the lastUpdateEnd element
+                lue = request.filteringCriteria.lastUpdateEnd.toxml()
+                m = re.search(r'\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?', lue)
+                try:
+                    ts = dt.datetime.strptime(m.group(), '%Y-%m-%dT%H:%M:%SZ')
+                except ValueError:
+                    ts = dt.datetime.strptime(m.group(), '%Y-%m-%d')
+                query = query.filter(models.Order.status_changed_on <= ts)
+            if request.filteringCriteria.orderReference is not None:
+                ref = request.filteringCriteria.orderReference
+                query = query.filter(models.Order.reference == ref)
+            statuses = [s for s in request.filteringCriteria.orderStatus]
+            if any(statuses):
+                query = query.filter(models.Order.status.in_(statuses))
+            records = query.all()
         if result is None:
             response = self._generate_get_status_response(records, request)
             if soap_version is not None:
@@ -228,9 +250,41 @@ class OseoServer(object):
                 om.invoiceAddress.facsimileTelephoneNumber = \
                         r.invoice_address.fax
             om.packaging = r.packaging
+            # add any 'option' elements
+            if r.delivery_options is not None:
+                om.deliveryOptions = self._get_delivery_options(r)
             om.priority = r.priority
             if request.presentation == 'full':
-                raise NotImplementedError
+                if r.order_type == 'product_order':
+                    for batch in r.batches:
+                        for oi in batch.order_items:
+                            sit = oseo.CommonOrderStatusItemType()
+                            # TODO
+                            # add the other optional elements
+                            sit.itemId = str(oi.id)
+                            sit.productId = oi.catalog_id
+                            if oi.product_order_options_id is not None:
+                                sit.productOrderOptionsId = \
+                                        oi.product_order_options_id
+                            if oi.remark is not None:
+                                sit.orderItemRemark = oi.remark
+                            # add any 'option' elements that may be present
+                            # add any 'sceneSelection' elements that may be present
+                            if oi.delivery_options is not None:
+                                sit.deliveryOptions = self._get_delivery_options(oi)
+                            # add any 'payment' elements that may be present
+                            # add any 'extension' elements that may be present
+                            sit.orderItemStatusInfo = oseo.StatusType()
+                            sit.orderItemStatusInfo.status = oi.status
+                            if oi.additional_status_info is not None:
+                                sit.orderItemStatusInfo.additionalStatusInfo =\
+                                        oi.additional_status_info
+                            if oi.mission_specific_status_info is not None:
+                                sit.orderItemStatusInfo.missionSpecificStatusInfo=\
+                                        oi.mission_specific_status_info
+                            om.orderItem.append(sit)
+                else:
+                    raise NotImplementedError
             response.orderMonitorSpecification.append(om)
         return response
 
@@ -266,6 +320,37 @@ class OseoServer(object):
         operation = op_map[schema_instance.__class__.__name__]
         result, status_code = operation(schema_instance, soap_version)
         return result, status_code, response_headers
+
+    def _get_delivery_options(self, db_item):
+        '''
+        :arg oseo_item: The oseo object where the delivery options are to be 
+                        added
+        :type oseo_item: pyxb.bundles.opengis.oseo
+        :arg db_item: the database record model that has the delivery options
+        :type db_item: 
+        '''
+
+        do = db_item.delivery_options
+        dot = oseo.DeliveryOptionsType()
+        if do.online_data_access_protocol is not None:
+            dot.onlineDataAccess = pyxb.BIND()
+            dot.onlineDataAccess.protocol = do.online_data_access_protocol
+        elif do.online_data_delivery_protocol is not None:
+            dot.onlineDataDelivery = pyxb.BIND()
+            dot.onlineDataDelivery.protocol = do.online_data_delivery_protocol
+        elif do.media_delivery_package_medium is not None:
+            dot.mediaDelivery = pyxb.BIND()
+            dot.mediaDelivery.packageMedium = do.media_delivery_package_medium
+            if do.media_delivery_shipping_instructions is not None:
+                dot.mediaDelivery.shippingInstructions = \
+                        do.media_delivery_shipping_instructions
+        if do.number_of_copies is not None:
+            dot.numberOfCopies = do.number_of_copies
+        if do.annotation is not None:
+            dot.productAnnotation = do.annotation
+        if do.special_instructions is not None:
+            dot.specialInstructions = do.special_instructions
+        return dot
 
     def _is_soap(self, request_element):
         '''

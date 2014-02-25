@@ -15,9 +15,9 @@ import uuid
 import pyoseo
 
 def main():
-    ric = pyoseo.models.User(admin=True, name='ricardogsilva',
+    ric = pyoseo.models.User(admin=True, name='ric',
                              e_mail='ricardo.silva@mail.pt',
-                             full_name='Ricardo Garcia Silva',
+                             full_name='Ricardo Ric',
                              password='1234')
     john = pyoseo.models.User(admin=False, name='johndoe',
                               e_mail='john.doe@mail.pt',
@@ -30,8 +30,8 @@ def main():
         order = pyoseo.models.Order(user=owner, status='Submitted',
                                     created_on=dt.datetime.now()+delta,
                                     status_changed_on=dt.datetime.now()+delta,
-                                    reference='Some random stuff about this '
-                                    'order', order_type='product_order')
+                                    reference='Special order',
+                                    order_type='product_order')
         batch = pyoseo.models.Batch(order=order, status=order.status)
         for i in xrange(10):
             oi = pyoseo.models.OrderItem(batch=batch,

@@ -95,7 +95,7 @@ class DeliveryOption(db.Model):
                                      'customizable_item.id'))
     customizable_item = db.relationship('CustomizableItem',
                                         backref=db.backref('delivery_options',
-                                        lazy='joined'))
+                                        lazy='joined', uselist=False))
     online_data_access_protocol = db.Column(db.String(50))
     online_data_delivery_protocol = db.Column(db.String(50))
     media_delivery_package_medium = db.Column(db.String(50))

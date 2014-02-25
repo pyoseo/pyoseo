@@ -23,6 +23,10 @@ class CustomizableItemView(ModelView):
     inline_models = (
         SelectedOptionInline(models.SelectedOption),
     )
+
+class OrderView(ModelView):
+    column_display_pk = True
+
 #
 ## -----------------------------------------
 #
@@ -156,6 +160,7 @@ admin = Admin(app, name='pyoseo')
 admin.add_view(OptionVieW(models.Option, db.session, category='Other models'))
 admin.add_view(CustomizableItemView(models.CustomizableItem, db.session,
                category='Other models'))
+admin.add_view(OrderView(models.Order, db.session))
 
 # -------------------------------------------
 #admin.add_view(UserView(models.User, db.session))
