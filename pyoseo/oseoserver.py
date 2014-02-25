@@ -1,4 +1,25 @@
 '''
+Creating the ParameterData element:
+
+* create an appropriate XML Schema Definition file (xsd)
+* generate pyxb bindings for the XML schema with:
+
+  pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
+
+* in ipython
+  
+  import pyxb.binding.datatypes as xsd
+  import pyxb.bundles.opengis.oseo as oseo
+  import pysoeo_schema
+
+  pd = oseo.ParameterData()
+  pd.encoding = 'XMLEncoding'
+  pd.values = xsd.anyType()
+  pd.values.append(pyoseo_schema.fileFormat('o valor'))
+  pd.values.append(pyoseo_schema.projection('a projeccao'))
+  pd.toxml()
+
+
 '''
 
 import logging
