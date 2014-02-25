@@ -58,7 +58,7 @@ class SelectedOption(db.Model):
     customizable_item_id = db.Column(db.Integer, db.ForeignKey(
                                      'customizable_item.id'))
     customizable_item = db.relationship('CustomizableItem',
-                                        backref=db.backref('selected_option',
+                                        backref=db.backref('selected_options',
                                         lazy='joined'))
     value = db.Column(db.String(50), nullable=False)
 
@@ -86,7 +86,7 @@ class CustomizableItem(db.Model):
     }
 
     def __repr__(self):
-        return self.id
+        return '%s' % self.id
 
 class DeliveryOption(db.Model):
     id = db.Column(db.Integer, db.Sequence('delivery_option_id_seq'),
@@ -108,7 +108,7 @@ class DeliveryOption(db.Model):
     special_instructions = db.Column(db.String(4000))
 
     def __repr__(self):
-        return self.id
+        return '%s' % self.id
 
 class User(db.Model):
     id = db.Column(db.Integer, db.Sequence('user_id_seq'), primary_key=True)
@@ -122,13 +122,115 @@ class User(db.Model):
         return self.name
 
 class Order(CustomizableItem):
-    __mapper_args__ = {'polymorphic_identity': 'order'}
     id = db.Column(db.Integer, db.ForeignKey('customizable_item.id'),
                    primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('orders',
                            lazy='joined'))
-    # finish this model
+    created_on = db.Column(db.DateTime(), nullable=False)
+    completed_on = db.Column(db.DateTime())
+    status_changed_on = db.Column(db.DateTime(), nullable=False)
+    reference = db.Column(db.String(30), doc='orderReference, as defined in '
+                          'the OSEO spec, section 7.3.7')
+    packaging = db.Column(db.Enum('bzip2'), doc='packaging, as defined in '
+                          'the OSEO spec, section 7.3.7')
+    priority = db.Column(db.Enum(*PRIORITIES), doc='priority, '
+                         'as defined in the OSEO spec, section 7.3.7')
+    order_type = db.Column(db.String(50))
+    __mapper_args__ = {
+        'polymorphic_on': order_type,
+        'polymorphic_identity': 'product_order'
+    }
+
+class Subscription(Order):
+    __mapper_args__ = {'polymorphic_identity': 'subscription'}
+    id = db.Column(db.Integer, db.ForeignKey('order.id'), primary_key=True)
+    approved = db.Column(db.Boolean(), default=False, nullable=False)
+    active = db.Column(db.Boolean(), default=False, nullable=False)
+
+class MassiveOrder(Order):
+    __mapper_args__ = {'polymorphic_identity': 'massive_order'}
+    id = db.Column(db.Integer, db.ForeignKey('order.id'), primary_key=True)
+    approved = db.Column(db.Boolean(), default=False, nullable=False)
+
+class DeliveryAddress(db.Model):
+    id = db.Column(db.Integer, db.Sequence('delivery_address_id_seq'),
+                   primary_key=True)
+    first_name = db.Column(db.String(50), doc='firstName, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    last_name = db.Column(db.String(50), doc='lastName, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    company_ref = db.Column(db.String(50), doc='companyRef, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    street_address = db.Column(db.String(50), doc='streetAddress, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    city = db.Column(db.String(50), doc='city, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    state = db.Column(db.String(50), doc='state, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    postal_code = db.Column(db.String(50), doc='postalCode, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    country = db.Column(db.String(50), doc='country, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    post_box = db.Column(db.String(50), doc='postBox, as defined '
+                         'in the OSEO spec, section 7.3.7.3')
+    telephone_number = db.Column(db.String(50), doc='telephoneNumber, as '
+                                 'defined in the OSEO spec, section 7.3.7.3')
+    fax = db.Column(db.String(50), doc='facsimileTelephoneNumber, as defined '
+                           'in the OSEO spec, section 7.3.7.3')
+    delivery_address_type = db.Column(db.String(50), nullable=False)
+    __mapper_args__ = {
+        'polymorphic_on': delivery_address_type,
+        'polymorphic_identity': 'delivery_address'
+    }
+
+    def __repr__(self):
+        return '%s' % self.id
+
+class DeliveryInformation(DeliveryAddress):
+    __mapper_args__ = {'polymorphic_identity': 'delivery_information'}
+    id = db.Column(db.Integer, db.ForeignKey('delivery_address.id'),
+                   primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    order = db.relationship('Order', backref=db.backref('delivery_information',
+                            lazy='joined', uselist=False))
+
+class OnlineAddress(db.Model):
+    id = db.Column(db.Integer, db.Sequence('online_address_id_seq'),
+                   primary_key=True)
+    delivery_information_id = db.Column(
+        db.Integer,
+        db.ForeignKey('delivery_information.id'),
+        nullable=False
+    )
+    delivery_information = db.relationship(
+        'DeliveryInformation',
+        backref=db.backref('online_address', lazy='joined')
+    )
+    protocol = db.Column(db.Enum('ftp', 'sftp', 'ftps'), doc='ProtocolType, '
+                         'constrained by the acceptable values for '
+                         'FTPAddressType, as defined in the OSEO spec, '
+                         'section 7.3.7.1', nullable=False)
+    server_address = db.Column(db.String(255), doc='serverAddress, as defined '
+                               'in the OSEO spec, section 7.3.7.2',
+                               nullable=False)
+    user_name = db.Column(db.String(50), doc='userName, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+    user_password = db.Column(db.String(50), doc='userPassword, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+    path = db.Column(db.String(1024), doc='path, as defined '
+                               'in the OSEO spec, section 7.3.7.2')
+
+    def __repr__(self):
+        return '%s' % self.id
+
+class InvoiceAddress(DeliveryAddress):
+    __mapper_args__ = {'polymorphic_identity': 'invoice_address'}
+    id = db.Column(db.Integer, db.ForeignKey('delivery_address.id'),
+                   primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    order = db.relationship('Order', backref=db.backref('invoice_address',
+                            lazy='joined', uselist=False))
 
 class Batch(db.Model):
     id = db.Column(db.Integer, db.Sequence('batch_id_seq'),
@@ -139,7 +241,7 @@ class Batch(db.Model):
     status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
 
     def __repr__(self):
-        return self.id
+        return '%s' % self.id
 
 class OrderItem(CustomizableItem):
     __mapper_args__ = {'polymorphic_identity': 'order_item'}
@@ -152,7 +254,7 @@ class OrderItem(CustomizableItem):
     catalog_id = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
-        return self.id
+        return '%s' % self.id
 
 
 # ----------------------------------------------------------------------
