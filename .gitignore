@@ -4,3 +4,4 @@ pyoseo/sqlite.db
 *.swp
 venv/*
 *~
+*.autosave
