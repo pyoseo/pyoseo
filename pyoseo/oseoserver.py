@@ -1,4 +1,7 @@
 '''
+- Assuming that massive orders will come with some special reference
+
+
 Creating the ParameterData element:
 
 * create an appropriate XML Schema Definition file (xsd)
@@ -32,13 +35,11 @@ import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 import sqlalchemy.orm.exc
 
-from pyoseo import app, models, tasks
+from pyoseo import app, db, models, tasks
 
 # TODO
 # Implement the remaining Getstatus functionality
 # Test it!
-# Implement the remaining values for the deliveryInformation element
-# Fix the ExceptionReport for Getstatus
 
 class OseoServer(object):
 
@@ -54,9 +55,10 @@ class OseoServer(object):
     }
     _db_order_type_map = {
         'product_order': 'PRODUCT_ORDER',
-        'subscription_order': 'SUBSCRIPTION_ORDER',
+        'subscription': 'SUBSCRIPTION_ORDER',
         'massive_order': 'PRODUCT_ORDER',
     }
+    MASSIVE_ORDER_REFERENCE = 'Massive order'
 
     def get_options(self, request, soap_version):
         '''
@@ -103,14 +105,111 @@ class OseoServer(object):
 
         status_code = 200
         order_id = '1'
+        if request.orderSpecification is not None:
+            ord_spec = request.orderSpecification
+            # order specification type of Submit
 
-        o_type = request.orderSpecification.orderType
-        o_remark = request.orderSpecification.orderReference
-        if o_type == self._db_order_type_map['normal_order'] and \
-                o_remark != self._db_order_type_map['massive_order_order']:
-            tasks.process_order.delay(order_id)
+            creation_date = dt.datetime.utcnow()
+            order = models.Order(
+                status='Submitted',
+                remark=ord_spec.orderRemark,
+                created_on=creation_date,
+                status_changed_on=creation_date,
+                reference=ord_spec.orderReference,
+                packaging=ord_spec.packaging,
+                priority=ord_spec.priority
+            )
+            if ord_spec.orderType == 'PRODUCT_ORDER':
+                if order.reference != self.MASSIVE_ORDER_REFERENCE:
+                    order.order_type = 'product_order'
+                else:
+                    order.order_type = 'massive_order'
+            elif ord_spec.orderType == 'SUBSCRIPTION_ORDER':
+                order.order_type = 'subscription'
+            else:
+                raise NotImplementedError
+            if ord_spec.deliveryInformation is not None:
+                di = ord_spec.deliveryInformation
+                del_info = models.DeliveryInformation()
+                if di.mailAddress is not None:
+                    del_info.first_name = di.mailAddress.firstName
+                    del_info.last_name = di.mailAddress.lastName
+                    del_info.company_ref = di.mailAddress.companyRef
+                    del_info.street_address = di.mailAddress.streetAddress
+                    del_info.city = di.mailAddress.city
+                    del_info.state = di.mailAddress.state
+                    del_info.postal_code = di.mailAddress.postalCode
+                    del_info.country = di.mailAddress.country
+                    del_info.post_box = di.mailAddress.post_box
+                    del_info.telephone_number = di.mailAddress.telephoneNumber
+                    del_info.fax = di.mailAddress.facsimileTelephoneNumber
+                for oa in di.onlineAddress:
+                    del_info.online_addresses.append(
+                        models.OnlineAddress(
+                            protocol=oa.protocol,
+                            server_address=oa.serverAddress,
+                            user_name=oa.userName,
+                            user_password=oa.userPassword,
+                            path=oa.path
+                        )
+                    )
+                order.delivery_information = del_info
+            if ord_spec.invoiceAddress is not None:
+                ia = ord_spec.invoiceAddress
+                order.invoice_address = models.InvoiceAddress(
+                    first_name=ia.mailAddress.firstName,
+                    last_name=ia.mailAddress.lastName,
+                    company_ref=ia.mailAddress.companyRef,
+                    street_address=ia.mailAddress.postalAddress.streetAddress,
+                    city=ia.mailAddress.postalAddress.city,
+                    state=ia.mailAddress.postalAddress.state,
+                    postal_code=ia.mailAddress.postalAddress.postalCode,
+                    country=ia.mailAddress.postalAddress.country,
+                    post_box=ia.mailAddress.postalAddress.postBox,
+                    telephone=ia.mailAddress.telephoneNumer,
+                    fax=ia.mailAddress.facsimileTelephoneNumber
+                )
+            # add options
+            if ord_spec.deliveryOptions is not None:
+                order.delivery_options = self._set_delivery_options(
+                                                    ord_spec.deliveryOptions)
+            if order.order_type == 'product_order':
+                # create a single batch with all of the defined order items
+                batch = models.Batch(status=order.status)
+                for oi in ord_spec.orderItem:
+                    order_item = models.OrderItem(
+                        item_id=oi.itemId,
+                        status=batch.status,
+                        created_on=creation_date,
+                        status_changed_on=creation_date,
+                        remark=oi.orderItemRemark,
+                        product_order_options_id=oi.productOrderOptionsId,
+                    )
+                    # add order_item options
+                    # add order_item scene selection
+                    if oi.deliveryOptions is not None:
+                        order_item.delivery_options = self._set_delivery_options(
+                                                            oi.deliveryOptions)
+                    # add order_item payment
+                    order_item.identifier = oi.productId.identifier
+                    order_item.collection_id = oi.productId.collectionId
+                    batch.order_items.append(order_item)
+                order.batches.append(batch)
+            elif order.order_type == 'subscription':
+                # do not create any batch yet, as there are no order items
+                raise NotImplementedError
+            elif order.order_type == 'massive_order':
+                # break the order down into multiple batches
+                raise NotImplementedError
+        else:
+            # quotation type of submit
+            raise NotImplementedError
+        order.user = models.User.query.filter_by(id=1).one()
+        db.session.add(order)
+        db.session.commit()
+        tasks.process_order.delay(order.id)
         response = oseo.SubmitAck(status='success')
-        response.orderId = order_id
+        response.orderId = str(order.id)
         if soap_version is not None:
             result = self._wrap_soap(response, soap_version)
         else:
@@ -236,7 +335,7 @@ class OseoServer(object):
                             r.delivery_information.telephone_number
                     om.deliveryInformation.mailAddress.facsimileTelephoneNumber = \
                             r.delivery_information.fax
-                for oa in r.delivery_information.online_address:
+                for oa in r.delivery_information.online_addresses:
                     om.deliveryInformation.onlineAddress.append(
                             oseo.OnlineAddressType())
                     om.deliveryInformation.onlineAddress[-1].protocol = \
@@ -283,12 +382,14 @@ class OseoServer(object):
                             # TODO
                             # add the other optional elements
                             sit.itemId = str(oi.id)
-                            sit.productId = oi.catalog_id
+                            sit.productId = oi.identifier
                             if oi.product_order_options_id is not None:
                                 sit.productOrderOptionsId = \
                                         oi.product_order_options_id
                             if oi.remark is not None:
                                 sit.orderItemRemark = oi.remark
+                            if oi.collection_id is not None:
+                                sit.collectionId = oi.collection_id
                             # add any 'option' elements that may be present
                             # add any 'sceneSelection' elements that may be present
                             if oi.delivery_options is not None:
@@ -342,13 +443,38 @@ class OseoServer(object):
         result, status_code = operation(schema_instance, soap_version)
         return result, status_code, response_headers
 
+    def _set_delivery_options(self, options):
+        '''
+        Create a database record with the input delivery options.
+
+        :arg options: The oseo deliveryOptions
+        :type delivery_options: pyxb.bundles.opengis.oseo.DeliveryOptionsType
+        :return: pyoseo.models.DeliveryOption
+        '''
+
+        oda = options.onlineDataAccess
+        odd = options.onlineDataDelivery
+        md = options.mediaDelivery
+        result = models.DeliveryOption(
+            online_data_access_protocol=oda.protocol if oda else None,
+            online_data_delivery_protocol=odd.protocol if odd else None,
+            media_delivery_package_medium=\
+                    options.mediaDelivery.packageMedium if md else None,
+            media_delivery_shipping_instructions=\
+                    options.mediaDelivery.shippingInstructions if md else None,
+            number_of_copies=options.numberOfCopies,
+            annotation=options.productAnnotation,
+            special_instructions=options.specialInstructions
+        )
+        return result
+
     def _get_delivery_options(self, db_item):
         '''
-        :arg oseo_item: The oseo object where the delivery options are to be 
-                        added
-        :type oseo_item: pyxb.bundles.opengis.oseo
+        Return the delivery options for an input database item.
+
         :arg db_item: the database record model that has the delivery options
-        :type db_item: 
+        :type db_item: pyoseo.models.CustomizableItem
+        :return: A pyxb object with the delivery options
         '''
 
         do = db_item.delivery_options

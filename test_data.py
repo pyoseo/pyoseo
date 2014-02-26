@@ -34,9 +34,15 @@ def main():
                                     order_type='product_order')
         batch = pyoseo.models.Batch(order=order, status=order.status)
         for i in xrange(10):
-            oi = pyoseo.models.OrderItem(batch=batch,
-                                         catalog_id=str(uuid.uuid1()),
-                                         status=order.status)
+            oi = pyoseo.models.OrderItem(
+                batch=batch,
+                item_id='item_%03i' % i,
+                created_on=dt.datetime.now()+delta,
+                status_changed_on=dt.datetime.now()+delta,
+                status=order.status,
+                identifier=str(uuid.uuid1()),
+                collection_id='sdfldfajslfjal'
+            )
             pyoseo.db.session.add(oi)
         pyoseo.db.session.add_all([order, batch])
     pyoseo.db.session.commit()

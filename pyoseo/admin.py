@@ -25,23 +25,23 @@ class CustomizableItemView(ModelView):
     )
 
 class OrderView(ModelView):
+    column_exclude_list = (
+        'additional_status_info', 'mission_specific_status_info',
+        'packaging', 'priority', 'remark', 'item_type', 'created_on',
+        'status_changed_on', 'completed_on',
+    )
+    #form_excluded_columns = ('invoice_address', 'delivery_information',)
+    #column_formatters = dict(
+    #    status_changed_on=lambda v, c, m, n:m.status_changed_on.strftime('%Y-%m-%d %H:%M:%S')
+    #)
     column_display_pk = True
 
-#
-## -----------------------------------------
-#
-#class OrderItemInline(InlineFormAdmin):
-#    pass
-#
-#class OrderOptionInline(InlineFormAdmin):
-#    pass
-#
-#class OrderItemOptionInline(InlineFormAdmin):
-#    pass
-#
-#class OrderItemInformationInline(InlineFormAdmin):
-#    pass
-#
+class DeliveryInformationView(ModelView):
+    column_display_pk = True
+
+class OnlineAddressView(ModelView):
+    column_display_pk = True
+
 #class ModerateSubscriptionView(BaseView):
 #
 #    @expose('/')
@@ -53,112 +53,15 @@ class OrderView(ModelView):
 #    @expose('/')
 #    def index(self):
 #        return self.render('index.html')
-#
-#class UserView(ModelView):
-#    column_display_pk = True
-#
-#class OrderView(ModelView):
-#    column_list = ['id', 'status', 'created_on', 'completed_on', 'priority',
-#                   'order_type']
-#    column_descriptions = {
-#        'created_on': 'Date and time of creation of the order.',
-#        'completed_on': 'Date and time of completion of the order.',
-#        'order_type': 'Type of order. It can be one of normal_order, ' \
-#                      'subscription_order or massive_order_order.',
-#        'priority': 'Order\'s priority. It can be one of %s' % ', '.join(
-#                    models.PRIORITIES),
-#        'status': 'Order\'s status. It can be one of %s' % ', '.join(
-#                  models.PROCESSING_STATES),
-#    }
-#    column_display_pk = True
-#    can_create = False
-#    can_edit = False
-#    can_delete = False
-#
-#    #def _order_type_formatter(view, context, model, name):
-#    #    endpoint_base = model.order_type.replace('_', '')
-#    #    url = url_for('%sview.edit_view' % endpoint_base, id=model.id)
-#    #    html = '<a href="%s">%s</a>' % (url, model.order_type)
-#    #    return Markup(html)
-#
-#    #column_formatters = {
-#    #    'order_type': _order_type_formatter
-#    #}
-#
-#class SubscriptionView(ModelView):
-#    column_display_pk = True
-#
-#class MassiveOrderView(ModelView):
-#    column_display_pk = True
-#
-#class SubscriptionOrderView(ModelView):
-#    column_display_pk = True
-#    column_exclude_list = ('order_type',)
-#    form_excluded_columns = ('order_type',)
-#    inline_models = (
-#        OrderOptionInline(models.OrderOption),
-#        OrderItemInline(models.OrderItem),
-#    )
-#
-#class NormalOrderView(ModelView):
-#    column_display_pk = True
-#    column_exclude_list = ('order_type',)
-#    form_excluded_columns = ('order_type',)
-#    inline_models = (
-#        OrderOptionInline(models.OrderOption),
-#        OrderItemInline(models.OrderItem),
-#    )
-#    form_widget_args = {
-#        #'user': {'disabled': True,},
-#        #'state': {'disabled': True,},
-#        #'creation_date': {'disabled': True,},
-#        #'completion_date': {'disabled': True,},
-#        'order_option': {'disabled': True,},
-#        'order_item': {'disabled': True,},
-#    }
-#
-#class MassiveOrderOrderView(ModelView):
-#    column_display_pk = True
-#    column_exclude_list = ('order_type',)
-#    form_excluded_columns = ('order_type',)
-#    inline_models = (
-#        OrderOptionInline(models.OrderOption),
-#        OrderItemInline(models.OrderItem),
-#    )
-#
-#class OrderItemView(ModelView):
-#    column_list = ('catalog_id', 'order', 'order_item_information',
-#                   'order_item_option')
-#    column_display_all_relations = True
-#    inline_models = (
-#        OrderItemOptionInline(models.OrderItemOption),
-#        OrderItemInformationInline(models.OrderItemInformation),
-#    )
-#
-#    def _order_formatter(view, context, model, name):
-#        if model.order is not None:
-#            endpoint_base = model.order.order_type.replace('_', '')
-#            url = url_for('%sview.edit_view' % endpoint_base,
-#                          id=model.order.id)
-#            html = '<a href="%s">%s</a>' % (url, model.order.id)
-#        else:
-#            html = ''
-#        return Markup(html)
-#
-#    column_formatters = {
-#        'order': _order_formatter,
-#    }
-#
-#class ItemCustomizationOptionView(ModelView):
-#    column_display_pk = True
-#    column_exclude_list = ('option_type',)
-#    form_excluded_columns = ('option_type',)
-#
 
 admin = Admin(app, name='pyoseo')
 
 admin.add_view(OptionVieW(models.Option, db.session, category='Other models'))
 admin.add_view(CustomizableItemView(models.CustomizableItem, db.session,
+               category='Other models'))
+admin.add_view(DeliveryInformationView(models.DeliveryInformation, db.session,
+               category='Other models'))
+admin.add_view(OnlineAddressView(models.OnlineAddress, db.session,
                category='Other models'))
 admin.add_view(OrderView(models.Order, db.session))
 
