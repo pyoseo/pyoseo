@@ -7,7 +7,7 @@ from lxml import etree
 import requests
 import pyxb.bundles.opengis.csw_2_0_2 as csw
 
-req = csw.GetRecordsByÎd(service='CSW', version='2.0.2')
+req = csw.GetRecordsById(service='CSW', version='2.0.2')
 req.elementSetName = 'brief'
 req.Id.append('3b584f68-8e05-11e3-b102-0019995d2a58')
 response = requests.post(

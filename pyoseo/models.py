@@ -8,6 +8,7 @@ from pyoseo import db
 PROCESSING_STATES = ['Submitted', 'Accepted', 'InProduction', 'Suspended',
                      'Cancelled', 'Completed', 'Failed', 'Terminated',
                      'Downloaded',]
+
 # as defined in the OSEO specification
 PRIORITIES = ['STANDARD', 'FAST_TRACK']
 
@@ -36,14 +37,14 @@ class ProductOption(Option):
     id = db.Column(db.Integer, db.ForeignKey('option.id'), primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
     product = db.relationship('Product', backref=db.backref('option',
-                              lazy='joined'))
+                              cascade='all, delete-orphan', lazy='joined'))
 
 class OptionChoice(db.Model):
     id = db.Column(db.Integer, db.Sequence('option_choice_id_seq'),
                    primary_key=True)
     option_id = db.Column(db.Integer, db.ForeignKey('option.id'))
     option = db.relationship('Option', backref=db.backref('choices',
-                             lazy='joined'))
+                             cascade='all, delete-orphan', lazy='joined'))
     value = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
@@ -54,11 +55,12 @@ class SelectedOption(db.Model):
                    primary_key=True)
     option_id = db.Column(db.Integer, db.ForeignKey('option.id'))
     option = db.relationship('Option', backref=db.backref('selected_option',
-                             lazy='joined'))
+                             cascade='all, delete-orphan', lazy='joined'))
     customizable_item_id = db.Column(db.Integer, db.ForeignKey(
                                      'customizable_item.id'))
     customizable_item = db.relationship('CustomizableItem',
                                         backref=db.backref('selected_options',
+                                        cascade='all, delete-orphan',
                                         lazy='joined'))
     value = db.Column(db.String(50), nullable=False)
 
@@ -97,6 +99,7 @@ class DeliveryOption(db.Model):
                                      'customizable_item.id'))
     customizable_item = db.relationship('CustomizableItem',
                                         backref=db.backref('delivery_options',
+                                        cascade='all, delete-orphan',
                                         lazy='joined', uselist=False))
     online_data_access_protocol = db.Column(db.String(50))
     online_data_delivery_protocol = db.Column(db.String(50))
@@ -193,6 +196,7 @@ class DeliveryInformation(DeliveryAddress):
                    primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     order = db.relationship('Order', backref=db.backref('delivery_information',
+                            cascade='all, delete-orphan',
                             lazy='joined', uselist=False))
 
 class OnlineAddress(db.Model):
@@ -205,7 +209,8 @@ class OnlineAddress(db.Model):
     )
     delivery_information = db.relationship(
         'DeliveryInformation',
-        backref=db.backref('online_addresses', lazy='joined')
+        backref=db.backref('online_addresses', cascade='all, delete-orphan',
+                           lazy='joined')
     )
     protocol = db.Column(db.Enum('ftp', 'sftp', 'ftps'), doc='ProtocolType, '
                          'constrained by the acceptable values for '
@@ -230,6 +235,7 @@ class InvoiceAddress(DeliveryAddress):
                    primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     order = db.relationship('Order', backref=db.backref('invoice_address',
+                            cascade='all, delete-orphan',
                             lazy='joined', uselist=False))
 
 class Batch(db.Model):
@@ -237,6 +243,7 @@ class Batch(db.Model):
                    primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     order = db.relationship('Order', backref=db.backref('batches',
+                            cascade='all, delete-orphan',
                             lazy='joined'))
     status = db.Column(db.Enum(*PROCESSING_STATES), nullable=False)
 
@@ -249,6 +256,7 @@ class OrderItem(CustomizableItem):
                    primary_key=True)
     batch_id = db.Column(db.Integer, db.ForeignKey('batch.id'), nullable=False)
     batch = db.relationship('Batch', backref=db.backref('order_items',
+                            cascade='all, delete-orphan',
                             lazy='joined'))
     item_id = db.Column(db.String(30), nullable=False)
     product_order_options_id = db.Column(db.String(50))

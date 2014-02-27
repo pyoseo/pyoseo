@@ -18,6 +18,9 @@ class OptionVieW(ModelView):
         OptionChoiceInline(models.OptionChoice),
     )
 
+class UserView(ModelView):
+    column_display_pk = True
+
 class CustomizableItemView(ModelView):
     column_display_pk = True
     inline_models = (
@@ -63,6 +66,7 @@ admin.add_view(DeliveryInformationView(models.DeliveryInformation, db.session,
                category='Other models'))
 admin.add_view(OnlineAddressView(models.OnlineAddress, db.session,
                category='Other models'))
+admin.add_view(UserView(models.User, db.session))
 admin.add_view(OrderView(models.Order, db.session))
 
 # -------------------------------------------
