@@ -5,3 +5,4 @@ pyoseo/db.sqlite3
 venv/*
 *~
 *.autosave
+src/*
