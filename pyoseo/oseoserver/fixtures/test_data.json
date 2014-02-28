@@ -1,0 +1,80 @@
+[
+{
+    "pk": 1, 
+    "model": "oseoserver.user", 
+    "fields": {
+        "admin": true, 
+        "password": "1234", 
+        "e_mail": "ricardo.silva@ipma.pt", 
+        "name": "ricardogsilva", 
+        "full_name": "Ricardo Garcia Silva"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.user", 
+    "fields": {
+        "admin": false, 
+        "password": "1234", 
+        "e_mail": "john.doe@mail.pt", 
+        "name": "johndoe", 
+        "full_name": "John Doe"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Submitted", 
+        "remark": "", 
+        "additional_status_info": "", 
+        "created_on": "2014-02-28T00:53:03.336Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-02-28T00:52:53Z"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Submitted", 
+        "remark": "", 
+        "additional_status_info": "", 
+        "created_on": "2014-02-28T00:54:23.143Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-02-28T00:53:57Z"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.order", 
+    "fields": {
+        "priority": "", 
+        "completed_on": null, 
+        "reference": "Test order", 
+        "packaging": "", 
+        "user": 1, 
+        "approved": true, 
+        "order_type": "PRODUCT_ORDER"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.batch", 
+    "fields": {
+        "status": "Submitted", 
+        "order": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "item_id": "item_01", 
+        "product_order_options_id": "", 
+        "identifier": "34424252-fsda-4654-dsfg56-we34", 
+        "batch": 1, 
+        "collection_id": ""
+    }
+}
+]

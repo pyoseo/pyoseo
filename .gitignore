@@ -1,4 +1,4 @@
-pyoseo/sqlite.db
+pyoseo/db.sqlite3
 *.pyc
 *.un~
 *.swp
