@@ -3,5 +3,5 @@ from oseoserver import views
 
 urlpatterns = patterns(
     '',
-    url(r'^$', views.oseo_endpoint, name='oseo_endpoint'),
+    url(r'^server$', views.oseo_endpoint, name='oseo_endpoint'),
 )

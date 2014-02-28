@@ -29,18 +29,15 @@ import logging
 import re
 import datetime as dt
 
+from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
-import sqlalchemy.orm.exc
 
-#from pyoseo import app, db, models, tasks
-from oseoserver import models
+from oseoserver import models, tasks
 
-# TODO
-# Implement the remaining Getstatus functionality
-# Test it!
+logger = logging.getLogger(__name__)
 
 class OseoServer(object):
 
@@ -53,11 +50,6 @@ class OseoServer(object):
     }
     _exception_codes = {
             'InvalidOrderIdentifier': 'client',
-    }
-    _db_order_type_map = {
-        'product_order': 'PRODUCT_ORDER',
-        'subscription': 'SUBSCRIPTION_ORDER',
-        'massive_order': 'PRODUCT_ORDER',
     }
     MASSIVE_ORDER_REFERENCE = 'Massive order'
 
@@ -113,89 +105,98 @@ class OseoServer(object):
             creation_date = dt.datetime.utcnow()
             order = models.Order(
                 status='Submitted',
-                remark=ord_spec.orderRemark,
                 created_on=creation_date,
                 status_changed_on=creation_date,
-                reference=ord_spec.orderReference,
-                packaging=ord_spec.packaging,
-                priority=ord_spec.priority
+                order_type=ord_spec.orderType,
+                remark=self._c(ord_spec.orderRemark),
+                reference=self._c(ord_spec.orderReference),
+                packaging=self._c(ord_spec.packaging),
+                priority=self._c(ord_spec.priority)
             )
-            if ord_spec.orderType == 'PRODUCT_ORDER':
-                if order.reference != self.MASSIVE_ORDER_REFERENCE:
-                    order.order_type = 'product_order'
-                else:
-                    order.order_type = 'massive_order'
-            elif ord_spec.orderType == 'SUBSCRIPTION_ORDER':
-                order.order_type = 'subscription'
+            if order.order_type == models.Order.PRODUCT_ORDER and \
+                    order.reference == self.MASSIVE_ORDER_REFERENCE:
+                order.order_type = models.Order.MASSIVE_ORDER
+            if order.order_type == models.Order.PRODUCT_ORDER:
+                order.approved = True
             else:
-                raise NotImplementedError
+                order.approved = False
+            order.user = models.User.objects.get(id=1) # for testing purposes only
             if ord_spec.deliveryInformation is not None:
                 di = ord_spec.deliveryInformation
                 del_info = models.DeliveryInformation()
                 if di.mailAddress is not None:
-                    del_info.first_name = di.mailAddress.firstName
-                    del_info.last_name = di.mailAddress.lastName
-                    del_info.company_ref = di.mailAddress.companyRef
-                    del_info.street_address = di.mailAddress.streetAddress
-                    del_info.city = di.mailAddress.city
-                    del_info.state = di.mailAddress.state
-                    del_info.postal_code = di.mailAddress.postalCode
-                    del_info.country = di.mailAddress.country
-                    del_info.post_box = di.mailAddress.post_box
-                    del_info.telephone_number = di.mailAddress.telephoneNumber
-                    del_info.fax = di.mailAddress.facsimileTelephoneNumber
+                    del_info.first_name = self._c(di.mailAddress.firstName)
+                    del_info.last_name = self._c(di.mailAddress.lastName)
+                    del_info.company_ref = self._c(di.mailAddress.companyRef)
+                    del_info.street_address = self._c(
+                            di.mailAddress.streetAddress)
+                    del_info.city = self._c(di.mailAddress.city)
+                    del_info.state = self._c(di.mailAddress.state)
+                    del_info.postal_code = self._c(di.mailAddress.postalCode)
+                    del_info.country = self._c(di.mailAddress.country)
+                    del_info.post_box = self._c(di.mailAddress.post_box)
+                    del_info.telephone_number = self._c(
+                            di.mailAddress.telephoneNumber)
+                    del_info.fax = self._c(
+                            di.mailAddress.facsimileTelephoneNumber)
                 for oa in di.onlineAddress:
-                    del_info.online_addresses.append(
+                    del_info.online_address_set.add(
                         models.OnlineAddress(
                             protocol=oa.protocol,
                             server_address=oa.serverAddress,
-                            user_name=oa.userName,
-                            user_password=oa.userPassword,
-                            path=oa.path
+                            user_name=self._c(oa.userName),
+                            user_password=self._c(oa.userPassword),
+                            path=self._c(oa.pat),
                         )
                     )
                 order.delivery_information = del_info
             if ord_spec.invoiceAddress is not None:
                 ia = ord_spec.invoiceAddress
                 order.invoice_address = models.InvoiceAddress(
-                    first_name=ia.mailAddress.firstName,
-                    last_name=ia.mailAddress.lastName,
-                    company_ref=ia.mailAddress.companyRef,
-                    street_address=ia.mailAddress.postalAddress.streetAddress,
-                    city=ia.mailAddress.postalAddress.city,
-                    state=ia.mailAddress.postalAddress.state,
-                    postal_code=ia.mailAddress.postalAddress.postalCode,
-                    country=ia.mailAddress.postalAddress.country,
-                    post_box=ia.mailAddress.postalAddress.postBox,
-                    telephone=ia.mailAddress.telephoneNumer,
-                    fax=ia.mailAddress.facsimileTelephoneNumber
+                    first_name=self._c(ia.mailAddress.firstName),
+                    last_name=self._c(ia.mailAddress.lastName),
+                    company_ref=self._c(ia.mailAddress.companyRef),
+                    street_address=self._c(
+                        ia.mailAddress.postalAddress.streetAddress),
+                    city=self._c(ia.mailAddress.postalAddress.city),
+                    state=self._c(ia.mailAddress.postalAddress.state),
+                    postal_code=self._c(
+                        ia.mailAddress.postalAddress.postalCode),
+                    country=self._c(ia.mailAddress.postalAddress.country),
+                    post_box=self._c(ia.mailAddress.postalAddress.postBox),
+                    telephone=self._c(ia.mailAddress.telephoneNumer),
+                    fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
                 )
             # add options
             if ord_spec.deliveryOptions is not None:
-                order.delivery_options = self._set_delivery_options(
-                                                    ord_spec.deliveryOptions)
-            if order.order_type == 'product_order':
+                d_opts = self._set_delivery_options(ord_spec.deliveryOptions)
+                order.deliveryoption = d_opts
+            order.save()
+            if order.order_type == models.Order.PRODUCT_ORDER:
                 # create a single batch with all of the defined order items
-                batch = models.Batch(status=order.status)
+                batch = models.Batch(status=order.status, order=order)
+                batch.save()
                 for oi in ord_spec.orderItem:
                     order_item = models.OrderItem(
                         item_id=oi.itemId,
                         status=batch.status,
                         created_on=creation_date,
                         status_changed_on=creation_date,
-                        remark=oi.orderItemRemark,
-                        product_order_options_id=oi.productOrderOptionsId,
+                        remark=self._c(oi.orderItemRemark),
+                        product_order_options_id=self._c(
+                            oi.productOrderOptionsId),
                     )
                     # add order_item options
                     # add order_item scene selection
                     if oi.deliveryOptions is not None:
-                        order_item.delivery_options = self._set_delivery_options(
-                                                            oi.deliveryOptions)
+                        d_opts = self._set_delivery_options(oi.deliveryOptions)
+                        order_item.deliveryoption = d_opts
                     # add order_item payment
-                    order_item.identifier = oi.productId.identifier
-                    order_item.collection_id = oi.productId.collectionId
-                    batch.order_items.append(order_item)
-                order.batches.append(batch)
+                    order_item.identifier = self._c(oi.productId.identifier)
+                    order_item.collection_id = self._c(oi.productId.collectionId)
+                    batch.orderitem_set.add(order_item)
+                    order_item.save()
+                #order.batch_set.add(batch)
             elif order.order_type == 'subscription':
                 # do not create any batch yet, as there are no order items
                 raise NotImplementedError
@@ -205,9 +206,6 @@ class OseoServer(object):
         else:
             # quotation type of submit
             raise NotImplementedError
-        order.user = models.User.query.filter_by(id=1).one()
-        db.session.add(order)
-        db.session.commit()
         tasks.process_order.delay(order.id)
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
@@ -237,10 +235,9 @@ class OseoServer(object):
         result = None
         if request.orderId is not None: # 'order retrieve' type of request
             try:
-                record = models.Order.query.filter_by(
-                    id=int(request.orderId)).one()
+                record = models.Order.objects.get(id=int(request.orderId))
                 records.append(record)
-            except sqlalchemy.orm.exc.NoResultFound:
+            except ObjectDoesNotExist:
                 result = self._create_exception_report(
                     'InvalidOrderIdentifier',
                     'Invalid value for order',
@@ -249,10 +246,11 @@ class OseoServer(object):
                 )
                 status_code = 400
         else: # 'order search' type of request
-            query = models.Order.query
+            records = models.Order.objects
+
             if request.filteringCriteria.lastUpdate is not None:
                 lu = request.filteringCriteria.lastUpdate
-                query = query.filter(models.Order.status_changed_on >= lu)
+                records = records.filter(status_changed_on__gte=lu)
             if request.filteringCriteria.lastUpdateEnd is not None:
                 # workaround for a bug in the oseo.xsd that does not
                 # assign a dateTime type to the lastUpdateEnd element
@@ -262,14 +260,13 @@ class OseoServer(object):
                     ts = dt.datetime.strptime(m.group(), '%Y-%m-%dT%H:%M:%SZ')
                 except ValueError:
                     ts = dt.datetime.strptime(m.group(), '%Y-%m-%d')
-                query = query.filter(models.Order.status_changed_on <= ts)
+                records = records.filter(status_changed_on__lte=ts)
             if request.filteringCriteria.orderReference is not None:
                 ref = request.filteringCriteria.orderReference
-                query = query.filter(models.Order.reference == ref)
+                records = records.filter(reference=ref)
             statuses = [s for s in request.filteringCriteria.orderStatus]
             if any(statuses):
-                query = query.filter(models.Order.status.in_(statuses))
-            records = query.all()
+                records = records.filter(status__in=statuses)
         if result is None:
             response = self._generate_get_status_response(records, request)
             if soap_version is not None:
@@ -280,23 +277,33 @@ class OseoServer(object):
 
     def _generate_get_status_response(self, records, request):
         '''
+        :arg records:
+        :type records: either a one element list with a pyoseo.models.Order
+                       or a django queryset, that will be evaluated to an
+                       list of pyoseo.models.Order while iterating.
         '''
+
         response = oseo.GetStatusResponse()
         response.status='success'
         for r in records:
             om = oseo.CommonOrderMonitorSpecification()
-            om.orderType = self._db_order_type_map[r.order_type]
+            if r.order_type in(models.Order.PRODUCT_ORDER,
+                    models.Order.MASSIVE_ORDER):
+                om.orderType = models.Order.PRODUCT_ORDER
+            elif r.order_type == models.Order.SUBSCRIPTION_ORDER:
+                om.orderType = models.Order.SUBSCRIPTION_ORDER
             om.orderId = str(r.id)
             om.orderStatusInfo = oseo.StatusType(
                 status=r.status,
-                additionalStatusInfo=r.additional_status_info,
-                missionSpecificStatusInfo=r.mission_specific_status_info
+                additionalStatusInfo=self._n(r.additional_status_info),
+                missionSpecificStatusInfo=self._n(
+                    r.mission_specific_status_info)
             )
             om.orderDateTime = r.status_changed_on
-            om.orderReference = r.reference
-            om.orderRemark = r.remark
-            if r.delivery_information is not None:
-                om.deliveryInformation = oseo.DeliveryInformationType()
+            om.orderReference = self._n(r.reference)
+            om.orderRemark = self._n(r.remark)
+            try:
+                del_info = oseo.DeliveryInformationType()
                 optional_attrs = [
                     r.delivery_information.first_name,
                     r.delivery_information.last_name,
@@ -311,100 +318,96 @@ class OseoServer(object):
                     r.delivery_information.fax
                 ]
                 if any(optional_attrs):
-                    om.deliveryInformation.mailAddress = \
-                            oseo.DeliveryAddressType()
-                    om.deliveryInformation.mailAddress.firstName = \
-                            r.delivery_information.first_name
-                    om.deliveryInformation.mailAddress.lastName = \
-                            r.delivery_information.last_name
-                    om.deliveryInformation.mailAddress.companyRef= \
-                            r.delivery_information.company_ref
-                    om.deliveryInformation.mailAddress.postalAddress=pyxb.BIND()
-                    om.deliveryInformation.mailAddress.postalAddress.streetAddress=\
-                            r.delivery_information.street_address
-                    om.deliveryInformation.mailAddress.postalAddress.city=\
-                            r.delivery_information.city
-                    om.deliveryInformation.mailAddress.postalAddress.state=\
-                            r.delivery_information.state
-                    om.deliveryInformation.mailAddress.postalAddress.postalCode=\
-                            r.delivery_information.postal_code
-                    om.deliveryInformation.mailAddress.postalAddress.country=\
-                            r.delivery_information.country
-                    om.deliveryInformation.mailAddress.postalAddress.postBox=\
-                            r.delivery_information.post_box
-                    om.deliveryInformation.mailAddress.telephoneNumber = \
-                            r.delivery_information.telephone_number
-                    om.deliveryInformation.mailAddress.facsimileTelephoneNumber = \
-                            r.delivery_information.fax
-                for oa in r.delivery_information.online_addresses:
-                    om.deliveryInformation.onlineAddress.append(
+                    del_info.mailAddress = oseo.DeliveryAddressType()
+                    del_info.mailAddress.firstName = self._n(
+                            r.delivery_information.first_name)
+                    del_info.mailAddress.lastName = self._n(
+                            r.delivery_information.last_name)
+                    del_info.mailAddress.companyRef = self._n(
+                            r.delivery_information.company_ref)
+                    del_info.mailAddress.postalAddress = pyxb.BIND()
+                    del_info.mailAddress.postalAddress.streetAddress = self._n(
+                            r.delivery_information.street_address)
+                    del_info.mailAddress.postalAddress.city = self._n(
+                            r.delivery_information.city)
+                    del_info.mailAddress.postalAddress.state = self._n(
+                            r.delivery_information.state)
+                    del_info.mailAddress.postalAddress.postalCode = self._n(
+                            r.delivery_information.postal_code)
+                    del_info.mailAddress.postalAddress.country = self._n(
+                            r.delivery_information.country)
+                    del_info.mailAddress.postalAddress.postBox = self._n(
+                            r.delivery_information.post_box)
+                    del_info.mailAddress.telephoneNumber = self._n(
+                            r.delivery_information.telephone)
+                    del_info.mailAddress.facsimileTelephoneNumber = self._n(
+                            r.delivery_information.fax)
+                for oa in r.delivery_information.onlineaddress_set.all():
+                    del_info.onlineAddress.append(
                             oseo.OnlineAddressType())
-                    om.deliveryInformation.onlineAddress[-1].protocol = \
-                            oa.protocol
-                    om.deliveryInformation.onlineAddress[-1].serverAddress = \
-                            oa.server_address
-                    om.deliveryInformation.onlineAddress[-1].userName = \
-                            oa.user_name
-                    om.deliveryInformation.onlineAddress[-1].userPassword = \
-                            oa.user_password
-                    om.deliveryInformation.onlineAddress[-1].path = oa.path
-            if r.invoice_address is not None:
-                om.invoiceAddress = oseo.DeliveryAddressType()
-                om.invoiceAddress.firstName = r.invoice_address.first_name
-                om.invoiceAddress.lastName = r.invoice_address.last_name
-                om.invoiceAddress.companyRef = r.invoice_address.company_ref
-                om.invoiceAddress.postalAddress=pyxb.BIND()
-                om.invoiceAddress.postalAddress.streetAddress=\
-                        r.invoice_address.street_address
-                om.invoiceAddress.postalAddress.city=\
-                        r.invoice_address.city
-                om.invoiceAddress.postalAddress.state=\
-                        r.invoice_address.state
-                om.invoiceAddress.postalAddress.postalCode=\
-                        r.invoice_address.postal_code
-                om.invoiceAddress.postalAddress.country=\
-                        r.invoice_address.country
-                om.invoiceAddress.postalAddress.postBox=\
-                        r.invoice_address.post_box
-                om.invoiceAddress.telephoneNumber = \
-                        r.invoice_address.telephone_number
-                om.invoiceAddress.facsimileTelephoneNumber = \
-                        r.invoice_address.fax
-            om.packaging = r.packaging
+                    del_info.onlineAddress[-1].protocol = oa.protocol
+                    del_info.onlineAddress[-1].serverAddress = oa.server_address
+                    del_info.onlineAddress[-1].userName = self._n(
+                            oa.user_name)
+                    del_info.onlineAddress[-1].userPassword = self._n(
+                            oa.user_password)
+                    del_info.onlineAddress[-1].path = self._n(oa.path)
+                om.deliveryInformation = del_info
+            except ObjectDoesNotExist:
+                pass
+            try:
+                inv_add = oseo.DeliveryAddressType()
+                inv_add.firstName = self._n(r.invoice_address.first_name)
+                inv_add.lastName = self._n(r.invoice_address.last_name)
+                inv_add.companyRef = self._n(r.invoice_address.company_ref)
+                inv_add.postalAddress=pyxb.BIND()
+                inv_add.postalAddress.streetAddress = self._n(
+                        r.invoice_address.street_address)
+                inv_add.postalAddress.city = self._n(r.invoice_address.city)
+                inv_add.postalAddress.state = self._n(r.invoice_address.state)
+                inv_add.postalAddress.postalCode = self._n(
+                        r.invoice_address.postal_code)
+                inv_add.postalAddress.country = self._n(
+                        r.invoice_address.country)
+                inv_add.postalAddress.postBox = self._n(
+                        r.invoice_address.post_box)
+                inv_add.telephoneNumber = self._n(
+                        r.invoice_address.telephone)
+                inv_add.facsimileTelephoneNumber = self._n(
+                        r.invoice_address.fax)
+                om.invoiceAddress = inv_add
+            except ObjectDoesNotExist:
+                pass
+            om.packaging = self._n(r.packaging)
             # add any 'option' elements
-            if r.delivery_options is not None:
-                om.deliveryOptions = self._get_delivery_options(r)
-            om.priority = r.priority
+            om.deliveryOptions = self._get_delivery_options(r)
+            om.priority = self._n(r.priority)
             if request.presentation == 'full':
-                if r.order_type == 'product_order':
-                    for batch in r.batches:
-                        for oi in batch.order_items:
+                if r.order_type == models.Order.PRODUCT_ORDER:
+                    for batch in r.batch_set.all():
+                        for oi in batch.orderitem_set.all():
                             sit = oseo.CommonOrderStatusItemType()
                             # TODO
                             # add the other optional elements
                             sit.itemId = str(oi.id)
+                            # oi.identifier is guaranteed to be non empty for
+                            # normal product orders
                             sit.productId = oi.identifier
-                            if oi.product_order_options_id is not None:
-                                sit.productOrderOptionsId = \
-                                        oi.product_order_options_id
-                            if oi.remark is not None:
-                                sit.orderItemRemark = oi.remark
-                            if oi.collection_id is not None:
-                                sit.collectionId = oi.collection_id
+                            sit.productOrderOptionsId = self._n(
+                                    oi.product_order_options_id)
+                            sit.orderItemRemark = self._n(oi.remark)
+                            sit.collectionId = self._n(oi.collection_id)
                             # add any 'option' elements that may be present
                             # add any 'sceneSelection' elements that may be present
-                            if oi.delivery_options is not None:
-                                sit.deliveryOptions = self._get_delivery_options(oi)
+                            sit.deliveryOptions = self._get_delivery_options(oi)
                             # add any 'payment' elements that may be present
                             # add any 'extension' elements that may be present
                             sit.orderItemStatusInfo = oseo.StatusType()
                             sit.orderItemStatusInfo.status = oi.status
-                            if oi.additional_status_info is not None:
-                                sit.orderItemStatusInfo.additionalStatusInfo =\
-                                        oi.additional_status_info
-                            if oi.mission_specific_status_info is not None:
-                                sit.orderItemStatusInfo.missionSpecificStatusInfo=\
-                                        oi.mission_specific_status_info
+                            sit.orderItemStatusInfo.additionalStatusInfo = \
+                                    self._n(oi.additional_status_info)
+                            sit.orderItemStatusInfo.missionSpecificStatusInfo=\
+                                    self._n(oi.mission_specific_status_info)
                             om.orderItem.append(sit)
                 else:
                     raise NotImplementedError
@@ -426,13 +429,13 @@ class OseoServer(object):
         if soap_version is not None:
             data = self._get_soap_data(element, soap_version)
             if soap_version == '1.2':
-                app.logger.debug('SOAP 1.2 request')
+                logger.debug('SOAP 1.2 request')
                 response_headers['Content-Type'] = 'application/soap+xml'
             else:
-                app.logger.debug('SOAP 1.1 request')
+                logger.debug('SOAP 1.1 request')
                 response_headers['Content-Type'] = 'text/xml'
         else:
-            app.logger.debug('Non SOAP request')
+            logger.debug('Non SOAP request')
             data = element
             response_headers['Content-Type'] = 'application/xml'
         schema_instance = self._parse_xml(data)
@@ -453,21 +456,30 @@ class OseoServer(object):
         :return: pyoseo.models.DeliveryOption
         '''
 
-        oda = options.onlineDataAccess
-        odd = options.onlineDataDelivery
-        md = options.mediaDelivery
-        result = models.DeliveryOption(
-            online_data_access_protocol=oda.protocol if oda else None,
-            online_data_delivery_protocol=odd.protocol if odd else None,
-            media_delivery_package_medium=\
-                    options.mediaDelivery.packageMedium if md else None,
-            media_delivery_shipping_instructions=\
-                    options.mediaDelivery.shippingInstructions if md else None,
-            number_of_copies=options.numberOfCopies,
-            annotation=options.productAnnotation,
-            special_instructions=options.specialInstructions
-        )
-        return result
+        possibly_null = [options.onlineDataAccess, options.onlineDataDelivery,
+                         options.mediaDelivery.packageMedium,
+                         options.mediaDelivery.shippingInstructions,
+                         options.numberOfCopies, options.productAnnotation,
+                         options.specialInstructions]
+        if any(possibly_null):
+            try:
+                copies = options.numberOfCopies
+            except TypeError:
+                copies = ''
+            del_option = models.DeliveryOption(
+                online_data_access_protocol=self._c(options.onlineDataAccess),
+                online_data_delivery_protocol=self._c(options.onlineDataDelivery),
+                media_delivery_package_medium=self._c(
+                        options.mediaDelivery.packageMedium),
+                media_delivery_shipping_instructions=self._c(
+                        options.mediaDelivery.shippingInstructions),
+                number_of_copies=copies,
+                annotation=self._c(options.productAnnotation),
+                special_instructions=self._c(options.specialInstructions)
+            )
+        else:
+            del_option = None
+        return del_option
 
     def _get_delivery_options(self, db_item):
         '''
@@ -478,26 +490,29 @@ class OseoServer(object):
         :return: A pyxb object with the delivery options
         '''
 
-        do = db_item.delivery_options
-        dot = oseo.DeliveryOptionsType()
-        if do.online_data_access_protocol is not None:
-            dot.onlineDataAccess = pyxb.BIND()
-            dot.onlineDataAccess.protocol = do.online_data_access_protocol
-        elif do.online_data_delivery_protocol is not None:
-            dot.onlineDataDelivery = pyxb.BIND()
-            dot.onlineDataDelivery.protocol = do.online_data_delivery_protocol
-        elif do.media_delivery_package_medium is not None:
-            dot.mediaDelivery = pyxb.BIND()
-            dot.mediaDelivery.packageMedium = do.media_delivery_package_medium
-            if do.media_delivery_shipping_instructions is not None:
-                dot.mediaDelivery.shippingInstructions = \
-                        do.media_delivery_shipping_instructions
-        if do.number_of_copies is not None:
-            dot.numberOfCopies = do.number_of_copies
-        if do.annotation is not None:
-            dot.productAnnotation = do.annotation
-        if do.special_instructions is not None:
-            dot.specialInstructions = do.special_instructions
+        try:
+            do = db_item.delivery_options
+            dot = oseo.DeliveryOptionsType()
+            if do.online_data_access_protocol != '':
+                dot.onlineDataAccess = pyxb.BIND()
+                dot.onlineDataAccess.protocol = do.online_data_access_protocol
+            elif do.online_data_delivery_protocol != '':
+                dot.onlineDataDelivery = pyxb.BIND()
+                dot.onlineDataDelivery.protocol = do.online_data_delivery_protocol
+            elif do.media_delivery_package_medium != '':
+                dot.mediaDelivery = pyxb.BIND()
+                dot.mediaDelivery.packageMedium = do.media_delivery_package_medium
+                if do.media_delivery_shipping_instructions != '':
+                    dot.mediaDelivery.shippingInstructions = \
+                            do.media_delivery_shipping_instructions
+            if do.number_of_copies is not None:
+                dot.numberOfCopies = do.number_of_copies
+            if do.annotation != '':
+                dot.productAnnotation = do.annotation
+            if do.special_instructions != '':
+                dot.specialInstructions = do.special_instructions
+        except ObjectDoesNotExist:
+            dot = None
         return dot
 
     def _is_soap(self, request_element):
@@ -661,3 +676,21 @@ class OseoServer(object):
             detail.append(exception_element)
         return etree.tostring(soap_env, encoding=self._encoding,
                               pretty_print=True)
+
+    def _c(self, value):
+        '''
+        Convert between a None and an empty string.
+
+        This function translates pyxb's empty elements, which are stored as
+        None into django's empty values, which are stored as an empty string.
+        '''
+        return '' if value is None else str(value)
+
+    def _n(self, value):
+        '''
+        Convert between an empty string and a None
+
+        This function is translates django's empty elements, which are stored
+        as empty strings into pyxb empty elements, which are stored as None.
+        '''
+        return None if value == '' else value

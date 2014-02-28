@@ -8,6 +8,6 @@ urlpatterns = patterns('',
     # url(r'^$', 'pyoseo.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
 
-    url(r'^oseoserver/', include('oseoserver.urls')),
+    url(r'^oseo/', include('oseoserver.urls')),
     url(r'^admin/', include(admin.site.urls)),
 )

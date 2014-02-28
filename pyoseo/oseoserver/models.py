@@ -123,6 +123,9 @@ class Batch(models.Model):
     class Meta:
         verbose_name_plural = 'batches'
 
+    def __unicode__(self):
+        return str(self.id)
+
 
 class OrderItem(CustomizableItem):
     batch = models.ForeignKey('Batch')
@@ -147,7 +150,8 @@ class DeliveryOption(models.Model):
         (ALL_READY, ALL_READY),
         (OTHER, OTHER),
     )
-    customizable_item = models.OneToOneField('CustomizableItem')
+    customizable_item = models.OneToOneField('CustomizableItem',
+                                             related_name='delivery_options')
     online_data_access_protocol = models.CharField(max_length=50, blank=True)
     online_data_delivery_protocol = models.CharField(max_length=50, blank=True)
     media_delivery_package_medium = models.CharField(max_length=50, blank=True)

@@ -26,11 +26,15 @@ item_title = resp.xpath('csw:BriefRecord/dc:title/text()', namespaces=nsmap)
 
 import time
 
-import sqlalchemy.orm.exc
+from django.core.exceptions import ObjectDoesNotExist
+import pyxb.bundles.opengis.csw_2_0_2 as csw
+from celery import shared_task
+from lxml import etree
+import requests
 
-from pyoseo import app, celery_app, models
+from oseoserver import models
 
-@celery_app.task
+@shared_task()
 def process_order(order_id):
     '''
     Process a normal order.
@@ -46,13 +50,37 @@ def process_order(order_id):
     :type order_id: int
     '''
 
+    catalog_url = 'http://geoland2.meteo.pt/geonetwork/srv/eng/csw'
+    nsmap = {
+        'csw': 'http://www.opengis.net/cat/csw/2.0.2',
+        'dc': 'http://purl.org/dc/elements/1.1/',
+        'ows': 'http://www.opengis.net/ows',
+    }
     sleep_time = 30
     print('About to process order with id: %s' % order_id)
+    ids = []
     try:
-        order_record = models.Order.query.filter_by(id=order_id).one()
-        print('found order')
+        order = models.Order.objects.get(id=order_id)
+        for batch in order.batch_set.all():
+            for order_item in batch.orderitem_set.all():
+                ids.append(order_item.identifier)
+        req = csw.GetRecordById(
+            service='CSW',
+            version='2.0.2',
+            ElementSetName = 'brief'
+        )
+        for id in ids:
+            req.Id.append(id)
+        response = requests.post(catalog_url, data=req.toxml(),
+                                 headers={'Content-Type': 'application/xml'})
+        resp = etree.fromstring(response.text.encode(response.encoding))
+        item_titles = resp.xpath('csw:BriefRecord/dc:title/text()',
+                                 namespaces=nsmap)
+        print('order_items:')
+        for item in item_titles:
+            print(item)
         print('sleeping now for %i seconds...' % sleep_time)
         time.sleep(sleep_time)
         print('Done processing!')
-    except sqlalchemy.orm.exc.NoResultFound:
+    except ObjectDoesNotExist:
         print('could not find order')
