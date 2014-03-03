@@ -1,7 +1,23 @@
 from django.contrib import admin
 import models
 
-admin.site.register(models.Order)
+class OrderAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (None, {
+            'fields': ('approved', 'order_type', 'status', 'status_changed_on',
+                       'completed_on', 'user', 'reference', 'priority',
+                       'packaging',)
+        }),
+        ('Further info',{
+            'classes': ('collapse',),
+            'fields': ('remark', 'additional_status_info',
+                       'mission_specific_status_info')
+        }),
+    )
+    list_display = ('id', 'order_type', 'status', 'status_changed_on',)
+    readonly_fields = ('status_changed_on', 'completed_on',)
+
+admin.site.register(models.Order, OrderAdmin)
 admin.site.register(models.Batch)
 admin.site.register(models.OrderItem)
 admin.site.register(models.User)
