@@ -1,6 +1,10 @@
 from django.contrib import admin
 import models
 
+class OptionChoiceInline(admin.StackedInline):
+    model = models.OptionChoice
+    extra = 1
+
 class OrderAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
@@ -17,14 +21,19 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'order_type', 'status', 'status_changed_on',)
     readonly_fields = ('status_changed_on', 'completed_on',)
 
+class OptionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'type', 'product', 'available_choices',)
+    inlines = [OptionChoiceInline,]
+
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('id', 'short_name', 'collection_id',)
+
 admin.site.register(models.Order, OrderAdmin)
 admin.site.register(models.Batch)
 admin.site.register(models.OrderItem)
 admin.site.register(models.User)
-admin.site.register(models.Product)
-admin.site.register(models.Option)
-admin.site.register(models.ProductOption)
-admin.site.register(models.OptionChoice)
+admin.site.register(models.Product, ProductAdmin)
+admin.site.register(models.Option, OptionAdmin)
 admin.site.register(models.SelectedOption)
 admin.site.register(models.DeliveryOption)
 admin.site.register(models.DeliveryInformation)

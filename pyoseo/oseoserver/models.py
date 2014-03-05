@@ -1,36 +1,8 @@
+import datetime as dt
+
 from django.db import models
-
-class Product(models.Model):
-    short_name = models.CharField(max_length=50, unique=True)
-
-    def __unicode__(self):
-        return self.name
-
-class Option(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    type = models.CharField(max_length=50, help_text='The datatype of '
-                             'this option')
-
-    def __unicode__(self):
-        return self.name
-
-class ProductOption(Option):
-    product = models.ForeignKey('Product')
-
-class OptionChoice(models.Model):
-    option = models.ForeignKey('Option')
-    value = models.CharField(max_length=255, help_text='Value for this option')
-
-    def __unicode__(self):
-        return self.value
-
-class SelectedOption(models.Model):
-    option = models.ForeignKey('Option')
-    customizable_item = models.ForeignKey('CustomizableItem')
-    value = models.CharField(max_length=255, help_text='Value for this option')
-
-    def __unicode__(self):
-        return self.value
+from django.db.models import signals
+from django.core.exceptions import ObjectDoesNotExist
 
 class User(models.Model):
     admin = models.BooleanField(default=False, help_text='Will this user '
@@ -77,9 +49,13 @@ class CustomizableItem(models.Model):
                                               'that is specific to the '
                                               'mission', blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
-    status_changed_on = models.DateTimeField()
+    status_changed_on = models.DateTimeField(editable=False, blank=True, null=True)
     remark = models.TextField(help_text='Some specific remark about the item',
                               blank=True)
+
+    #def save(self, *args, **kwargs):
+    #    print('old_status: %s' % self.old_status)
+    #    super(CustomizableItem, self).save(*args, **kwargs)
 
 class Order(CustomizableItem):
     BZIP2 = 'bzip2'
@@ -140,6 +116,9 @@ class OrderItem(CustomizableItem):
     collection_id = models.CharField(max_length=255, help_text='identifier for '
                                   'the collection. It is the id of the '
                                   'collection in the catalog', blank=True)
+    
+    def __unicode__(self):
+        return str(self.item_id)
 
 class DeliveryOption(models.Model):
     EACH_READY = 'As each product is ready'
@@ -206,3 +185,58 @@ class InvoiceAddress(DeliveryAddress):
     class Meta:
         verbose_name_plural = 'invoice addresses'
 
+
+class Product(models.Model):
+    short_name = models.CharField(max_length=50, unique=True)
+    collection_id = models.CharField(max_length=255, unique=True)
+
+    def __unicode__(self):
+        return self.short_name
+
+class Option(models.Model):
+    name = models.CharField(max_length=100)
+    product = models.ForeignKey('Product', null=True, blank=True)
+    type = models.CharField(max_length=50, help_text='The datatype of '
+                             'this option')
+
+    def available_choices(self):
+        return ', '.join([c.value for c in self.choices.all()])
+
+    def __unicode__(self):
+        return self.name
+
+class OptionChoice(models.Model):
+    option = models.ForeignKey('Option', related_name='choices')
+    value = models.CharField(max_length=255, help_text='Value for this option')
+
+    def __unicode__(self):
+        return self.value
+
+class SelectedOption(models.Model):
+    option = models.ForeignKey('Option')
+    customizable_item = models.ForeignKey('CustomizableItem',
+                                          related_name='selected_options')
+    value = models.CharField(max_length=255, help_text='Value for this option')
+
+    def __unicode__(self):
+        return self.value
+
+# signal handlers
+
+def get_old_status_callback(sender, **kwargs):
+    print('get_old_status signal')
+    instance = kwargs['instance']
+    instance.old_status = instance.status
+
+def update_status_changed_on_callback(sender, **kwargs):
+    instance = kwargs['instance']
+    print('aqui')
+    if instance.status_changed_on is None or \
+            instance.status != instance.old_status:
+        instance.status_changed_on = dt.datetime.utcnow()
+
+signals.post_init.connect(get_old_status_callback, Order,
+                          weak=False, dispatch_uid='id_for_get_old_status')
+signals.pre_save.connect(update_status_changed_on_callback, Order,
+                         weak=False,
+                         dispatch_uid='id_for_update_status_changed_on')

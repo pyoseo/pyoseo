@@ -30,10 +30,14 @@ import re
 import datetime as dt
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+from django.conf import settings as django_settings
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
+
+import giosystemcore.settings
 
 from oseoserver import models, tasks
 
@@ -53,8 +57,62 @@ class OseoServer(object):
     }
     MASSIVE_ORDER_REFERENCE = 'Massive order'
 
+    def __init__(self):
+        self.giosystem_settings_manager = giosystemcore.settings.get_settings(
+                django_settings.GIOSYSTEM_SETTINGS_URL)
+
+    def process_request(self, request_data):
+        '''
+        Entry point for the server.
+
+        This method receives the raw request data as a string and then parses
+        it into a valid pyxb OSEO object. It will then send the request to the
+        appropriate method according to the requested OSEO operation.
+
+        :arg request_data: The raw request data
+        :type request_data: str
+        :return: The response XML document, as a string, the HTTP status
+        code and a dictionary with HTTP headers to be set by the wsgi server
+        :rtype: tuple(str, int, dict)
+        '''
+
+        element = etree.fromstring(request_data)
+        response_headers = dict()
+        soap_version = self._is_soap(element)
+        if soap_version is not None:
+            data = self._get_soap_data(element, soap_version)
+            if soap_version == '1.2':
+                logger.debug('SOAP 1.2 request')
+                response_headers['Content-Type'] = 'application/soap+xml'
+            else:
+                logger.debug('SOAP 1.1 request')
+                response_headers['Content-Type'] = 'text/xml'
+        else:
+            logger.debug('Non SOAP request')
+            data = element
+            response_headers['Content-Type'] = 'application/xml'
+        schema_instance = self._parse_xml(data)
+        op_map = {
+            'GetStatusRequestType': self.get_status,
+            'SubmitOrderRequestType': self.submit,
+            'OrderOptionsRequestType': self.get_options,
+        }
+        operation = op_map[schema_instance.__class__.__name__]
+        result, status_code = operation(schema_instance, soap_version)
+        return result, status_code, response_headers
+
     def get_options(self, request, soap_version):
         '''
+        Implements the OSEO GetOptions operation.
+
+
+        :arg request: The instance with the request parameters
+        :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
+        :arg soap_version: Version of the SOAP protocol in use
+        :type soap_version: str or None
+        :return: The XML response object and the HTTP status code
+        :rtype: tuple(str, int)
+
         Example for creating an option with pyxb:
 
         from lxml import etree
@@ -77,7 +135,26 @@ class OseoServer(object):
         print(etree.tostring(etree.fromstring(dr.toxml()), encoding='utf-8', pretty_print=True))
         '''
 
-        raise NotImplementedError
+        status_code = 200
+        if any(request.identifier): # product identifier query
+            for id in request.identifier:
+                pass
+        elif request.collectionId is not None: # product or collection query
+            product_settings = self._get_product_settings(request.collectionId)
+            name = product_settings['short_name']
+            options = models.Option.objects.filter(
+                    Q(product__short_name=name) | Q(product=None))
+            logger.debug('options for %s: %s' % (name, options))
+        elif request.taskingRequestId is not None:
+            raise NotImplementedError
+        #response = oseo.GetOptionsResponse()
+        response = 'OK for now'
+        if soap_version is not None:
+            #result = self._wrap_soap(response, soap_version)
+            result = response
+        else:
+            result = response.toxml(encoding=self._encoding)
+        return result, status_code
 
     def submit(self, request, soap_version):
         '''
@@ -414,39 +491,6 @@ class OseoServer(object):
             response.orderMonitorSpecification.append(om)
         return response
 
-    def process_request(self, request_data):
-        '''
-        :arg request_data: The raw request data, as was captured by Flask
-        :type request_data: str
-        :return: The response XML document, as a string, the HTTP status
-        code and a dictionary with HTTP headers to be set by the wsgi server
-        :rtype: tuple(str, int, dict)
-        '''
-
-        element = etree.fromstring(request_data)
-        response_headers = dict()
-        soap_version = self._is_soap(element)
-        if soap_version is not None:
-            data = self._get_soap_data(element, soap_version)
-            if soap_version == '1.2':
-                logger.debug('SOAP 1.2 request')
-                response_headers['Content-Type'] = 'application/soap+xml'
-            else:
-                logger.debug('SOAP 1.1 request')
-                response_headers['Content-Type'] = 'text/xml'
-        else:
-            logger.debug('Non SOAP request')
-            data = element
-            response_headers['Content-Type'] = 'application/xml'
-        schema_instance = self._parse_xml(data)
-        op_map = {
-            'GetStatusRequestType': self.get_status,
-            'SubmitOrderRequestType': self.submit,
-        }
-        operation = op_map[schema_instance.__class__.__name__]
-        result, status_code = operation(schema_instance, soap_version)
-        return result, status_code, response_headers
-
     def _set_delivery_options(self, options):
         '''
         Create a database record with the input delivery options.
@@ -694,3 +738,11 @@ class OseoServer(object):
         as empty strings into pyxb empty elements, which are stored as None.
         '''
         return None if value == '' else value
+
+    def _get_product_settings(self, collection_id):
+        products = self.giosystem_settings_manager.get_all_products_settings()
+        result = None
+        for prod_settings in products.values():
+            if prod_settings['parent_identifier'] == collection_id:
+                result = prod_settings
+        return result
