@@ -53,9 +53,12 @@ class CustomizableItem(models.Model):
     remark = models.TextField(help_text='Some specific remark about the item',
                               blank=True)
 
-    #def save(self, *args, **kwargs):
-    #    print('old_status: %s' % self.old_status)
-    #    super(CustomizableItem, self).save(*args, **kwargs)
+    def __unicode__(self):
+        try:
+            instance = Order.objects.get(id=self.id)
+        except ObjectDoesNotExist:
+            instance = OrderItem.objects.get(id=self.id)
+        return instance.__unicode__()
 
 class Order(CustomizableItem):
     BZIP2 = 'bzip2'
@@ -80,7 +83,7 @@ class Order(CustomizableItem):
     packaging = models.CharField(max_length=30, choices=PACKAGING_CHOICES,
                                  blank=True)
     priority = models.CharField(max_length=30, choices=PRIORITY_CHOICES,
-                                 blank=True)
+                                blank=True)
     approved = models.BooleanField(default=False, help_text='Is this order '
                                    'eligible for being processed?')
     order_type = models.CharField(max_length=30, default=PRODUCT_ORDER,
@@ -91,10 +94,25 @@ class Order(CustomizableItem):
 
 class Batch(models.Model):
     order = models.ForeignKey('Order')
-    status = models.CharField(max_length=50,
-                              choices=CustomizableItem.STATUS_CHOICES,
-                              default=CustomizableItem.SUBMITTED,
-                              help_text='initial status')
+
+    def status(self):
+        order = {
+            CustomizableItem.SUBMITTED: 0,
+            CustomizableItem.ACCEPTED: 1,
+            CustomizableItem.IN_PRODUCTION: 2,
+            CustomizableItem.SUSPENDED: 3,
+            CustomizableItem.CANCELLED: 4,
+            CustomizableItem.COMPLETED: 5,
+            CustomizableItem.FAILED: 6,
+            CustomizableItem.TERMINATED: 7,
+            CustomizableItem.DOWNLOADED: 8,
+        }
+        item_statuses = set([oi.status for oi in self.order_items.all()])
+        status = list(item_statuses)[0]
+        for st in item_statuses:
+            if order[st] < order[status]:
+                status = st
+        return status
 
     class Meta:
         verbose_name_plural = 'batches'
@@ -104,7 +122,7 @@ class Batch(models.Model):
 
 
 class OrderItem(CustomizableItem):
-    batch = models.ForeignKey('Batch')
+    batch = models.ForeignKey('Batch', related_name='order_items')
     item_id = models.CharField(max_length=30, help_text='Id for the item in '
                                'the order request')
     product_order_options_id = models.CharField(max_length=50, help_text='Id '
@@ -224,19 +242,36 @@ class SelectedOption(models.Model):
 # signal handlers
 
 def get_old_status_callback(sender, **kwargs):
-    print('get_old_status signal')
     instance = kwargs['instance']
     instance.old_status = instance.status
 
 def update_status_changed_on_callback(sender, **kwargs):
     instance = kwargs['instance']
-    print('aqui')
     if instance.status_changed_on is None or \
             instance.status != instance.old_status:
         instance.status_changed_on = dt.datetime.utcnow()
 
-signals.post_init.connect(get_old_status_callback, Order,
-                          weak=False, dispatch_uid='id_for_get_old_status')
-signals.pre_save.connect(update_status_changed_on_callback, Order,
-                         weak=False,
-                         dispatch_uid='id_for_update_status_changed_on')
+signals.post_init.connect(
+    get_old_status_callback,
+    Order,
+    weak=False,
+    dispatch_uid='id_for_get_old_status_order'
+)
+signals.post_init.connect(
+    get_old_status_callback,
+    OrderItem,
+    weak=False,
+    dispatch_uid='id_for_get_old_status_order_item'
+)
+signals.pre_save.connect(
+    update_status_changed_on_callback,
+    Order,
+    weak=False,
+    dispatch_uid='id_for_update_status_changed_on_order'
+)
+signals.pre_save.connect(
+    update_status_changed_on_callback,
+    OrderItem,
+    weak=False,
+    dispatch_uid='id_for_update_status_changed_on_order_item'
+)
