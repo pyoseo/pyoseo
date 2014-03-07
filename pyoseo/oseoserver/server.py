@@ -37,8 +37,6 @@ import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
-import giosystemcore.settings
-
 from oseoserver import models, tasks
 
 logger = logging.getLogger(__name__)
@@ -54,12 +52,9 @@ class OseoServer(object):
     }
     _exception_codes = {
             'InvalidOrderIdentifier': 'client',
+            'UnsupportedCollection': 'client',
     }
     MASSIVE_ORDER_REFERENCE = 'Massive order'
-
-    def __init__(self):
-        self.giosystem_settings_manager = giosystemcore.settings.get_settings(
-                django_settings.GIOSYSTEM_SETTINGS_URL)
 
     def process_request(self, request_data):
         '''
@@ -140,21 +135,54 @@ class OseoServer(object):
             for id in request.identifier:
                 pass
         elif request.collectionId is not None: # product or collection query
-            product_settings = self._get_product_settings(request.collectionId)
-            name = product_settings['short_name']
-            options = models.Option.objects.filter(
-                    Q(product__short_name=name) | Q(product=None))
-            logger.debug('options for %s: %s' % (name, options))
+            try:
+                p = models.Product.objects.get(
+                        collection_id=request.collectionId)
+                available_options = models.GroupOption.objects.filter(
+                    Q(option__product__collection_id=request.collectionId) | \
+                    Q(option__product=None)
+                )
+                response = oseo.GetOptionsResponse(status='success')
+                for option_group in set([i.group for i in available_options]):
+                    options = [op for op in available_options if op in group]
+                    order_opts = self._get_order_options(option_group, options)
+                    response.orderOptions.append(order_opts)
+            except ObjectDoesNotExist:
+                result = self._create_exception_report(
+                    'UnsupportedCollection',
+                    'Subscription not supported',
+                    soap_version,
+                    locator=request.collectionId
+                )
+                status_code = 400
         elif request.taskingRequestId is not None:
             raise NotImplementedError
-        #response = oseo.GetOptionsResponse()
-        response = 'OK for now'
-        if soap_version is not None:
-            #result = self._wrap_soap(response, soap_version)
-            result = response
-        else:
-            result = response.toxml(encoding=self._encoding)
+        if result is None:
+            if soap_version is not None:
+                #result = self._wrap_soap(response, soap_version)
+                result = response
+            else:
+                result = response.toxml(encoding=self._encoding)
         return result, status_code
+
+    def _get_order_options(self, option_group, options, order_item=None):
+        '''
+        :arg option_group:
+        :type option_group:
+        :arg options:
+        :type options:
+        :arg order_item:
+        :type order_item:
+        '''
+
+        coot = oseo.CommonOrderOptionsType()
+        coot.productOrderOptionsId = option_group.name
+        if order_item is not None:
+            coot.identifier = order_item.identifier
+        coot.description = self._n(option_group.description)
+        #coot.orderType = 
+
+        raise NotImplementedError
 
     def submit(self, request, soap_version):
         '''
@@ -190,10 +218,10 @@ class OseoServer(object):
                 packaging=self._c(ord_spec.packaging),
                 priority=self._c(ord_spec.priority)
             )
-            if order.order_type == models.Order.PRODUCT_ORDER and \
+            if order.order_type == models.OrderType.PRODUCT_ORDER and \
                     order.reference == self.MASSIVE_ORDER_REFERENCE:
                 order.order_type = models.Order.MASSIVE_ORDER
-            if order.order_type == models.Order.PRODUCT_ORDER:
+            if order.order_type == models.OrderType.PRODUCT_ORDER:
                 order.approved = True
             else:
                 order.approved = False
@@ -249,7 +277,7 @@ class OseoServer(object):
                 d_opts = self._set_delivery_options(ord_spec.deliveryOptions)
                 order.deliveryoption = d_opts
             order.save()
-            if order.order_type == models.Order.PRODUCT_ORDER:
+            if order.order_type == models.OrderType.PRODUCT_ORDER:
                 # create a single batch with all of the defined order items
                 batch = models.Batch(status=order.status, order=order)
                 batch.save()
@@ -364,9 +392,9 @@ class OseoServer(object):
         response.status='success'
         for r in records:
             om = oseo.CommonOrderMonitorSpecification()
-            if r.order_type in(models.Order.PRODUCT_ORDER,
+            if r.order_type in(models.OrderType.PRODUCT_ORDER,
                     models.Order.MASSIVE_ORDER):
-                om.orderType = models.Order.PRODUCT_ORDER
+                om.orderType = models.OrderType.PRODUCT_ORDER
             elif r.order_type == models.Order.SUBSCRIPTION_ORDER:
                 om.orderType = models.Order.SUBSCRIPTION_ORDER
             om.orderId = str(r.id)
@@ -460,7 +488,7 @@ class OseoServer(object):
             om.deliveryOptions = self._get_delivery_options(r)
             om.priority = self._n(r.priority)
             if request.presentation == 'full':
-                if r.order_type == models.Order.PRODUCT_ORDER:
+                if r.order_type == models.OrderType.PRODUCT_ORDER:
                     for batch in r.batch_set.all():
                         for oi in batch.orderitem_set.all():
                             sit = oseo.CommonOrderStatusItemType()
@@ -738,11 +766,3 @@ class OseoServer(object):
         as empty strings into pyxb empty elements, which are stored as None.
         '''
         return None if value == '' else value
-
-    def _get_product_settings(self, collection_id):
-        products = self.giosystem_settings_manager.get_all_products_settings()
-        result = None
-        for prod_settings in products.values():
-            if prod_settings['parent_identifier'] == collection_id:
-                result = prod_settings
-        return result

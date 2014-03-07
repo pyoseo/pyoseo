@@ -60,14 +60,8 @@ class CustomizableItem(models.Model):
             instance = OrderItem.objects.get(id=self.id)
         return instance.__unicode__()
 
-class Order(CustomizableItem):
-    BZIP2 = 'bzip2'
-    PACKAGING_CHOICES = (
-        (BZIP2, BZIP2),
-    )
-    STANDARD = 'STANDARD'
-    FAST_TRACK = 'FAST_TRACK'
-    PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
+class OrderType(models.Model):
+
     PRODUCT_ORDER = 'PRODUCT_ORDER'
     SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
     MASSIVE_ORDER = 'MASSIVE_ORDER'
@@ -76,7 +70,23 @@ class Order(CustomizableItem):
         (MASSIVE_ORDER, MASSIVE_ORDER),
         (SUBSCRIPTION_ORDER, SUBSCRIPTION_ORDER),
     )
+
+    name = models.CharField(max_length=30, default=PRODUCT_ORDER,
+                            choices=ORDER_TYPE_CHOICES, unique=True)
+
+    def __unicode__(self):
+        return self.name
+
+class Order(CustomizableItem):
+    BZIP2 = 'bzip2'
+    PACKAGING_CHOICES = (
+        (BZIP2, BZIP2),
+    )
+    STANDARD = 'STANDARD'
+    FAST_TRACK = 'FAST_TRACK'
+    PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
     user = models.ForeignKey('User', related_name='orders')
+    order_type = models.ForeignKey('OrderType', related_name='orders')
     completed_on = models.DateTimeField(null=True, blank=True)
     reference = models.CharField(max_length=30, help_text='Some specific '
                                  'reference about this order', blank=True)
@@ -86,11 +96,9 @@ class Order(CustomizableItem):
                                 blank=True)
     approved = models.BooleanField(default=False, help_text='Is this order '
                                    'eligible for being processed?')
-    order_type = models.CharField(max_length=30, default=PRODUCT_ORDER,
-                                  choices=ORDER_TYPE_CHOICES)
 
     def __unicode__(self):
-        return '%s(%i)' % (self.order_type, self.id)
+        return '%s(%i)' % (self.order_type.name, self.id)
 
 class Batch(models.Model):
     order = models.ForeignKey('Order')
@@ -211,9 +219,20 @@ class Product(models.Model):
     def __unicode__(self):
         return self.short_name
 
+class OptionGroup(models.Model):
+    name = models.CharField(max_length=40, help_text='Id for the group of '
+                            'options')
+    description = models.CharField(max_length=255, help_text='Description of '
+                                   'the order option group', blank=True)
+
+    def __unicode__(self):
+        return self.name
+
 class Option(models.Model):
     name = models.CharField(max_length=100)
     product = models.ForeignKey('Product', null=True, blank=True)
+    order_types = models.ManyToManyField('OrderType')
+    group = models.ForeignKey('OptionGroup', related_name='options')
     type = models.CharField(max_length=50, help_text='The datatype of '
                              'this option')
 
@@ -221,7 +240,11 @@ class Option(models.Model):
         return ', '.join([c.value for c in self.choices.all()])
 
     def __unicode__(self):
-        return self.name
+        if self.product is not None:
+            result = '%s(%s)' % (self.name, self.product.short_name)
+        else:
+            result = self.name
+        return result
 
 class OptionChoice(models.Model):
     option = models.ForeignKey('Option', related_name='choices')

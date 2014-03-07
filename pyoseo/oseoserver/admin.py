@@ -48,12 +48,14 @@ class ProductAdmin(admin.ModelAdmin):
 class BatchAdmin(admin.ModelAdmin):
     list_display = ('id', 'status',)
 
+admin.site.register(models.OrderType)
 admin.site.register(models.Order, OrderAdmin)
 admin.site.register(models.Batch, BatchAdmin)
 admin.site.register(models.OrderItem, OrderItemAdmin)
 admin.site.register(models.User)
 admin.site.register(models.Product, ProductAdmin)
 admin.site.register(models.Option, OptionAdmin)
+admin.site.register(models.OptionGroup)
 admin.site.register(models.SelectedOption)
 admin.site.register(models.DeliveryOption)
 admin.site.register(models.DeliveryInformation)
