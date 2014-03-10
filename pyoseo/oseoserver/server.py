@@ -131,6 +131,7 @@ class OseoServer(object):
         '''
 
         status_code = 200
+        result = None
         if any(request.identifier): # product identifier query
             for id in request.identifier:
                 pass
@@ -138,14 +139,19 @@ class OseoServer(object):
             try:
                 p = models.Product.objects.get(
                         collection_id=request.collectionId)
-                available_options = models.GroupOption.objects.filter(
-                    Q(option__product__collection_id=request.collectionId) | \
-                    Q(option__product=None)
-                )
+                available_options = models.Option.objects.filter(
+                    Q(product__collection_id=request.collectionId) | \
+                    Q(product=None)
+                ).filter(order_types__name=models.OrderType.PRODUCT_ORDER)
                 response = oseo.GetOptionsResponse(status='success')
-                for option_group in set([i.group for i in available_options]):
-                    options = [op for op in available_options if op in group]
-                    order_opts = self._get_order_options(option_group, options)
+                for group in set([i.group for i in available_options]):
+                    options = [op for op in available_options if \
+                            op.group == group]
+                    order_opts = self._get_order_options(
+                        group,
+                        options,
+                        models.OrderType.PRODUCT_ORDER
+                    )
                     response.orderOptions.append(order_opts)
             except ObjectDoesNotExist:
                 result = self._create_exception_report(
@@ -159,20 +165,24 @@ class OseoServer(object):
             raise NotImplementedError
         if result is None:
             if soap_version is not None:
-                #result = self._wrap_soap(response, soap_version)
-                result = response
+                result = self._wrap_soap(response, soap_version)
             else:
                 result = response.toxml(encoding=self._encoding)
         return result, status_code
 
-    def _get_order_options(self, option_group, options, order_item=None):
+    def _get_order_options(self, option_group, options, order_type,
+                           order_item=None):
         '''
         :arg option_group:
         :type option_group:
         :arg options:
         :type options:
+        :arg order_type: The type of order, which can be one of the types
+                         defined in the models.OrderType class
+        :type order_type: string
         :arg order_item:
         :type order_item:
+        :return: The pyxb oseo.CommonOrderOptionsType
         '''
 
         coot = oseo.CommonOrderOptionsType()
@@ -180,9 +190,14 @@ class OseoServer(object):
         if order_item is not None:
             coot.identifier = order_item.identifier
         coot.description = self._n(option_group.description)
-        #coot.orderType = 
-
-        raise NotImplementedError
+        coot.orderType = order_type
+        # add:
+        # * option elements
+        # * productDeliveryOptions
+        # * orderOptionInfoURL
+        # * paymentOptions
+        # * sceneSelecetionOptions
+        return coot
 
     def submit(self, request, soap_version):
         '''
