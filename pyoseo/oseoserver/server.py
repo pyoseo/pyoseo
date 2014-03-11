@@ -139,20 +139,28 @@ class OseoServer(object):
             try:
                 p = models.Product.objects.get(
                         collection_id=request.collectionId)
-                available_options = models.Option.objects.filter(
-                    Q(product__collection_id=request.collectionId) | \
-                    Q(product=None)
-                ).filter(order_types__name=models.OrderType.PRODUCT_ORDER)
                 response = oseo.GetOptionsResponse(status='success')
-                for group in set([i.group for i in available_options]):
-                    options = [op for op in available_options if \
-                            op.group == group]
-                    order_opts = self._get_order_options(
-                        group,
-                        options,
-                        models.OrderType.PRODUCT_ORDER
+                # get the options that are available for the requested
+                # collection and which available for each type of order
+                # this includes options that are specific to each collection
+                # as well as options that are applicable to every collection
+                for ot in (models.OrderType.PRODUCT_ORDER,
+                           models.OrderType.SUBSCRIPTION_ORDER):
+                    available_options = models.Option.objects.filter(
+                        Q(product__collection_id=request.collectionId) | \
+                        Q(product=None)
+                    ).filter(optionordertype__order_type__name=ot)
+                    av_delivery_opts = models.DeliveryOption.objects.filter(
+                        deliveryoptionordertype__order_type__name=ot
                     )
-                    response.orderOptions.append(order_opts)
+                    for group in models.OptionGroup.objects.all():
+                        order_opts = self._get_order_options(
+                            group,
+                            available_options,
+                            av_delivery_opts,
+                            ot
+                        )
+                        response.orderOptions.append(order_opts)
             except ObjectDoesNotExist:
                 result = self._create_exception_report(
                     'UnsupportedCollection',
@@ -170,13 +178,15 @@ class OseoServer(object):
                 result = response.toxml(encoding=self._encoding)
         return result, status_code
 
-    def _get_order_options(self, option_group, options, order_type,
-                           order_item=None):
+    def _get_order_options(self, option_group, options, delivery_options,
+                           order_type, order_item=None):
         '''
         :arg option_group:
         :type option_group:
         :arg options:
         :type options:
+        :arg delivery_options:
+        :type delivery_options:
         :arg order_type: The type of order, which can be one of the types
                          defined in the models.OrderType class
         :type order_type: string

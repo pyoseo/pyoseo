@@ -3,16 +3,13 @@ import datetime as dt
 from django.db import models
 from django.db.models import signals
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.models import User
 
-class User(models.Model):
-    admin = models.BooleanField(default=False, help_text='Will this user '
-                                'be able to moderate order requests?')
-    name = models.CharField(max_length=50, help_text='user name')
-    e_mail = models.EmailField(max_length=254, help_text='e-mail', blank=True)
-    full_name = models.CharField(max_length=255, blank=True,
-                                help_text='Full name of the user')
-    password = models.CharField(max_length=50, help_text='password',
-                                blank=True)
+class OptionGroup(models.Model):
+    name = models.CharField(max_length=40, help_text='Id for the group of '
+                            'options')
+    description = models.CharField(max_length=255, help_text='Description of '
+                                   'the order option group', blank=True)
 
     def __unicode__(self):
         return self.name
@@ -52,6 +49,8 @@ class CustomizableItem(models.Model):
     status_changed_on = models.DateTimeField(editable=False, blank=True, null=True)
     remark = models.TextField(help_text='Some specific remark about the item',
                               blank=True)
+    option_group = models.ForeignKey('OptionGroup',
+                                     related_name='customizable_item')
 
     def __unicode__(self):
         try:
@@ -85,7 +84,7 @@ class Order(CustomizableItem):
     STANDARD = 'STANDARD'
     FAST_TRACK = 'FAST_TRACK'
     PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
-    user = models.ForeignKey('User', related_name='orders')
+    user = models.ForeignKey(User, related_name='orders')
     order_type = models.ForeignKey('OrderType', related_name='orders')
     completed_on = models.DateTimeField(null=True, blank=True)
     reference = models.CharField(max_length=30, help_text='Some specific '
@@ -101,7 +100,7 @@ class Order(CustomizableItem):
         return '%s(%i)' % (self.order_type.name, self.id)
 
 class Batch(models.Model):
-    order = models.ForeignKey('Order')
+    order = models.ForeignKey('Order', related_name='batches')
 
     def status(self):
         order = {
@@ -116,10 +115,13 @@ class Batch(models.Model):
             CustomizableItem.DOWNLOADED: 8,
         }
         item_statuses = set([oi.status for oi in self.order_items.all()])
-        status = list(item_statuses)[0]
-        for st in item_statuses:
-            if order[st] < order[status]:
-                status = st
+        if any(item_statuses):
+            status = list(item_statuses)[0]
+            for st in item_statuses:
+                if order[st] < order[status]:
+                    status = st
+        else:
+            status = None
         return status
 
     class Meta:
@@ -128,25 +130,122 @@ class Batch(models.Model):
     def __unicode__(self):
         return str(self.id)
 
-
 class OrderItem(CustomizableItem):
     batch = models.ForeignKey('Batch', related_name='order_items')
     item_id = models.CharField(max_length=30, help_text='Id for the item in '
                                'the order request')
-    product_order_options_id = models.CharField(max_length=50, help_text='Id '
-                                                'for the order options group',
-                                                blank=True)
     identifier = models.CharField(max_length=255, help_text='identifier for '
                                   'this order item. It is the product Id in '
                                   'the catalog', blank=True)
     collection_id = models.CharField(max_length=255, help_text='identifier for '
                                   'the collection. It is the id of the '
                                   'collection in the catalog', blank=True)
-    
+
     def __unicode__(self):
         return str(self.item_id)
 
 class DeliveryOption(models.Model):
+
+    def __unicode__(self):
+        try:
+            instance = OnlineDataAccess.objects.get(id=self.id)
+        except ObjectDoesNotExist:
+            try:
+                instance = OnlineDataDelivery.objects.get(id=self.id)
+            except ObjectDoesNotExist:
+                instance = MediaDelivery.objects.get(id=self.id)
+        return instance.__unicode__()
+
+class GroupDeliveryOption(models.Model):
+    delivery_option = models.ForeignKey('DeliveryOption')
+    option_group = models.ForeignKey('OptionGroup')
+
+    def __unicode__(self):
+        return '%s:%s' % (self.delivery_option, self.option_group)
+
+class SelectedDeliveryOption(models.Model):
+    group_delivery_option = models.ForeignKey('GroupDeliveryOption')
+    customizable_item = models.OneToOneField(
+        'CustomizableItem',
+        related_name='selected_delivery_option',
+        blank=True,
+        null=True
+    )
+    copies = models.PositiveSmallIntegerField(null=True, blank=True)
+    annotation = models.TextField(blank=True)
+    special_instructions = models.TextField(blank=True)
+
+class OnlineDataAccess(DeliveryOption):
+    FTP = 'ftp'
+    SFTP = 'sftp'
+    FTPS = 'ftps'
+    P2P = 'P2P'
+    WCS = 'wcs'
+    WMS = 'wms'
+    E_MAIL = 'e-mail'
+    DDS = 'dds'
+    HTTP = 'http'
+    HTTPS = 'https'
+    PROTOCOL_CHOICES = (
+        (FTP, FTP),
+        (SFTP, SFTP),
+        (FTPS, FTPS),
+        (P2P, P2P),
+        (WCS, WCS),
+        (WMS, WMS),
+        (E_MAIL, E_MAIL),
+        (DDS, DDS),
+        (HTTP, HTTP),
+        (HTTPS, HTTPS),
+    )
+    protocol = models.CharField(max_length=20, choices=PROTOCOL_CHOICES,
+                                default=FTP, unique=True)
+
+    def __unicode__(self):
+        return '%s:%s' % (self.__class__.__name__, self.protocol)
+
+class OnlineDataDelivery(DeliveryOption):
+    protocol = models.CharField(
+        max_length=20,
+        choices=OnlineDataAccess.PROTOCOL_CHOICES,
+        default=OnlineDataAccess.FTP,
+        unique=True
+    )
+
+    def __unicode__(self):
+        return '%s:%s' % (self.__class__.__name__, self.protocol)
+
+class MediaDelivery(DeliveryOption):
+    NTP = 'NTP'
+    DAT = 'DAT'
+    EXABYTE = 'Exabyte'
+    CD_ROM = 'CD-ROM'
+    DLT = 'DLT'
+    D1 = 'D1'
+    DVD = 'DVD'
+    BD = 'BD'
+    LTO = 'LTO'
+    LTO2 = 'LTO2'
+    LTO4 = 'LTO4'
+    PACKAGE_MEDIUM_CHOICES = (
+        (NTP, NTP),
+        (DAT, DAT),
+        (EXABYTE, EXABYTE),
+        (CD_ROM, CD_ROM),
+        (DLT, DLT),
+        (D1, D1),
+        (DVD, DVD),
+        (BD, BD),
+        (LTO, LTO),
+        (LTO2, LTO2),
+        (LTO4, LTO4),
+    )
+
+    package_medium = models.CharField(
+        max_length=20,
+        choices=PACKAGE_MEDIUM_CHOICES,
+        blank=True
+    )
     EACH_READY = 'As each product is ready'
     ALL_READY = 'Once all products are ready'
     OTHER = 'other'
@@ -155,19 +254,14 @@ class DeliveryOption(models.Model):
         (ALL_READY, ALL_READY),
         (OTHER, OTHER),
     )
-    customizable_item = models.OneToOneField('CustomizableItem',
-                                             related_name='delivery_options')
-    online_data_access_protocol = models.CharField(max_length=50, blank=True)
-    online_data_delivery_protocol = models.CharField(max_length=50, blank=True)
-    media_delivery_package_medium = models.CharField(max_length=50, blank=True)
-    media_delivery_shipping_instructions = models.CharField(
-        max_length=50,
-        blank=True,
-        choices=SHIPPING_CHOICES
+    shipping_instructions = models.CharField(
+        max_length=100,
+        choices= SHIPPING_CHOICES,
+        blank=True
     )
-    number_of_copies = models.PositiveSmallIntegerField(null=True, blank=True)
-    annotation = models.TextField(blank=True)
-    special_instructions = models.TextField(blank=True)
+
+    def __unicode__(self):
+        return '%s:%s' % (self.__class__.__name__, self.package_medium)
 
 class DeliveryAddress(models.Model):
     first_name = models.CharField(max_length=50, blank=True)
@@ -211,7 +305,6 @@ class InvoiceAddress(DeliveryAddress):
     class Meta:
         verbose_name_plural = 'invoice addresses'
 
-
 class Product(models.Model):
     short_name = models.CharField(max_length=50, unique=True)
     collection_id = models.CharField(max_length=255, unique=True)
@@ -219,22 +312,11 @@ class Product(models.Model):
     def __unicode__(self):
         return self.short_name
 
-class OptionGroup(models.Model):
-    name = models.CharField(max_length=40, help_text='Id for the group of '
-                            'options')
-    description = models.CharField(max_length=255, help_text='Description of '
-                                   'the order option group', blank=True)
-
-    def __unicode__(self):
-        return self.name
-
 class Option(models.Model):
     name = models.CharField(max_length=100)
     product = models.ForeignKey('Product', null=True, blank=True)
-    order_types = models.ManyToManyField('OrderType')
-    group = models.ForeignKey('OptionGroup', related_name='options')
     type = models.CharField(max_length=50, help_text='The datatype of '
-                             'this option')
+                            'this option')
 
     def available_choices(self):
         return ', '.join([c.value for c in self.choices.all()])
@@ -246,6 +328,21 @@ class Option(models.Model):
             result = self.name
         return result
 
+class OptionOrderType(models.Model):
+    option = models.ForeignKey('Option')
+    order_type = models.ForeignKey('OrderType')
+
+    def __unicode__(self):
+        return '%s:%s' % (self.option, self.order_type)
+
+
+class DeliveryOptionOrderType(models.Model):
+    delivery_option = models.ForeignKey('DeliveryOption')
+    order_type = models.ForeignKey('OrderType')
+
+    def __unicode__(self):
+        return '%s:%s' % (self.delivery_option, self.order_type)
+
 class OptionChoice(models.Model):
     option = models.ForeignKey('Option', related_name='choices')
     value = models.CharField(max_length=255, help_text='Value for this option')
@@ -253,8 +350,15 @@ class OptionChoice(models.Model):
     def __unicode__(self):
         return self.value
 
+class GroupOption(models.Model):
+    option = models.ForeignKey('Option', related_name='group_options')
+    group = models.ForeignKey('OptionGroup')
+
+    def __unicode__(self):
+        return '%s:%s' % (self.group, self.option)
+
 class SelectedOption(models.Model):
-    option = models.ForeignKey('Option')
+    group_option = models.ForeignKey('GroupOption')
     customizable_item = models.ForeignKey('CustomizableItem',
                                           related_name='selected_options')
     value = models.CharField(max_length=255, help_text='Value for this option')

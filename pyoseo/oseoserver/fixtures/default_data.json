@@ -1,0 +1,47 @@
+[
+{
+    "pk": 1, 
+    "model": "oseoserver.optiongroup", 
+    "fields": {
+        "name": "pyoseo options", 
+        "description": "Options available for customizing orders and individual order items"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "PRODUCT_ORDER"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "MASSIVE_ORDER"
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "SUBSCRIPTION_ORDER"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.product", 
+    "fields": {
+        "collection_id": "364a3048-d012-11e1-9678-0019995d2a56", 
+        "short_name": "LST"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.product", 
+    "fields": {
+        "collection_id": "phony", 
+        "short_name": "LST10"
+    }
+}
+]
