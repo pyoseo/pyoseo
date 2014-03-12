@@ -39,7 +39,7 @@ import pyxb.bundles.opengis.ows as ows_bindings
 
 from oseoserver import models, tasks
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('.'.join(('django', __name__)))
 
 class OseoServer(object):
 
@@ -184,9 +184,9 @@ class OseoServer(object):
         :arg option_group:
         :type option_group:
         :arg options:
-        :type options:
+        :type options: A list of models.Option objects
         :arg delivery_options:
-        :type delivery_options:
+        :type delivery_options: A list of models.DeliveryOption objects
         :arg order_type: The type of order, which can be one of the types
                          defined in the models.OrderType class
         :type order_type: string
@@ -195,19 +195,44 @@ class OseoServer(object):
         :return: The pyxb oseo.CommonOrderOptionsType
         '''
 
-        coot = oseo.CommonOrderOptionsType()
-        coot.productOrderOptionsId = option_group.name
+        c = oseo.CommonOrderOptionsType()
+        c.productOrderOptionsId = option_group.name
         if order_item is not None:
-            coot.identifier = order_item.identifier
-        coot.description = self._n(option_group.description)
-        coot.orderType = order_type
-        # add:
-        # * option elements
-        # * productDeliveryOptions
-        # * orderOptionInfoURL
-        # * paymentOptions
-        # * sceneSelecetionOptions
-        return coot
+            c.identifier = order_item.identifier
+        c.description = self._n(option_group.description)
+        c.orderType = order_type
+        # add option elements
+        online_data_access_opts = [d for d in delivery_options if \
+                hasattr(d, 'onlinedataaccess')]
+        online_data_delivery_opts = [d for d in delivery_options if \
+                hasattr(d, 'onlinedatadelivery')]
+        media_delivery_opts = [d for d in delivery_options if \
+                hasattr(d, 'mediadelivery')]
+        if any(online_data_access_opts):
+            c.productDeliveryOptions.append(pyxb.BIND())
+            i = len(c.productDeliveryOptions) - 1
+            c.productDeliveryOptions[i].onlineDataAccess = pyxb.BIND()
+            for opt in online_data_access_opts:
+                c.productDeliveryOptions[i].onlineDataAccess.protocol.append(
+                        opt.onlinedataaccess.protocol)
+        if any(online_data_delivery_opts):
+            c.productDeliveryOptions.append(pyxb.BIND())
+            i = len(c.productDeliveryOptions) - 1
+            c.productDeliveryOptions[i].onlineDataDelivery = pyxb.BIND()
+            for opt in online_data_delivery_opts:
+                c.productDeliveryOptions[i].onlineDataDelivery.protocol.append(
+                        opt.onlinedatadelivery.protocol)
+        if any(media_delivery_opts):
+            c.productDeliveryOptions.append(pyxb.BIND())
+            i = len(c.productDeliveryOptions) - 1
+            c.productDeliveryOptions[i].mediaDelivery = pyxb.BIND()
+            for opt in media_delivery_opts:
+                c.productDeliveryOptions[i].mediaDelivery.packageMedium.append(
+                        opt.mediadelivery.package_medium)
+        # add orderOptionInfoURL
+        # add paymentOptions
+        # add sceneSelecetionOptions
+        return c
 
     def submit(self, request, soap_version):
         '''
@@ -360,6 +385,7 @@ class OseoServer(object):
         :rtype: tuple(str, int)
         '''
 
+        logger.debug('aqui')
         status_code = 200
         records = []
         result = None
@@ -418,9 +444,9 @@ class OseoServer(object):
         for r in records:
             om = oseo.CommonOrderMonitorSpecification()
             if r.order_type in(models.OrderType.PRODUCT_ORDER,
-                    models.Order.MASSIVE_ORDER):
+                    models.OrderType.MASSIVE_ORDER):
                 om.orderType = models.OrderType.PRODUCT_ORDER
-            elif r.order_type == models.Order.SUBSCRIPTION_ORDER:
+            elif r.order_type == models.OrderType.SUBSCRIPTION_ORDER:
                 om.orderType = models.Order.SUBSCRIPTION_ORDER
             om.orderId = str(r.id)
             om.orderStatusInfo = oseo.StatusType(
@@ -513,9 +539,9 @@ class OseoServer(object):
             om.deliveryOptions = self._get_delivery_options(r)
             om.priority = self._n(r.priority)
             if request.presentation == 'full':
-                if r.order_type == models.OrderType.PRODUCT_ORDER:
-                    for batch in r.batch_set.all():
-                        for oi in batch.orderitem_set.all():
+                if r.order_type.name == models.OrderType.PRODUCT_ORDER:
+                    for batch in r.batches.all():
+                        for oi in batch.order_items.all():
                             sit = oseo.CommonOrderStatusItemType()
                             # TODO
                             # add the other optional elements
@@ -523,8 +549,7 @@ class OseoServer(object):
                             # oi.identifier is guaranteed to be non empty for
                             # normal product orders
                             sit.productId = oi.identifier
-                            sit.productOrderOptionsId = self._n(
-                                    oi.product_order_options_id)
+                            sit.productOrderOptionsId = oi.option_group.name
                             sit.orderItemRemark = self._n(oi.remark)
                             sit.collectionId = self._n(oi.collection_id)
                             # add any 'option' elements that may be present
@@ -588,26 +613,26 @@ class OseoServer(object):
         '''
 
         try:
-            do = db_item.delivery_options
+            do = db_item.selected_delivery_option
             dot = oseo.DeliveryOptionsType()
-            if do.online_data_access_protocol != '':
+            try:
+                oda = do.group_delivery_option.delivery_option.onlinedataaccess
                 dot.onlineDataAccess = pyxb.BIND()
-                dot.onlineDataAccess.protocol = do.online_data_access_protocol
-            elif do.online_data_delivery_protocol != '':
-                dot.onlineDataDelivery = pyxb.BIND()
-                dot.onlineDataDelivery.protocol = do.online_data_delivery_protocol
-            elif do.media_delivery_package_medium != '':
-                dot.mediaDelivery = pyxb.BIND()
-                dot.mediaDelivery.packageMedium = do.media_delivery_package_medium
-                if do.media_delivery_shipping_instructions != '':
-                    dot.mediaDelivery.shippingInstructions = \
-                            do.media_delivery_shipping_instructions
-            if do.number_of_copies is not None:
-                dot.numberOfCopies = do.number_of_copies
-            if do.annotation != '':
-                dot.productAnnotation = do.annotation
-            if do.special_instructions != '':
-                dot.specialInstructions = do.special_instructions
+                dot.onlineDataAccess.protocol = oda.protocol
+            except ObjectDoesNotExist:
+                try:
+                    odd = do.group_delivery_option.delivery_option.onlinedatadelivery
+                    dot.onlineDataDelivery = pyxb.BIND()
+                    dot.onlineDataDelivery.protocol = odd.protocol
+                except ObjectDoesNotExist:
+                    md = do.group_delivery_option.delivery_option.mediadelivery
+                    dot.mediaDelivery = pyxb.BIND()
+                    dot.mediaDelivery.packageMedium = md.package_medium
+                    dot.mediaDelivery.shippingInstructions = self._n(
+                            md.shipping_instructions)
+            dot.numberOfCopies = self._n(do.copies)
+            dot.productAnnotation = self._n(do.annotation)
+            dot.specialInstructions = self._n(do.special_instructions)
         except ObjectDoesNotExist:
             dot = None
         return dot

@@ -246,8 +246,8 @@ class MediaDelivery(DeliveryOption):
         choices=PACKAGE_MEDIUM_CHOICES,
         blank=True
     )
-    EACH_READY = 'As each product is ready'
-    ALL_READY = 'Once all products are ready'
+    EACH_READY = 'as each product is ready'
+    ALL_READY = 'once all products are ready'
     OTHER = 'other'
     SHIPPING_CHOICES = (
         (EACH_READY, EACH_READY),
