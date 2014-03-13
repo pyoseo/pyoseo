@@ -1,7 +1,7 @@
 # ./pyoseo_schema.py
 # -*- coding: utf-8 -*-
 # PyXB bindings for NM:1bf401cec9a1734de8e2d6a73ea1a055dfb66f01
-# Generated 2014-02-25 20:07:11.520997 by PyXB version 1.2.3
+# Generated 2014-03-13 12:42:03.094718 by PyXB version 1.2.3
 # Namespace ipma.pt.pyoseo
 
 import pyxb
@@ -13,7 +13,7 @@ import pyxb.utils.domutils
 import sys
 
 # Unique identifier for bindings created at the same time
-_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:69780b46-9e58-11e3-92bb-001cbfb1f175')
+_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:e09e7bbe-aaac-11e3-bce7-0019995d2a56')
 
 # Version of PyXB used to generate the bindings
 _PyXBVersion = '1.2.3'
@@ -72,14 +72,18 @@ def CreateFromDOM (node, default_namespace=None):
 
 
 # Atomic simple type: {ipma.pt.pyoseo}FileFormatType
-class FileFormatType (pyxb.binding.datatypes.string):
+class FileFormatType (pyxb.binding.datatypes.string, pyxb.binding.basis.enumeration_mixin):
 
     """An atomic simple type."""
 
     _ExpandedName = pyxb.namespace.ExpandedName(Namespace, u'FileFormatType')
-    _XSDLocation = pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 9, 4)
+    _XSDLocation = pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 9, 4)
     _Documentation = None
-FileFormatType._InitializeFacetMap()
+FileFormatType._CF_enumeration = pyxb.binding.facets.CF_enumeration(value_datatype=FileFormatType, enum_prefix=None)
+FileFormatType.HDF5 = FileFormatType._CF_enumeration.addEnumeration(unicode_value=u'HDF5', tag=u'HDF5')
+FileFormatType.NetCDF = FileFormatType._CF_enumeration.addEnumeration(unicode_value=u'NetCDF', tag=u'NetCDF')
+FileFormatType.GeoTiff = FileFormatType._CF_enumeration.addEnumeration(unicode_value=u'GeoTiff', tag=u'GeoTiff')
+FileFormatType._InitializeFacetMap(FileFormatType._CF_enumeration)
 Namespace.addCategoryObject('typeBinding', u'FileFormatType', FileFormatType)
 
 # Atomic simple type: {ipma.pt.pyoseo}RescaleValuesType
@@ -88,7 +92,7 @@ class RescaleValuesType (pyxb.binding.datatypes.boolean):
     """An atomic simple type."""
 
     _ExpandedName = pyxb.namespace.ExpandedName(Namespace, u'RescaleValuesType')
-    _XSDLocation = pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 14, 4)
+    _XSDLocation = pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 17, 4)
     _Documentation = None
 RescaleValuesType._InitializeFacetMap()
 Namespace.addCategoryObject('typeBinding', u'RescaleValuesType', RescaleValuesType)
@@ -99,7 +103,7 @@ class ProjectionType (pyxb.binding.datatypes.string):
     """An atomic simple type."""
 
     _ExpandedName = pyxb.namespace.ExpandedName(Namespace, u'ProjectionType')
-    _XSDLocation = pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 19, 4)
+    _XSDLocation = pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 22, 4)
     _Documentation = None
 ProjectionType._InitializeFacetMap()
 Namespace.addCategoryObject('typeBinding', u'ProjectionType', ProjectionType)
@@ -110,19 +114,19 @@ class DatasetType (pyxb.binding.datatypes.string):
     """An atomic simple type."""
 
     _ExpandedName = pyxb.namespace.ExpandedName(Namespace, u'DatasetType')
-    _XSDLocation = pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 24, 4)
+    _XSDLocation = pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 27, 4)
     _Documentation = None
 DatasetType._InitializeFacetMap()
 Namespace.addCategoryObject('typeBinding', u'DatasetType', DatasetType)
 
-fileFormat = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'fileFormat'), FileFormatType, location=pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 8, 4))
-Namespace.addCategoryObject('elementBinding', fileFormat.name().localName(), fileFormat)
+Format = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'Format'), FileFormatType, location=pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 8, 4))
+Namespace.addCategoryObject('elementBinding', Format.name().localName(), Format)
 
-rescaleValues = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'rescaleValues'), RescaleValuesType, location=pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 13, 4))
+rescaleValues = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'rescaleValues'), RescaleValuesType, location=pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 16, 4))
 Namespace.addCategoryObject('elementBinding', rescaleValues.name().localName(), rescaleValues)
 
-projection = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'projection'), ProjectionType, location=pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 18, 4))
+projection = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'projection'), ProjectionType, location=pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 21, 4))
 Namespace.addCategoryObject('elementBinding', projection.name().localName(), projection)
 
-dataset = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'dataset'), DatasetType, location=pyxb.utils.utility.Location('/home/ricardo/dev/pyoseo/pyoseo/xml/pyoseo.xsd', 23, 4))
+dataset = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'dataset'), DatasetType, location=pyxb.utils.utility.Location('/home/geo2/dev/pyoseo/pyoseo/oseoserver/xml_schemas/pyoseo.xsd', 26, 4))
 Namespace.addCategoryObject('elementBinding', dataset.name().localName(), dataset)

@@ -88,3 +88,32 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# Logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'level': 'DEBUG',
+        },
+    },
+    #'root': {
+    #    'level': 'NOTSET',
+    #    'handlers': ['console'],
+    #},
+    'loggers': {
+        'pyoseo': {
+            'handlers': ['console',],
+            'level': 'DEBUG',
+        },
+    },
+}

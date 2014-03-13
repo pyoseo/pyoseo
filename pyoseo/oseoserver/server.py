@@ -13,7 +13,7 @@ Creating the ParameterData element:
   
   import pyxb.binding.datatypes as xsd
   import pyxb.bundles.opengis.oseo as oseo
-  import pysoeo_schema
+  import pyoseo_schema
 
   pd = oseo.ParameterData()
   pd.encoding = 'XMLEncoding'
@@ -35,11 +35,12 @@ from django.conf import settings as django_settings
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.swe_2_0 as swe
 import pyxb.bundles.opengis.ows as ows_bindings
 
 from oseoserver import models, tasks
 
-logger = logging.getLogger('.'.join(('django', __name__)))
+logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class OseoServer(object):
 
@@ -134,7 +135,7 @@ class OseoServer(object):
         result = None
         if any(request.identifier): # product identifier query
             for id in request.identifier:
-                pass
+                raise NotImplementedError
         elif request.collectionId is not None: # product or collection query
             try:
                 p = models.Product.objects.get(
@@ -201,7 +202,27 @@ class OseoServer(object):
             c.identifier = order_item.identifier
         c.description = self._n(option_group.description)
         c.orderType = order_type
-        # add option elements
+        for option in options:
+            dr = swe.DataRecord()
+            dr.field.append(pyxb.BIND())
+            dr.field[0].name = option.name
+            cat = swe.Category(updatable=False)
+            cat.optional = True
+            #cat.definition = 'http://geoland2.meteo.pt/ordering/def/%s' % \
+            #        option.name
+            #cat.identifier = option.name
+            #cat.description = self._n(option.description)
+            choices = option.choices.all()
+            if any(choices):
+                cat.constraint = pyxb.BIND()
+                at = swe.AllowedTokens()
+                for choice in choices:
+                    at.value_.append(choice.value)
+                cat.constraint.append(at)
+            dr.field[0].append(cat)
+            c.option.append(pyxb.BIND())
+            c.option[-1].AbstractDataComponent = dr
+            #c.option[-1].grouping = 'teste'
         online_data_access_opts = [d for d in delivery_options if \
                 hasattr(d, 'onlinedataaccess')]
         online_data_delivery_opts = [d for d in delivery_options if \
@@ -252,30 +273,32 @@ class OseoServer(object):
         '''
 
         status_code = 200
-        order_id = '1'
         if request.orderSpecification is not None:
-            ord_spec = request.orderSpecification
             # order specification type of Submit
-
+            ord_spec = request.orderSpecification
             creation_date = dt.datetime.utcnow()
             order = models.Order(
                 status='Submitted',
                 created_on=creation_date,
                 status_changed_on=creation_date,
-                order_type=ord_spec.orderType,
                 remark=self._c(ord_spec.orderRemark),
                 reference=self._c(ord_spec.orderReference),
                 packaging=self._c(ord_spec.packaging),
                 priority=self._c(ord_spec.priority)
             )
-            if order.order_type == models.OrderType.PRODUCT_ORDER and \
-                    order.reference == self.MASSIVE_ORDER_REFERENCE:
-                order.order_type = models.Order.MASSIVE_ORDER
-            if order.order_type == models.OrderType.PRODUCT_ORDER:
-                order.approved = True
-            else:
-                order.approved = False
+
+            if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
+                ref = self._c(ord_spec.orderReference)
+                if ref == self.MASSIVE_ORDER_REFERENCE:
+                    order.order_type = models.OrderType.objects.get(
+                            name=models.OrderType.MASSIVE_ORDER)
+                    order.approved = False
+                else:
+                    order.order_type = models.OrderType.objects.get(
+                            name=models.OrderType.PRODUCT_ORDER)
+                    order.approved = True
             order.user = models.User.objects.get(id=1) # for testing purposes only
+            order.save()
             if ord_spec.deliveryInformation is not None:
                 di = ord_spec.deliveryInformation
                 del_info = models.DeliveryInformation()
@@ -294,14 +317,15 @@ class OseoServer(object):
                             di.mailAddress.telephoneNumber)
                     del_info.fax = self._c(
                             di.mailAddress.facsimileTelephoneNumber)
+                del_info.save()
                 for oa in di.onlineAddress:
-                    del_info.online_address_set.add(
+                    del_info.onlineaddress_set.add(
                         models.OnlineAddress(
                             protocol=oa.protocol,
                             server_address=oa.serverAddress,
                             user_name=self._c(oa.userName),
                             user_password=self._c(oa.userPassword),
-                            path=self._c(oa.pat),
+                            path=self._c(oa.path)
                         )
                     )
                 order.delivery_information = del_info
@@ -324,12 +348,15 @@ class OseoServer(object):
                 )
             # add options
             if ord_spec.deliveryOptions is not None:
-                d_opts = self._set_delivery_options(ord_spec.deliveryOptions)
+                d_opts = self._set_delivery_options(
+                    ord_spec.deliveryOptions,
+                    order.order_type.name
+                )
                 order.deliveryoption = d_opts
             order.save()
-            if order.order_type == models.OrderType.PRODUCT_ORDER:
+            if order.order_type.name == models.OrderType.PRODUCT_ORDER:
                 # create a single batch with all of the defined order items
-                batch = models.Batch(status=order.status, order=order)
+                batch = models.Batch(order=order)
                 batch.save()
                 for oi in ord_spec.orderItem:
                     order_item = models.OrderItem(
@@ -338,13 +365,17 @@ class OseoServer(object):
                         created_on=creation_date,
                         status_changed_on=creation_date,
                         remark=self._c(oi.orderItemRemark),
+                        # this is probabbly not needed here
                         product_order_options_id=self._c(
                             oi.productOrderOptionsId),
                     )
                     # add order_item options
                     # add order_item scene selection
                     if oi.deliveryOptions is not None:
-                        d_opts = self._set_delivery_options(oi.deliveryOptions)
+                        d_opts = self._set_delivery_options(
+                            oi.deliveryOptions,
+                            order.order_type.name
+                        )
                         order_item.deliveryoption = d_opts
                     # add order_item payment
                     order_item.identifier = self._c(oi.productId.identifier)
@@ -352,16 +383,16 @@ class OseoServer(object):
                     batch.orderitem_set.add(order_item)
                     order_item.save()
                 #order.batch_set.add(batch)
-            elif order.order_type == 'subscription':
+            elif order.order_type.name == 'subscription':
                 # do not create any batch yet, as there are no order items
                 raise NotImplementedError
-            elif order.order_type == 'massive_order':
+            elif order.order_type.name == 'massive_order':
                 # break the order down into multiple batches
                 raise NotImplementedError
         else:
             # quotation type of submit
             raise NotImplementedError
-        tasks.process_order.delay(order.id)
+        #tasks.process_order.delay(order.id)
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         if soap_version is not None:
@@ -385,14 +416,12 @@ class OseoServer(object):
         :rtype: tuple(str, int)
         '''
 
-        logger.debug('aqui')
         status_code = 200
         records = []
         result = None
         if request.orderId is not None: # 'order retrieve' type of request
             try:
-                record = models.Order.objects.get(id=int(request.orderId))
-                records.append(record)
+                records = models.Order.objects.filter(id=int(request.orderId))
             except ObjectDoesNotExist:
                 result = self._create_exception_report(
                     'InvalidOrderIdentifier',
@@ -424,29 +453,32 @@ class OseoServer(object):
             if any(statuses):
                 records = records.filter(status__in=statuses)
         if result is None:
-            response = self._generate_get_status_response(records, request)
+            response = self._generate_get_status_response(records,
+                                                          request.presentation)
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
                 result = response.toxml(encoding=self._encoding)
         return result, status_code
 
-    def _generate_get_status_response(self, records, request):
+    def _generate_get_status_response(self, records, presentation):
         '''
         :arg records:
         :type records: either a one element list with a pyoseo.models.Order
                        or a django queryset, that will be evaluated to an
                        list of pyoseo.models.Order while iterating.
+        :arg presentation:
+        :type presentation: str
         '''
 
         response = oseo.GetStatusResponse()
         response.status='success'
         for r in records:
             om = oseo.CommonOrderMonitorSpecification()
-            if r.order_type in(models.OrderType.PRODUCT_ORDER,
+            if r.order_type.name in(models.OrderType.PRODUCT_ORDER,
                     models.OrderType.MASSIVE_ORDER):
                 om.orderType = models.OrderType.PRODUCT_ORDER
-            elif r.order_type == models.OrderType.SUBSCRIPTION_ORDER:
+            elif r.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
                 om.orderType = models.Order.SUBSCRIPTION_ORDER
             om.orderId = str(r.id)
             om.orderStatusInfo = oseo.StatusType(
@@ -538,7 +570,7 @@ class OseoServer(object):
             # add any 'option' elements
             om.deliveryOptions = self._get_delivery_options(r)
             om.priority = self._n(r.priority)
-            if request.presentation == 'full':
+            if presentation == 'full':
                 if r.order_type.name == models.OrderType.PRODUCT_ORDER:
                     for batch in r.batches.all():
                         for oi in batch.order_items.all():
@@ -569,13 +601,15 @@ class OseoServer(object):
             response.orderMonitorSpecification.append(om)
         return response
 
-    def _set_delivery_options(self, options):
+    def _set_delivery_options(self, options, order_type):
         '''
         Create a database record with the input delivery options.
 
         :arg options: The oseo deliveryOptions
-        :type delivery_options: pyxb.bundles.opengis.oseo.DeliveryOptionsType
-        :return: pyoseo.models.DeliveryOption
+        :type options: pyxb.bundles.opengis.oseo.DeliveryOptionsType
+        :arg order_type: The type of order being requested
+        :type order_type: str
+        :return: pyoseo.models.SelectedDeliveryOption
         '''
 
         possibly_null = [options.onlineDataAccess, options.onlineDataDelivery,
@@ -585,23 +619,78 @@ class OseoServer(object):
                          options.specialInstructions]
         if any(possibly_null):
             try:
-                copies = options.numberOfCopies
+                num_copies = options.numberOfCopies
             except TypeError:
-                copies = ''
-            del_option = models.DeliveryOption(
-                online_data_access_protocol=self._c(options.onlineDataAccess),
-                online_data_delivery_protocol=self._c(options.onlineDataDelivery),
-                media_delivery_package_medium=self._c(
-                        options.mediaDelivery.packageMedium),
-                media_delivery_shipping_instructions=self._c(
-                        options.mediaDelivery.shippingInstructions),
-                number_of_copies=copies,
+                num_copies = None
+            del_option = models.SelectedDeliveryOption(
+                copies=num_copies,
                 annotation=self._c(options.productAnnotation),
                 special_instructions=self._c(options.specialInstructions)
             )
+            if options.onlineDataAccess is not None:
+                protocol = options.onlineDataAccess.protocol
+                if self._validate_online_data_access_protocol(protocol,
+                        order_type):
+                    oda = models.OnlineDataAccess(protocol=protocol)
+                    del_option.onlinedataaccess = oda
+                else:
+                    pass # raise some sort of error
+            elif options.onlineDataDelivery is not None:
+                protocol = options.onlineDataDelivery.protocol
+                if self._validate_online_data_delivery_protocol(protocol,
+                        order_type):
+                    odd = models.OnlineDataDelivery(protocol=protocol)
+                    del_option.onlinedatadelivery = odd
+                else:
+                    pass # raise some sort of error
+            elif options.mediaDelivery is not None:
+                medium = options.mediaDelivery.packageMedium
+                if self._validate_media_delivery(medium, order_type):
+                    md = models.MediaDelivery(package_medium=medium)
+                    md.shipping_instructions = self._c(
+                            options.mediaDelivery.shippingInstructions)
+                    del_option.mediadelivery = md
+                else:
+                    pass # raise some sort of error
         else:
             del_option = None
         return del_option
+
+    def _validate_online_data_access_protocol(self, protocol, order_type):
+        available_protocols = []
+        for dot in models.DeliveryOptionsType.objects.all():
+            if hasattr(dot.delivery_option, 'onlinedataaccess') and \
+                    dot.order_type.name == order_type:
+                p = dot.delivery_option.onlinedataaccess.protocol
+                available_protocols.append(p)
+        result = False
+        if protocol in available_protocols:
+            result = True
+        return result
+
+    def _validate_online_data_delivery_protocol(self, protocol, order_type):
+        available_protocols = []
+        for dot in models.DeliveryOptionsType.objects.all():
+            if hasattr(dot.delivery_option, 'onlinedatadelivery') and \
+                    dot.order_type.name == order_type:
+                p = dot.delivery_option.onlinedatadelivery.protocol
+                available_protocols.append(p)
+        result = False
+        if protocol in available_protocols:
+            result = True
+        return result
+
+    def _validate_media_delivery(self, package_medium, order_type):
+        available_media = []
+        for dot in models.DeliveryOptionsType.objects.all():
+            if hasattr(dot.delivery_option, 'mediadelivery') and \
+                    dot.order_type.name == order_type:
+                m = dot.delivery_option.mediadelivery.package_medium
+                available_media.append(m)
+        result = False
+        if package_medium in available_media:
+            result = True
+        return result
 
     def _get_delivery_options(self, db_item):
         '''

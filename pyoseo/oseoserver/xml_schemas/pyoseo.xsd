@@ -5,9 +5,12 @@
     <xs:annotation>
         <xs:documentation>A schema for pyoseo</xs:documentation>
     </xs:annotation>
-    <xs:element name='fileFormat' type='ipma:FileFormatType'></xs:element>
+    <xs:element name='Format' type='ipma:FileFormatType'></xs:element>
     <xs:simpleType name='FileFormatType'>
         <xs:restriction base="xs:string">
+            <xs:enumeration value="HDF5" />
+            <xs:enumeration value="NetCDF" />
+            <xs:enumeration value="GEOTIFF" />
         </xs:restriction>
     </xs:simpleType>
     <xs:element name='rescaleValues' type='ipma:RescaleValuesType'></xs:element>
