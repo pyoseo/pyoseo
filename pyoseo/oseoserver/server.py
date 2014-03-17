@@ -31,7 +31,6 @@ import datetime as dt
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
-from django.conf import settings as django_settings
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
@@ -278,7 +277,7 @@ class OseoServer(object):
             ord_spec = request.orderSpecification
             creation_date = dt.datetime.utcnow()
             order = models.Order(
-                status='Submitted',
+                status=models.CustomizableItem.SUBMITTED,
                 created_on=creation_date,
                 status_changed_on=creation_date,
                 remark=self._c(ord_spec.orderRemark),
@@ -362,7 +361,7 @@ class OseoServer(object):
                 for oi in ord_spec.orderItem:
                     order_item = models.OrderItem(
                         item_id=oi.itemId,
-                        status=batch.status,
+                        status=models.CustomizableItem.SUBMITTED,
                         created_on=creation_date,
                         status_changed_on=creation_date,
                         remark=self._c(oi.orderItemRemark),

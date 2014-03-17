@@ -98,7 +98,7 @@ class Order(CustomizableItem):
 
     def show_batches(self):
         return ', '.join([str(b.id) for b in self.batches.all()])
-    show_batches.short_description = 'batches'
+    show_batches.short_description = 'available batches'
 
     def __unicode__(self):
         return '%s(%i)' % (self.order_type.name, self.id)

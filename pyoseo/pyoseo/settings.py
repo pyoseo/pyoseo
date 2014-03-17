@@ -12,8 +12,11 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 GIOSYSTEM_SETTINGS_URL = 'http://geo2.meteo.pt/giosystem/settings/api/v1/'
 
 # CELERY OPTIONS
+CELERY_REDIRECT_STDOUTS = True
 CELERY_REDIRECT_STDOUTS_LEVEL = 'DEBUG'
 CELERYD_HIJACK_ROOT_LOGGER = False
+CELERY_IGNORE_RESULT = True
+CELERY_DISABLE_RATE_LIMITS = True
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
