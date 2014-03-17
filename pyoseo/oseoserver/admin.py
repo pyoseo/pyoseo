@@ -21,7 +21,8 @@ class OrderAdmin(admin.ModelAdmin):
                        'mission_specific_status_info')
         }),
     )
-    list_display = ('id', 'order_type', 'status', 'status_changed_on',)
+    list_display = ('id', 'order_type', 'status', 'status_changed_on',
+                    'show_batches',)
     readonly_fields = ('status_changed_on', 'completed_on',)
 
 

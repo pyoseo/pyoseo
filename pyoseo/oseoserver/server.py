@@ -286,7 +286,6 @@ class OseoServer(object):
                 packaging=self._c(ord_spec.packaging),
                 priority=self._c(ord_spec.priority)
             )
-
             if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
                 ref = self._c(ord_spec.orderReference)
                 if ref == self.MASSIVE_ORDER_REFERENCE:
@@ -298,10 +297,13 @@ class OseoServer(object):
                             name=models.OrderType.PRODUCT_ORDER)
                     order.approved = True
             order.user = models.User.objects.get(id=1) # for testing purposes only
+            #  not very nice but we will deal with option groups some other day
+            order.option_group = models.OptionGroup.objects.get(id=1)
             order.save()
             if ord_spec.deliveryInformation is not None:
                 di = ord_spec.deliveryInformation
                 del_info = models.DeliveryInformation()
+                order.delivery_information = del_info
                 if di.mailAddress is not None:
                     del_info.first_name = self._c(di.mailAddress.firstName)
                     del_info.last_name = self._c(di.mailAddress.lastName)
@@ -313,7 +315,7 @@ class OseoServer(object):
                     del_info.postal_code = self._c(di.mailAddress.postalCode)
                     del_info.country = self._c(di.mailAddress.country)
                     del_info.post_box = self._c(di.mailAddress.post_box)
-                    del_info.telephone_number = self._c(
+                    del_info.telephone = self._c(
                             di.mailAddress.telephoneNumber)
                     del_info.fax = self._c(
                             di.mailAddress.facsimileTelephoneNumber)
@@ -328,7 +330,6 @@ class OseoServer(object):
                             path=self._c(oa.path)
                         )
                     )
-                order.delivery_information = del_info
             if ord_spec.invoiceAddress is not None:
                 ia = ord_spec.invoiceAddress
                 order.invoice_address = models.InvoiceAddress(
@@ -365,9 +366,7 @@ class OseoServer(object):
                         created_on=creation_date,
                         status_changed_on=creation_date,
                         remark=self._c(oi.orderItemRemark),
-                        # this is probabbly not needed here
-                        product_order_options_id=self._c(
-                            oi.productOrderOptionsId),
+                        option_group=order.option_group
                     )
                     # add order_item options
                     # add order_item scene selection
@@ -380,9 +379,8 @@ class OseoServer(object):
                     # add order_item payment
                     order_item.identifier = self._c(oi.productId.identifier)
                     order_item.collection_id = self._c(oi.productId.collectionId)
-                    batch.orderitem_set.add(order_item)
+                    batch.order_items.add(order_item)
                     order_item.save()
-                #order.batch_set.add(batch)
             elif order.order_type.name == 'subscription':
                 # do not create any batch yet, as there are no order items
                 raise NotImplementedError
@@ -502,7 +500,7 @@ class OseoServer(object):
                     r.delivery_information.postal_code,
                     r.delivery_information.country,
                     r.delivery_information.post_box,
-                    r.delivery_information.telephone_number,
+                    r.delivery_information.telephone,
                     r.delivery_information.fax
                 ]
                 if any(optional_attrs):
@@ -612,11 +610,16 @@ class OseoServer(object):
         :return: pyoseo.models.SelectedDeliveryOption
         '''
 
-        possibly_null = [options.onlineDataAccess, options.onlineDataDelivery,
-                         options.mediaDelivery.packageMedium,
-                         options.mediaDelivery.shippingInstructions,
-                         options.numberOfCopies, options.productAnnotation,
-                         options.specialInstructions]
+        possibly_null = [
+            options.onlineDataAccess,
+            options.onlineDataDelivery,
+            options.mediaDelivery.packageMedium if \
+                    options.mediaDelivery is not None else None,
+            options.mediaDelivery.shippingInstructions if \
+                    options.mediaDelivery is not None else None,
+            options.numberOfCopies,
+            options.productAnnotation,
+            options.specialInstructions]
         if any(possibly_null):
             try:
                 num_copies = options.numberOfCopies
@@ -658,7 +661,7 @@ class OseoServer(object):
 
     def _validate_online_data_access_protocol(self, protocol, order_type):
         available_protocols = []
-        for dot in models.DeliveryOptionsType.objects.all():
+        for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'onlinedataaccess') and \
                     dot.order_type.name == order_type:
                 p = dot.delivery_option.onlinedataaccess.protocol
@@ -670,7 +673,7 @@ class OseoServer(object):
 
     def _validate_online_data_delivery_protocol(self, protocol, order_type):
         available_protocols = []
-        for dot in models.DeliveryOptionsType.objects.all():
+        for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'onlinedatadelivery') and \
                     dot.order_type.name == order_type:
                 p = dot.delivery_option.onlinedatadelivery.protocol
@@ -682,7 +685,7 @@ class OseoServer(object):
 
     def _validate_media_delivery(self, package_medium, order_type):
         available_media = []
-        for dot in models.DeliveryOptionsType.objects.all():
+        for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'mediadelivery') and \
                     dot.order_type.name == order_type:
                 m = dot.delivery_option.mediadelivery.package_medium

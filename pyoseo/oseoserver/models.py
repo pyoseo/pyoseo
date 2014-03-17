@@ -96,6 +96,10 @@ class Order(CustomizableItem):
     approved = models.BooleanField(default=False, help_text='Is this order '
                                    'eligible for being processed?')
 
+    def show_batches(self):
+        return ', '.join([str(b.id) for b in self.batches.all()])
+    show_batches.short_description = 'batches'
+
     def __unicode__(self):
         return '%s(%i)' % (self.order_type.name, self.id)
 
