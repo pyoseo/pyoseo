@@ -11,7 +11,7 @@ class OptionGroupAdmin(admin.ModelAdmin):
 class OrderAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
-            'fields': ('approved', 'order_type', 'status', 'option_group',
+            'fields': ('order_type', 'status', 'option_group',
                        'status_changed_on', 'completed_on', 'user',
                        'reference', 'priority', 'packaging',)
         }),

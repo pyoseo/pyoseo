@@ -88,7 +88,6 @@
         "reference": "Test order", 
         "packaging": "", 
         "user": 1, 
-        "approved": true, 
         "order_type": 1
     }
 },
