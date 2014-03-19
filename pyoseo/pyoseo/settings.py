@@ -8,6 +8,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+# PYOSEO SPECIFIC
+
+
 # GIOSYSTEM SPECIFIC
 GIOSYSTEM_SETTINGS_URL = 'http://geo2.meteo.pt/giosystem/settings/api/v1/'
 
