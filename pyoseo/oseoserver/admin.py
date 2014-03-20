@@ -23,7 +23,8 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_display = ('id', 'order_type', 'status', 'status_changed_on',
                     'show_batches',)
-    readonly_fields = ('status_changed_on', 'completed_on',)
+    readonly_fields = ('status_changed_on', 'completed_on',
+                       'last_describe_result_access_request',)
 
 
 class OrderItemAdmin(admin.ModelAdmin):
@@ -40,7 +41,7 @@ class OrderItemAdmin(admin.ModelAdmin):
         }),
     )
     list_display = ('item_id', 'batch', 'status', 'status_changed_on',)
-    readonly_fields = ('status_changed_on',)
+    readonly_fields = ('status_changed_on', 'completed_on',)
 
 class OptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'type', 'product', 'available_choices',)

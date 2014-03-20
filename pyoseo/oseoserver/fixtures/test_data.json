@@ -1,23 +1,13 @@
 [
 {
     "pk": 1, 
-    "model": "oseoserver.user", 
-    "fields": {
-        "admin": true, 
-        "password": "1234", 
-        "e_mail": "john.doe@mail.pt", 
-        "name": "johndoe", 
-        "full_name": "John Doe"
-    }
-},
-{
-    "pk": 1, 
     "model": "oseoserver.customizableitem", 
     "fields": {
         "status": "Submitted", 
         "remark": "", 
         "additional_status_info": "", 
         "created_on": "2014-03-05T16:58:18.713Z", 
+        "completed_on": null, 
         "mission_specific_status_info": "", 
         "status_changed_on": "2014-03-06T16:35:13.750Z"
     }
@@ -30,6 +20,7 @@
         "remark": "", 
         "additional_status_info": "", 
         "created_on": "2014-03-06T16:50:08.029Z", 
+        "completed_on": null, 
         "mission_specific_status_info": "", 
         "status_changed_on": "2014-03-06T17:16:53.896Z"
     }
@@ -42,6 +33,7 @@
         "remark": "", 
         "additional_status_info": "", 
         "created_on": "2014-03-06T16:50:30.512Z", 
+        "completed_on": null, 
         "mission_specific_status_info": "", 
         "status_changed_on": "2014-03-06T17:16:49.762Z"
     }
@@ -54,6 +46,7 @@
         "remark": "", 
         "additional_status_info": "", 
         "created_on": "2014-03-06T16:50:49.333Z", 
+        "completed_on": null, 
         "mission_specific_status_info": "", 
         "status_changed_on": "2014-03-06T17:16:38.993Z"
     }
@@ -84,8 +77,8 @@
     "model": "oseoserver.order", 
     "fields": {
         "priority": "", 
-        "completed_on": null, 
         "reference": "Test order", 
+        "last_describe_result_access_request": null, 
         "packaging": "", 
         "user": 1, 
         "order_type": 1

@@ -64,6 +64,7 @@ class CustomizableItem(models.Model):
                                               'that is specific to the '
                                               'mission', blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
+    completed_on = models.DateTimeField(null=True, blank=True)
     status_changed_on = models.DateTimeField(editable=False, blank=True, null=True)
     remark = models.TextField(help_text='Some specific remark about the item',
                               blank=True)
@@ -104,7 +105,8 @@ class Order(CustomizableItem):
     PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
     user = models.ForeignKey(User, related_name='orders')
     order_type = models.ForeignKey('OrderType', related_name='orders')
-    completed_on = models.DateTimeField(null=True, blank=True)
+    last_describe_result_access_request = models.DateTimeField(null=True,
+                                                               blank=True)
     reference = models.CharField(max_length=30, help_text='Some specific '
                                  'reference about this order', blank=True)
     packaging = models.CharField(max_length=30, choices=PACKAGING_CHOICES,
