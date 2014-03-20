@@ -106,68 +106,68 @@ def process_order_item(self, preparator, order_item_id, csw_interface):
     else:
         pass
 
-@shared_task(bind=True)
-def process_order(self, order_id):
-    '''
-    Process a normal order.
-
-    * get order details from the database
-    * fetch the products from giosystem
-    * apply any customization options
-    * update the database whenever an order/item changes status
-    * if needed, send notifications on order/item status changes
-    * send the ordered items to the appropriate destination
-
-    :arg order_id: The id of the order in the pyoseo database
-    :type order_id: int
-    '''
-
-    ids = []
-    try:
-        order = models.Order.objects.get(id=order_id)
-        _update_status(order, models.CustomizableItem.IN_PRODUCTION)
-    except ObjectDoesNotExist:
-        logger.error('could not find order')
-        raise
-    for batch in order.batches.all():
-        for order_item in batch.order_items.all():
-            ids.append(order_item.identifier)
-    settings_manager = giosystemcore.settings.get_settings(
-        django_settings.GIOSYSTEM_SETTINGS_URL,
-        initialize_logging=False
-    )
-    c = giosystempackages.cswinterface.CswInterface()
-    item_titles = c.get_records(ids)
-    if not _check_items(ids, item_titles):
-        raise
-    preparator = giosystemcore.orders.orderpreparator.OrderPreparator()
-    for file_id, file_name in item_titles:
-        order_item = models.OrderItem.objects.get(identifier=file_id)
-        _update_status(order_item, models.CustomizableItem.IN_PRODUCTION)
-        gio_file = giosystemcore.files.GioFile.from_file_name(file_name)
-        preparator.add_item(gio_file)
-    logger.debug('preparator working_dir: %s' % preparator.working_dir)
-    fetched = preparator.get_products()
-    customized = preparator.customize_order(fetched)
-    if order.packaging == models.Order.BZIP2:
-        result = customized # not doing anything at the moment
-    else:
-        result = customized
-    moved = preparator.move_data(result)
+#@shared_task(bind=True)
+#def process_order(self, order_id):
+#    '''
+#    Process a normal order.
+#
+#    * get order details from the database
+#    * fetch the products from giosystem
+#    * apply any customization options
+#    * update the database whenever an order/item changes status
+#    * if needed, send notifications on order/item status changes
+#    * send the ordered items to the appropriate destination
+#
+#    :arg order_id: The id of the order in the pyoseo database
+#    :type order_id: int
+#    '''
+#
+#    ids = []
+#    try:
+#        order = models.Order.objects.get(id=order_id)
+#        _update_status(order, models.CustomizableItem.IN_PRODUCTION)
+#    except ObjectDoesNotExist:
+#        logger.error('could not find order')
+#        raise
+#    for batch in order.batches.all():
+#        for order_item in batch.order_items.all():
+#            ids.append(order_item.identifier)
+#    settings_manager = giosystemcore.settings.get_settings(
+#        django_settings.GIOSYSTEM_SETTINGS_URL,
+#        initialize_logging=False
+#    )
+#    c = giosystempackages.cswinterface.CswInterface()
+#    item_titles = c.get_records(ids)
+#    if not _check_items(ids, item_titles):
+#        raise
+#    preparator = giosystemcore.orders.orderpreparator.OrderPreparator()
+#    for file_id, file_name in item_titles:
+#        order_item = models.OrderItem.objects.get(identifier=file_id)
+#        _update_status(order_item, models.CustomizableItem.IN_PRODUCTION)
+#        gio_file = giosystemcore.files.GioFile.from_file_name(file_name)
+#        preparator.add_item(gio_file)
+#    logger.debug('preparator working_dir: %s' % preparator.working_dir)
+#    fetched = preparator.get_products()
+#    customized = preparator.customize_order(fetched)
+#    if order.packaging == models.Order.BZIP2:
+#        result = customized # not doing anything at the moment
+#    else:
+#        result = customized
+#    moved = preparator.move_data(result)
 
 def _update_status(model, new_status):
     model.status = new_status
     model.save()
 
-def _check_items(ordered_items, found_records):
-    '''
-    Check if all of the ordered items are indeed present in the catalog.
-    '''
-
-    result = True
-    delta = set(ordered_items).difference(set([i[0] for i in found_records]))
-    if any(delta):
-        logger.error('Some items are not present in the catalogue: %s' % \
-                     list(delta))
-        result = False
-    return result
+#def _check_items(ordered_items, found_records):
+#    '''
+#    Check if all of the ordered items are indeed present in the catalog.
+#    '''
+#
+#    result = True
+#    delta = set(ordered_items).difference(set([i[0] for i in found_records]))
+#    if any(delta):
+#        logger.error('Some items are not present in the catalogue: %s' % \
+#                     list(delta))
+#        result = False
+#    return result

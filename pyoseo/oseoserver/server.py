@@ -56,6 +56,10 @@ class OseoServer(object):
     }
     MASSIVE_ORDER_REFERENCE = 'Massive order'
 
+    # subFunction values for DescribeResultAccess operation
+    ALL_READY = 'allReady'
+    NEXT_READY = 'nextReady'
+
     def process_request(self, request_data):
         '''
         Entry point for the server.
@@ -91,10 +95,85 @@ class OseoServer(object):
             'GetStatusRequestType': self.get_status,
             'SubmitOrderRequestType': self.submit,
             'OrderOptionsRequestType': self.get_options,
+            'DescribeResultAccessRequestType': self.describe_result_access,
         }
         operation = op_map[schema_instance.__class__.__name__]
         result, status_code = operation(schema_instance, soap_version)
         return result, status_code, response_headers
+
+    def describe_result_access(self, request, soap_version):
+        '''
+        Implements the OSEO DescribeResultAccess operation.
+
+        :arg request: The instance with the request parameters
+        :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
+        :arg soap_version: Version of the SOAP protocol in use
+        :type soap_version: str or None
+        :return: The XML response object and the HTTP status code
+        :rtype: tuple(str, int)
+        '''
+
+        status_code = 200
+        result = None
+        try:
+            order = models.Order.get(id=request.orderId)
+        except ObjectDoesNotExist:
+            status_code = 400
+            result = self._create_exception_report(
+                'InvalidOrderIdentifier',
+                'Invalid value for order',
+                soap_version,
+                locator=request.orderId
+            )
+        if result is None:
+            completed_items = self._get_completed_items(order,
+                                                        request.subFunction)
+            logger.info('completed_items: %s' % completed_items)
+            order.last_describe_result_access_request = dt.datetime.utcnow()
+            order.save()
+            response = oseo.DescribeResultAccessResponse(status='success')
+            for i in completed_items:
+                try:
+                    gdo = i.selected_delivery_option.group_delivery_option
+                except ObjectDoesNotExist:
+                    gdo = order.selected_delivery_option.group_delivery_option
+                try:
+                    protocol = gdo.delivery_option.onlinedataaccess.protocol
+                    iut = oseo.ItemURLType()
+                    iut.itemId = i.item_id
+                    iut.productId = oseo.ProductIdType(
+                        identifier=i.identifier,
+                        collectionId=self._n(i.collection_id)
+                    )
+                    iut.itemAddress = oseo.OnLineAccessAddressType()
+                    iut.itemAddress.ResourceAddress = pyxb.BIND()
+                    iut.itemAddress.ResourceAddress.URL = ''
+                    response.URLs.append(iut)
+                except ObjectDoesNotExist:
+                    pass
+        return result, status_code
+
+    def _get_completed_items(self, order, behaviour):
+        '''
+        :arg order:
+        :type order: oseoserver.models.Order
+        :arg behaviour:
+        :type behaviour: str
+        :return: a list with the completed order items for this order
+        '''
+
+        now = dt.datetime.utcnow()
+        last_time = order.last_describe_result_access_request
+        completed_items = []
+        for batch in order.batches.all():
+            for order_item in batch.order_items.all():
+                if order_item.status == models.CustomizableItem.COMPLETED:
+                    if behaviour == self.NEXT_READY and \
+                            order_item.completed_on >= last_call:
+                        completed_items.append(order_item)
+                    elif behaviour == self.ALL_READY:
+                        completed_items.append(order_item)
+        return completed_items
 
     def get_options(self, request, soap_version):
         '''
