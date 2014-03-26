@@ -26,6 +26,7 @@ There are some tricky dependencies:
 
 import re
 import os
+import socket
 
 from fabric.api import local
 from fabric.context_managers import lcd, shell_env
