@@ -7,3 +7,4 @@ venv/*
 *.autosave
 src/*
 pyoseo/sitestatic/*
+settings_local.py
