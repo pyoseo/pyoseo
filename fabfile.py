@@ -8,6 +8,22 @@ There are some tricky dependencies:
       This must be done before installation.
 '''
 
+# TODO
+# * get django's secret key out of the repository and use a new one
+# * follow the remaining items on the django deployment checklist
+# * include some sample configuration for Apache
+# * remove giosystemcore from the requirements file. It should be installed
+#   manually by a previous process. Alternatively, assume that this fabfile
+#   is aimed exclusively at giosystem's usage of pyoseo, move it out of the
+#   main pyoseo repository. Then turn the oseoserver app into a standalone
+#   django app, create a new django project just for giosystem, add the
+#   needed django apps to it, including the oseoserver app and provide it
+#   with a fabfile to include giosystemcore as a dependency.
+# * Turning oseoserver into a proper django app is the preferred option,
+#   as it will also provide a chance to cleanly separate other files (like
+#   the celery tasks) from what is giosystem specific functionality and
+#   what is related to the OSEO service.
+
 import re
 import os
 
@@ -18,23 +34,48 @@ VENV_NAME = 'venv'
 REQUIREMENTS_FILE = 'requirements.txt'
 LOCAL_DIR = os.path.dirname(os.path.realpath(__file__))
 LOCAL_PIP = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'pip')
+LOCAL_PYTHON = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'python')
 
-def local_initial_setup():
+DJANGO_PROJECT_NAME = 'pyoseo'
+RELATIVE_URL = '/giosystem/orders'
+LOCAL_DOMAIN = 'meteo.pt'
+
+def initial_setup(debug=False):
     local('sudo apt-get install rabbitmq-server')
-    _local_create_virtualenv()
-    _local_install_pip_requirements()
-    local_install_pyxb()
-
-def _local_create_virtualenv():
-    global VENV_NAME
     local('virtualenv %s' % VENV_NAME)
-
-def _local_install_pip_requirements():
-    global LOCAL_PIP
-    global REQUIREMENTS_FILE
     local('%s install -r %s' % (LOCAL_PIP, REQUIREMENTS_FILE))
+    create_local_django_settings(debug)
+    with lcd(DJANGO_PROJECT_NAME):
+        local('%s manage.py collectstatic --noinput --verbosity=0' %
+              LOCAL_PYTHON)
+    create_database()
+    install_pyxb()
 
-def local_install_pyxb():
+def create_local_django_settings(use_debug):
+    '''
+    :arg use_debug: Wether to set the DEBUG Django option to True or False
+    :type use_debug: str
+    '''
+
+    path = os.path.join(LOCAL_DIR, DJANGO_PROJECT_NAME, DJANGO_PROJECT_NAME,
+                        'settings_local.py')
+    contents = [
+        'DEBUG = %s\n' % use_debug,
+        'STATIC_URL = \'%s/static/\'\n' % RELATIVE_URL,
+    ]
+    if str(use_debug) == 'False':
+        host_name = '.' + '.'.join((socket.gethostname(), LOCAL_DOMAIN))
+        contents.append('ALLOWED_HOSTS = [\'%s\',]' % host_name)
+    with open(path, 'w') as fh:
+        fh.writelines(contents)
+
+def create_database():
+    with lcd(DJANGO_PROJECT_NAME):
+        local('%s manage.py syncdb' % LOCAL_PYTHON)
+        local('%s manage.py loaddata oseoserver/fixtures/default_data.json' % 
+              LOCAL_PYTHON)
+
+def install_pyxb():
     global VENV_NAME
     global LOCAL_PIP
     global LOCAL_DIR
