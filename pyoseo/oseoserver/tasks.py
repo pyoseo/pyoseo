@@ -32,6 +32,7 @@ from celery.utils.log import get_task_logger
 import giosystemcore.settings
 import giosystemcore.files
 import giosystempackages.cswinterface
+import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
 from oseoserver import models
 
@@ -58,7 +59,7 @@ def process_order(self, order_id):
         django_settings.GIOSYSTEM_SETTINGS_URL,
         initialize_logging=False
     )
-    c = giosystempackages.cswinterface.CswInterface()
+    c = giosystemcore.catalogue.cswinterface.CswInterface()
     prep = op.OrderPreparator(order.user.username)
     for batch in order.batches.all():
         g.append(process_batch.s(batch, prep, c))
