@@ -38,7 +38,7 @@ LOCAL_PIP = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'pip')
 LOCAL_PYTHON = os.path.join(LOCAL_DIR, VENV_NAME, 'bin', 'python')
 
 DJANGO_PROJECT_NAME = 'pyoseo'
-RELATIVE_URL = '/giosystem/orders'
+RELATIVE_URL = '/giosystem/ordering'
 LOCAL_DOMAIN = 'meteo.pt'
 
 def initial_setup(debug=False):
