@@ -496,7 +496,8 @@ class OseoServer(object):
         result = None
         if request.orderId is not None: # 'order retrieve' type of request
             try:
-                records = models.Order.objects.filter(id=int(request.orderId))
+                records.append(models.Order.objects.get(id=int(
+                               request.orderId)))
             except ObjectDoesNotExist:
                 result = self._create_exception_report(
                     'InvalidOrderIdentifier',
