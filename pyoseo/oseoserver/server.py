@@ -439,7 +439,7 @@ class OseoServer(object):
                 for oi in ord_spec.orderItem:
                     order_item = models.OrderItem(
                         item_id=oi.itemId,
-                        status=models.CustomizableItem.SUBMITTED,
+                        status=models.CustomizableItem.ACCEPTED,
                         created_on=creation_date,
                         status_changed_on=creation_date,
                         remark=self._c(oi.orderItemRemark),

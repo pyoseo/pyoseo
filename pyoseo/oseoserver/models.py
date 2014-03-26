@@ -162,6 +162,11 @@ class OrderItem(CustomizableItem):
     collection_id = models.CharField(max_length=255, help_text='identifier for '
                                   'the collection. It is the id of the '
                                   'collection in the catalog', blank=True)
+    file_name = models.CharField(max_length=255, help_text='name of the file '
+                                 'that this order item represents', blank=True)
+    downloads = models.SmallIntegerField(default=0, help_text='Number of '
+                                         'times this order item has been '
+                                         'downloaded.')
 
     def __unicode__(self):
         return str(self.item_id)
