@@ -31,7 +31,6 @@ from celery.utils.log import get_task_logger
 
 import giosystemcore.settings
 import giosystemcore.files
-import giosystempackages.cswinterface
 import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
 from oseoserver import models
