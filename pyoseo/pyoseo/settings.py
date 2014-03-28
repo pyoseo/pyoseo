@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # GIOSYSTEM SPECIFIC
-GIOSYSTEM_SETTINGS_URL = 'http://geo2.meteo.pt/giosystem/settings/api/v1/'
+GIOSYSTEM_SETTINGS_URL = ''
 
 # CELERY OPTIONS
 CELERY_REDIRECT_STDOUTS = True

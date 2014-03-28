@@ -14,6 +14,12 @@
 
 '''
 Celery tasks for pyoseo
+
+The celery worker can be started with the command:
+
+.. code:: bash
+
+   pyoseo/pyoseo$ celery worker --app=pyoseo.celery_app --loglevel=info
 '''
 
 # TODO
@@ -106,6 +112,10 @@ def process_order_item(self, preparator, order_item_id, csw_interface):
     else:
         pass
 
+def _update_status(model, new_status):
+    model.status = new_status
+    model.save()
+
 #@shared_task(bind=True)
 #def process_order(self, order_id):
 #    '''
@@ -154,10 +164,6 @@ def process_order_item(self, preparator, order_item_id, csw_interface):
 #    else:
 #        result = customized
 #    moved = preparator.move_data(result)
-
-def _update_status(model, new_status):
-    model.status = new_status
-    model.save()
 
 #def _check_items(ordered_items, found_records):
 #    '''

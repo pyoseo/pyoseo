@@ -41,19 +41,22 @@ DJANGO_PROJECT_NAME = 'pyoseo'
 RELATIVE_URL = '/giosystem/ordering'
 LOCAL_DOMAIN = 'meteo.pt'
 
-def initial_setup(debug=False):
+def initial_setup(giosystem_settings_url, debug=False):
     local('sudo apt-get install rabbitmq-server')
     local('virtualenv %s' % VENV_NAME)
     local('%s install -r %s' % (LOCAL_PIP, REQUIREMENTS_FILE))
-    create_local_django_settings(debug)
+    create_local_django_settings(giosystem_settings_url, debug)
     with lcd(DJANGO_PROJECT_NAME):
         local('%s manage.py collectstatic --noinput --verbosity=0' %
               LOCAL_PYTHON)
     create_database()
     install_pyxb()
 
-def create_local_django_settings(use_debug):
+def create_local_django_settings(giosystem_settings_url, use_debug):
     '''
+    :arg giosystem_settings_url: URL for acessing the giosystem settings 
+                                 django app
+    :type giosystem_settings_url: str
     :arg use_debug: Wether to set the DEBUG Django option to True or False
     :type use_debug: str
     '''
@@ -63,6 +66,7 @@ def create_local_django_settings(use_debug):
     contents = [
         'DEBUG = %s\n' % use_debug,
         'STATIC_URL = \'%s/static/\'\n' % RELATIVE_URL,
+        'GIOSYSTEM_SETTINGS_URL = \'%s\'' % giosystem_settings_url
     ]
     if str(use_debug) == 'False':
         host_name = '.' + '.'.join((socket.gethostname(), LOCAL_DOMAIN))
