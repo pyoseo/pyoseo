@@ -368,11 +368,11 @@ class OseoServer(object):
                 if ref == self.MASSIVE_ORDER_REFERENCE:
                     order.order_type = models.OrderType.objects.get(
                             name=models.OrderType.MASSIVE_ORDER)
-                    order.status = models.CustomizableItem.SUBMITTED,
+                    order.status = models.CustomizableItem.SUBMITTED
                 else:
                     order.order_type = models.OrderType.objects.get(
                             name=models.OrderType.PRODUCT_ORDER)
-                    order.status = models.CustomizableItem.ACCEPTED,
+                    order.status = models.CustomizableItem.ACCEPTED
             order.user = models.User.objects.get(id=1) # for testing purposes only
             #  not very nice but we will deal with option groups some other day
             order.option_group = models.OptionGroup.objects.get(id=1)
