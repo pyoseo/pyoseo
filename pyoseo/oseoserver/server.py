@@ -24,7 +24,7 @@ Creating the ParameterData element:
   pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
 
 * in ipython
-  
+
   import pyxb.binding.datatypes as xsd
   import pyxb.bundles.opengis.oseo as oseo
   import pyoseo_schema
@@ -182,10 +182,10 @@ class OseoServer(object):
         for batch in order.batches.all():
             for order_item in batch.order_items.all():
                 if order_item.status == models.CustomizableItem.COMPLETED:
-                    if behaviour == self.NEXT_READY and \
-                            order_item.completed_on >= last_call:
+                    if last_time is None or behaviour == self.ALL_READY:
                         completed_items.append(order_item)
-                    elif behaviour == self.ALL_READY:
+                    elif behaviour == self.NEXT_READY and \
+                            order_item.completed_on >= last_time:
                         completed_items.append(order_item)
         return completed_items
 
