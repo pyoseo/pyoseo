@@ -31,7 +31,8 @@ class OrderItemAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
             'fields': ('item_id', 'batch', 'status', 'option_group',
-                       'status_changed_on', 'identifier', 'collection_id',)
+                       'status_changed_on', 'completed_on', 'downloads',
+                       'identifier', 'collection_id', 'file_name',)
         }),
         ('Further info',{
             'classes': ('collapse',),
@@ -40,8 +41,9 @@ class OrderItemAdmin(admin.ModelAdmin):
                        'mission_specific_status_info')
         }),
     )
-    list_display = ('item_id', 'batch', 'status', 'status_changed_on',)
-    readonly_fields = ('status_changed_on', 'completed_on',)
+    list_display = ('id', 'item_id', 'batch', 'status', 'status_changed_on',)
+    readonly_fields = ('status_changed_on', 'completed_on', 'file_name',
+                       'downloads',)
 
 class OptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'type', 'product', 'available_choices',)

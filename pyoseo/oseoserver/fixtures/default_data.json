@@ -30,6 +30,46 @@
 },
 {
     "pk": 1, 
+    "model": "oseoserver.deliveryoption", 
+    "fields": {}
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.deliveryoption", 
+    "fields": {}
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.groupdeliveryoption", 
+    "fields": {
+        "delivery_option": 1, 
+        "option_group": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.groupdeliveryoption", 
+    "fields": {
+        "delivery_option": 2, 
+        "option_group": 1
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.onlinedataaccess", 
+    "fields": {
+        "protocol": "http"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.onlinedataaccess", 
+    "fields": {
+        "protocol": "ftp"
+    }
+},
+{
+    "pk": 1, 
     "model": "oseoserver.product", 
     "fields": {
         "collection_id": "364a3048-d012-11e1-9678-0019995d2a56", 
@@ -42,6 +82,54 @@
     "fields": {
         "collection_id": "phony", 
         "short_name": "LST10"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 2
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 3
+    }
+},
+{
+    "pk": 4, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 1
+    }
+},
+{
+    "pk": 5, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 2
+    }
+},
+{
+    "pk": 6, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 3
     }
 }
 ]

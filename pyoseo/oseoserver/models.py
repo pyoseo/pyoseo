@@ -228,6 +228,9 @@ class OnlineDataAccess(DeliveryOption):
     protocol = models.CharField(max_length=20, choices=PROTOCOL_CHOICES,
                                 default=FTP, unique=True)
 
+    class Meta:
+        verbose_name_plural = 'online data accesses'
+
     def __unicode__(self):
         return '%s:%s' % (self.__class__.__name__, self.protocol)
 
@@ -238,6 +241,9 @@ class OnlineDataDelivery(DeliveryOption):
         default=OnlineDataAccess.FTP,
         unique=True
     )
+
+    class Meta:
+        verbose_name_plural = 'online data deliveries'
 
     def __unicode__(self):
         return '%s:%s' % (self.__class__.__name__, self.protocol)
@@ -286,6 +292,9 @@ class MediaDelivery(DeliveryOption):
         choices= SHIPPING_CHOICES,
         blank=True
     )
+
+    class Meta:
+        verbose_name_plural = 'media deliveries'
 
     def __unicode__(self):
         return '%s:%s' % (self.__class__.__name__, self.package_medium)
