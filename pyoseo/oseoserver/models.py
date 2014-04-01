@@ -173,14 +173,21 @@ class OrderItem(CustomizableItem):
 
 class DeliveryOption(models.Model):
 
-    def __unicode__(self):
+    def child_instance(self):
         try:
             instance = OnlineDataAccess.objects.get(id=self.id)
         except ObjectDoesNotExist:
             try:
                 instance = OnlineDataDelivery.objects.get(id=self.id)
             except ObjectDoesNotExist:
-                instance = MediaDelivery.objects.get(id=self.id)
+                try:
+                    instance = MediaDelivery.objects.get(id=self.id)
+                except ObjectDoesNotExist:
+                    instance = self
+        return instance
+
+    def __unicode__(self):
+        instance = self.child_instance()
         return instance.__unicode__()
 
 class GroupDeliveryOption(models.Model):

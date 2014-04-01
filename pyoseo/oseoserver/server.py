@@ -51,7 +51,7 @@ import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.swe_2_0 as swe
 import pyxb.bundles.opengis.ows as ows_bindings
 
-from oseoserver import models, tasks
+from oseoserver import models, tasks, errors
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -93,6 +93,17 @@ class OseoServer(object):
         response_headers = dict()
         soap_version = self._is_soap(element)
         if soap_version is not None:
+            #soap_headers = self.parse_soap_headers(element, soap_version)
+            # now validate the headers, including:
+            # * the VITO token
+            # * user name and credentials
+            # valid_request = self.validate_request_user()
+            #if valid_request:
+            #    user = soap_headers['user_name']
+            #    # all the remaining code
+            #else:
+            #    raise errors.InvalidUserError('Unauthorized request')
+            #    status_code = 400
             data = self._get_soap_data(element, soap_version)
             if soap_version == '1.2':
                 logger.debug('SOAP 1.2 request')
@@ -150,7 +161,10 @@ class OseoServer(object):
                 try:
                     gdo = i.selected_delivery_option.group_delivery_option
                 except ObjectDoesNotExist:
-                    gdo = order.selected_delivery_option.group_delivery_option
+                    try:
+                        gdo = order.selected_delivery_option.group_delivery_option
+                    except ObjectDoesNotExist:
+                        pass
                 try:
                     protocol = gdo.delivery_option.onlinedataaccess.protocol
                     iut = oseo.ItemURLType()
@@ -472,16 +486,20 @@ class OseoServer(object):
                     order_item.collection_id = self._c(oi.productId.collectionId)
                     batch.order_items.add(order_item)
                     order_item.save()
+                    #tasks.process_normal_order(order.id)
             elif order.order_type.name == 'subscription':
                 # do not create any batch yet, as there are no order items
-                raise NotImplementedError
+                raise errors.SubmitSubscriptionError('Submission of '
+                                                     'subscription orders is '
+                                                     'not implemented')
             elif order.order_type.name == 'massive_order':
                 # break the order down into multiple batches
-                raise NotImplementedError
+                raise errors.SubmitMassiveOrderError('Submission of '
+                                                     'massive orders is '
+                                                     'not implemented')
         else:
-            # quotation type of submit
-            raise NotImplementedError
-        #tasks.process_order.delay(order.id)
+            raise errors.SubmitWithQuotationError('Submit with quotationId is '
+                                                  'not implemented.')
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         if soap_version is not None:
@@ -691,6 +709,25 @@ class OseoServer(object):
             response.orderMonitorSpecification.append(om)
         return response
 
+    def parse_soap_headers(self, request_element, soap_version):
+        '''
+        Extract the relevant SOAP headers from the incoming request
+
+        :arg request_element:
+        :type request_element:
+        :arg soap_version:
+        :type soap_version:
+        '''
+
+        raise NotImplementedError
+
+    def validate_request_user(self):
+        '''
+        Validate the user that made the OSEO request.
+        '''
+
+        raise NotImplementedError
+
     def _set_delivery_options(self, options, order_type):
         '''
         Create a database record with the input delivery options.
@@ -750,6 +787,119 @@ class OseoServer(object):
         else:
             del_option = None
         return del_option
+
+    # TODO
+    # * test this method
+    def parse_order_delivery_method(self, order_specification, order):
+        '''
+        Validate the requested delivery method for an order.
+
+        One order can have one of three types of delivery:
+
+        * online access
+
+          This option means that the order will be available at our server
+          for the user to download. We can use one of several protocols (HTTP,
+          FTP, ...) as implementations become available.
+
+          The available implementations are sored as records of the
+          oseoserver.models.OnlineDataAccess model, but they can be restricted
+          to certain OptionGroups and further restricted to certain Order
+          types. This means that altough the server may support online data 
+          access with the FTP protocol, it is possible to restrict it so that
+          it is only available for orders of type 'SUBSCRIPTION_ORDER' and
+          only if the orders belong to the 'pyoseo options' option group.
+
+        * online delivery
+
+          This option means that we will actively deliver the ordered items to
+          some server specified by the user, using a specific protocol (such as
+          FTP) and with credentials supplied by the user
+
+        * mail delivery
+
+          This option means that we will deliver a physical medium to the user,
+          which will be shipped by normal mail, according to the user specified
+          instructions and address.
+        '''
+
+        a = [d.delivery_option for d in \
+                order.order_type.deliveryoptionordertype_set.all()]
+        b = [d.delivery_option for d in \
+                order.option_group.groupdeliveryoption_set.all()]
+        available_delivery_options = [d.child_instance() for d in a if d in b]
+        dop = order_specification.deliveryOptions
+        if dop is not None:
+            # we can have any of the three options
+            if dop.onlineDataAccess is not None:
+                # online access option
+                requested_type = models.OnlineDataAccess
+            elif dop.onlineDataDelivery is not None:
+                # online delivery option
+                requested_type = models.OnlineDataDelivery
+            else:
+                # mail delivery option
+                requested_type = models.MediaDelivery
+        else:
+            # we can have either online delivery or mail delivery
+            online_addresses = list(order_specification.onlineAddress)
+            mail_address = order_specification.mailAddress
+            if any(online_addresses):
+                # online delivery option
+                requested_type = models.OnlineDataDelivery
+            elif mail_address is not None:
+                # mail delivery option
+                requested_type = models.MediaDelivery
+            else:
+                # no option was defined, raise an error
+                raise errors.InvalidOrderDeliveryMethodError(
+                    'No valid delivery method found'
+                )
+        if requested_type in [a.__class__ for a in available_delivery_options]:
+            # the requested delivery method is allowed for this order
+            delivery_option_map = {
+                models.OnlineDataAccess: self._add_online_data_access_data,
+                models.OnlineDataDelivery: self._add_online_data_delivery_data,
+                models.MediaDelivery: self._add_media_delivery_data,
+            }
+            delivery_option_map[requested_type](order, order_specification)
+        else:
+            # the requested delivery method is not allowed for this order
+            raise errors.DeliveryMethodNotAllowedError('The chosen delivery '
+                                                       'method is not allowed')
+
+    def _add_online_data_access_data(self, order, order_specification):
+        '''
+        When this function is called the protocol has already been validated
+        '''
+
+        delivery_options = order_specification.deliveryOptions
+        selected_delivery_option = models.SelectedDeliveryOption(
+            copies=delivery_options.numberOfCopies,
+            annotation=self._c(delivery_options.productAnnotation),
+            special_instructions=self._c(delivery_options.specialInstructions),
+        )
+        req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
+        del_opt = models.OnlineDataAccess(protocol=req_protocol)
+        option_group = order.option_group
+        gdo = models.GroupDeliveryOption.objects.get(option_group=option_group,
+                                                     delivery_option=del_opt)
+        selected_delivery_option.group_delivery_option = gdo
+        selected_delivery_option.customizable_item = order
+        selected_delivery_option.save()
+
+    def _add_online_data_delivery_data(self, order, order_specification):
+        '''
+        '''
+
+        raise NotImplementedError
+
+    def _add_media_delivery_data(self, order, order_specification):
+        '''
+        '''
+
+        raise NotImplementedError
+
 
     def _validate_online_data_access_protocol(self, protocol, order_type):
         available_protocols = []

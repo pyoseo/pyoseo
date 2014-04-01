@@ -4,6 +4,7 @@ ipython==1.1.0
 lxml==3.2.3
 requests==2.0.0
 celery==3.1.9
+librabbitmq
 Django==1.6.2
 --editable git+https://ricardogsilva@bitbucket.org/ipmagio/giosystem-core.git#egg=giosystemcore
 #--editable git+https://ricardogsilva@bitbucket.org/ipmagio/giosystem-csw.git#egg=giosystemcsw
