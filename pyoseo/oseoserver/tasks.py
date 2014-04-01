@@ -49,30 +49,27 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True)
-def process_order(self, order_id):
+def process_normal_order(self, order_id):
     '''
-    Process an order.
+    Process a normal order.
+
+    A normal order is one that does not come from a subscription and is also 
+    not considered to be a massive order.
 
     :arg order_id:
     :type order_id: int
     '''
 
     try:
-        order = models.Order.objects.get(id=order_id)
+        order = models.Order.objects.get(pk=order_id)
         order.status = models.CustomizableItem.IN_PRODUCTION
         order.save()
     except ObjectDoesNotExist:
         logger.error('could not find order')
         raise
     g = []
-    settings_manager = giosystemcore.settings.get_settings(
-        django_settings.GIOSYSTEM_SETTINGS_URL,
-        initialize_logging=False
-    )
-    c = giosystemcore.catalogue.cswinterface.CswInterface()
-    prep = op.OrderPreparator(order.user.username)
     for batch in order.batches.all():
-        g.append(process_batch.s(batch, prep, c))
+        g.append(process_batch.s(batch.id))
     job = group(g)
     job.apply_async()
 
@@ -132,6 +129,6 @@ def process_order_item(self, order_item_id):
         order_item.save()
     else:
         pass
-    sleep_time = 10
+    sleep_time = 30
     logger.info('-------- sleeping for %i seconds -------- ' % sleep_time)
     time.sleep(sleep_time)
