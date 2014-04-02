@@ -22,7 +22,10 @@ class InvalidUserError(Exception):
 class InvalidOrderDeliveryMethodError(Exception):
     pass
 
-class DeliveryMethodNotAllowedError(Exception):
+class OnlineDataAccessInvalidProtocol(Exception):
+    pass
+
+class OnlineDataDeliveryInvalidProtocol(Exception):
     pass
 
 class OperationNotImplementedError(Exception):

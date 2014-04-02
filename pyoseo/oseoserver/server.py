@@ -45,6 +45,7 @@ import datetime as dt
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
+from django.db import transaction
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
@@ -361,6 +362,7 @@ class OseoServer(object):
         # add sceneSelecetionOptions
         return c
 
+    @transaction.atomic
     def submit(self, request, soap_version):
         '''
         Implements the OSEO Submit operation.
@@ -405,36 +407,8 @@ class OseoServer(object):
             #  not very nice but we will deal with option groups some other day
             order.option_group = models.OptionGroup.objects.get(id=1)
             order.save()
-            if ord_spec.deliveryInformation is not None:
-                di = ord_spec.deliveryInformation
-                del_info = models.DeliveryInformation()
-                order.delivery_information = del_info
-                if di.mailAddress is not None:
-                    del_info.first_name = self._c(di.mailAddress.firstName)
-                    del_info.last_name = self._c(di.mailAddress.lastName)
-                    del_info.company_ref = self._c(di.mailAddress.companyRef)
-                    del_info.street_address = self._c(
-                            di.mailAddress.streetAddress)
-                    del_info.city = self._c(di.mailAddress.city)
-                    del_info.state = self._c(di.mailAddress.state)
-                    del_info.postal_code = self._c(di.mailAddress.postalCode)
-                    del_info.country = self._c(di.mailAddress.country)
-                    del_info.post_box = self._c(di.mailAddress.post_box)
-                    del_info.telephone = self._c(
-                            di.mailAddress.telephoneNumber)
-                    del_info.fax = self._c(
-                            di.mailAddress.facsimileTelephoneNumber)
-                del_info.save()
-                for oa in di.onlineAddress:
-                    del_info.onlineaddress_set.add(
-                        models.OnlineAddress(
-                            protocol=oa.protocol,
-                            server_address=oa.serverAddress,
-                            user_name=self._c(oa.userName),
-                            user_password=self._c(oa.userPassword),
-                            path=self._c(oa.path)
-                        )
-                    )
+            self.parse_order_delivery_method(ord_spec, order)
+            # add options
             if ord_spec.invoiceAddress is not None:
                 ia = ord_spec.invoiceAddress
                 order.invoice_address = models.InvoiceAddress(
@@ -452,51 +426,18 @@ class OseoServer(object):
                     telephone=self._c(ia.mailAddress.telephoneNumer),
                     fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
                 )
-            # add options
-            if ord_spec.deliveryOptions is not None:
-                d_opts = self._set_delivery_options(
-                    ord_spec.deliveryOptions,
-                    order.order_type.name
-                )
-                order.deliveryoption = d_opts
-            order.save()
             if order.order_type.name == models.OrderType.PRODUCT_ORDER:
-                # create a single batch with all of the defined order items
-                batch = models.Batch(order=order)
-                batch.save()
-                for oi in ord_spec.orderItem:
-                    order_item = models.OrderItem(
-                        item_id=oi.itemId,
-                        status=models.CustomizableItem.ACCEPTED,
-                        created_on=creation_date,
-                        status_changed_on=creation_date,
-                        remark=self._c(oi.orderItemRemark),
-                        option_group=order.option_group
-                    )
-                    # add order_item options
-                    # add order_item scene selection
-                    if oi.deliveryOptions is not None:
-                        d_opts = self._set_delivery_options(
-                            oi.deliveryOptions,
-                            order.order_type.name
-                        )
-                        order_item.deliveryoption = d_opts
-                    # add order_item payment
-                    order_item.identifier = self._c(oi.productId.identifier)
-                    order_item.collection_id = self._c(oi.productId.collectionId)
-                    batch.order_items.add(order_item)
-                    order_item.save()
-                    #tasks.process_normal_order(order.id)
-            elif order.order_type.name == 'subscription':
-                # do not create any batch yet, as there are no order items
+                self.create_normal_order_batch(ord_spec, order)
+                #tasks.process_normal_order(order.id)
+            elif order.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
+                # do not create any batch yet
+                # batches will be created on demand, whenever new products
+                # come out of the processing lines
                 raise errors.SubmitSubscriptionError('Submission of '
                                                      'subscription orders is '
                                                      'not implemented')
-            elif order.order_type.name == 'massive_order':
-                # break the order down into multiple batches
-                raise errors.SubmitMassiveOrderError('Submission of '
-                                                     'massive orders is '
-                                                     'not implemented')
+            elif order.order_type.name == models.OrderType.MASSIVE_ORDER:
+                self.create_massive_order_batches()
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
@@ -507,6 +448,53 @@ class OseoServer(object):
         else:
             result = response.toxml(encoding=self._encoding)
         return result, status_code
+
+    def create_normal_order_batch(self, order_specification, order):
+        '''
+        Create the order item batch for a normal order.
+
+        Normal orders are composed of a single batch with all of the ordered
+        items inside it.
+
+        :arg order_specification: the OSEO order specification
+        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
+        :arg order: the order record that is being created in the database
+        :type order: oseoserver.models.Order
+        '''
+
+        batch = models.Batch(order=order)
+        batch.save()
+        for oi in order_specification.orderItem:
+            order_item = models.OrderItem(
+                item_id=oi.itemId,
+                status=models.CustomizableItem.ACCEPTED,
+                created_on=order.created_on,
+                status_changed_on=order.created_on,
+                remark=self._c(oi.orderItemRemark),
+                option_group=order.option_group
+            )
+            # add order_item options
+            # add order_item scene selection
+            if oi.deliveryOptions is not None:
+                d_opts = self._set_delivery_options(
+                    oi.deliveryOptions,
+                    order.order_type.name
+                )
+                order_item.deliveryoption = d_opts
+            # add order_item payment
+            order_item.identifier = self._c(oi.productId.identifier)
+            order_item.collection_id = self._c(oi.productId.collectionId)
+            batch.order_items.add(order_item)
+            order_item.save()
+        order.save()
+
+    def create_massive_order_batches(self):
+        '''
+        break the order down into multiple batches
+        '''
+
+        raise errors.SubmitMassiveOrderError('Submission of massive orders is '
+                                             'not implemented')
 
     def get_status(self, request, soap_version):
         '''
@@ -788,11 +776,9 @@ class OseoServer(object):
             del_option = None
         return del_option
 
-    # TODO
-    # * test this method
     def parse_order_delivery_method(self, order_specification, order):
         '''
-        Validate the requested delivery method for an order.
+        Validate and parse the requested delivery method for an order.
 
         One order can have one of three types of delivery:
 
@@ -821,6 +807,11 @@ class OseoServer(object):
           This option means that we will deliver a physical medium to the user,
           which will be shipped by normal mail, according to the user specified
           instructions and address.
+
+        :arg order_specification: the OSEO order specification
+        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
+        :arg order: the order record that is being created in the database
+        :type order: oseoserver.models.Order
         '''
 
         a = [d.delivery_option for d in \
@@ -829,77 +820,200 @@ class OseoServer(object):
                 order.option_group.groupdeliveryoption_set.all()]
         available_delivery_options = [d.child_instance() for d in a if d in b]
         dop = order_specification.deliveryOptions
-        if dop is not None:
-            # we can have any of the three options
+        if dop is not None: # we can have any of the three options
             if dop.onlineDataAccess is not None:
-                # online access option
                 requested_type = models.OnlineDataAccess
             elif dop.onlineDataDelivery is not None:
-                # online delivery option
                 requested_type = models.OnlineDataDelivery
             else:
-                # mail delivery option
                 requested_type = models.MediaDelivery
-        else:
-            # we can have either online delivery or mail delivery
-            online_addresses = list(order_specification.onlineAddress)
-            mail_address = order_specification.mailAddress
-            if any(online_addresses):
-                # online delivery option
+        else: # we can have either online delivery or mail delivery
+            if any(list(order_specification.onlineAddress)):
                 requested_type = models.OnlineDataDelivery
-            elif mail_address is not None:
-                # mail delivery option
+            elif order_specification.mailAddress is not None:
                 requested_type = models.MediaDelivery
             else:
-                # no option was defined, raise an error
                 raise errors.InvalidOrderDeliveryMethodError(
                     'No valid delivery method found'
                 )
         if requested_type in [a.__class__ for a in available_delivery_options]:
             # the requested delivery method is allowed for this order
-            delivery_option_map = {
-                models.OnlineDataAccess: self._add_online_data_access_data,
-                models.OnlineDataDelivery: self._add_online_data_delivery_data,
-                models.MediaDelivery: self._add_media_delivery_data,
-            }
-            delivery_option_map[requested_type](order, order_specification)
+            if requested_type == models.OnlineDataAccess:
+                self._add_online_data_access_data(order, order_specification,
+                                                  available_delivery_options)
+            elif requested_type == models.OnlineDataDelivery:
+                self._add_online_data_access_data(order, order_specification,
+                                                  available_delivery_options)
+            else:
+                self._add_media_delivery_data(order, order_specification)
         else:
-            # the requested delivery method is not allowed for this order
-            raise errors.DeliveryMethodNotAllowedError('The chosen delivery '
-                                                       'method is not allowed')
+            raise errors.InvalidOrderDeliveryMethodError(
+                'The chosen delivery method is not allowed'
+            )
 
-    def _add_online_data_access_data(self, order, order_specification):
+    def _add_online_data_access_data(self, order, order_specification,
+                                     available_options):
         '''
-        When this function is called the protocol has already been validated
+        Validate the requested protocol and add the requested online access
+        definition to the order being processed.
+
+        :arg order:
+        :type order: oseoserver.models.Order
+        :arg order_specification:
+        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
+        :arg available_options:
+        :type available_options: list
         '''
 
         delivery_options = order_specification.deliveryOptions
-        selected_delivery_option = models.SelectedDeliveryOption(
+        protocols = [i.protocol for i in available_options if isinstance(i,
+                     models.OnlineDataAccess)]
+        req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
+        if req_protocol in protocols:
+            sdo = self._create_selected_delivery_option(delivery_options)
+            del_opt = models.OnlineDataAccess.objects.get(
+                                                protocol=req_protocol)
+            option_group = order.option_group
+            logger.debug('del_opt: %s' % del_opt)
+            logger.debug('type(del_opt): %s' % type(del_opt))
+            logger.debug('option_group: %s' % option_group)
+            logger.debug('type(option_group): %s' % type(option_group))
+            gdo = models.GroupDeliveryOption.objects.get(
+                option_group=option_group,
+                delivery_option=del_opt
+            )
+            sdo.group_delivery_option = gdo
+            order.selected_delivery_option = sdo
+            order.save()
+        else:
+            # the requested protocol is not allowed
+            raise errors.OnlineDataAccessInvalidProtocol('The requested '
+                                                         'protocol is invalid')
+
+    def _add_online_data_delivery_data(self, order, order_specification,
+                                       available_options):
+        '''
+        :arg order:
+        :type order: oseoserver.models.Order
+        :arg order_specification:
+        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
+        :arg available_options:
+        :type available_options: list
+        '''
+
+        delivery_options = order_specification.deliveryOptions
+        if delivery_options is not None:
+            sdo = self._create_selected_delivery_option(delivery_options)
+            req_protocol = self._c(delivery_options.onlineDataDelivery.protocol)
+        else:
+            sdo = models.SelectedDeliveryOption()
+            try:
+                # fall back to the protocol defined in the deliveryInformation 
+                # section, if there is one
+                d = order_specification.deliveryInformation
+                oa = d.onlineAddress[0]
+                req_protocol = self._c(oa.protocol)
+            except AttributeError, IndexError:
+                raise errors.InvalidOrderDeliveryMethodError(
+                    'The requested order delivery method is not valid'
+                )
+        protocols = [i.protocol for i in available_options if isinstance(i,
+                     models.OnlineDataDelivery)]
+        if req_protocol in protocols:
+            ordered_delivery_info = order_specification.deliveryInformation
+            if ordered_delivery_info is not None:
+                delivery_info = models.DeliveryInformation()
+                order.delivery_information = delivery_info
+                delivery_info.save()
+                for online_address in ordered_delivery_info.onlineAddress:
+                    oa = models.OnlineAddress(
+                        protocol=self._c(online_address.protocol),
+                        server_address=self._c(online_address.serverAddress),
+                        user_name=self._c(online_address.userName),
+                        user_password=self._c(online_address.userPassword),
+                        path=self._c(online_address.path)
+                    )
+                    oa.delivery_information = delivery_info
+                    oa.save()
+            else:
+                raise errors.InvalidOrderDeliveryMethodError(
+                    'The delivery method is not correctly specified'
+                )
+            del_opt = models.OnlineDataDelivery(protocol=req_protocol)
+            option_group = order.option_group
+            gdo = models.GroupDeliveryOption.objects.get(
+                option_group=option_group,
+                delivery_option=del_opt
+            )
+            sdo.group_delivery_option = gdo
+            order.selected_delivery_option = sdo
+            order.save()
+        else:
+            raise errors.OnlineDataDeliveryInvalidProtocol('The requested '
+                                                         'protocol is invalid')
+
+    def _add_media_delivery_data(self, order, order_specification):
+        '''
+        :arg order:
+        :type order: oseoserver.models.Order
+        :arg order_specification:
+        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
+        '''
+
+        ordered_delivery_info = order_specification.deliveryInformation
+        if ordered_delivery_info is not None:
+            address = ordered_delivery_info.mailAddress
+            delivery_info = models.DeliveryInformation(
+                first_name=self._c(address.firstName),
+                last_name=self._c(address.lastName),
+                company_ref=self._c(address.companyRef),
+                street_address=self._c(address.postalAddress.streetAddress),
+                city=self._c(address.postalAddress.city),
+                state=self._c(address.postalAddress.state),
+                postal_code=self._c(address.postalAddress.postalCode),
+                country=self._c(address.postalAddress.country),
+                post_box=self._c(address.postalAddress.postBox),
+                telephone=self._c(address.telephoneNumber),
+                fax=self._c(address.facsimileTelephoneNumber)
+            )
+            order.delivery_information = delivery_info
+            delivery_info.save()
+
+            delivery_options = order_specification.deliveryOptions
+            if delivery_options is not None:
+                sdo = self._create_selected_delivery_option(delivery_options)
+                package_medium = self._c(
+                        delivery_options.mediaDelivery.packageMedium)
+                shipping_instructions = self._c(
+                        delivery_options.mediaDelivery.shippingInstructions)
+            else:
+                sdo = models.SelectedDeliveryOption()
+                package_medium = ''
+                shipping_instructions = ''
+            del_opt = models.MediaDelivery(
+                package_medium=package_medium,
+                shipping_instructions=shipping_instructions
+            )
+            option_group = order.option_group
+            gdo = models.GroupDeliveryOption.objects.get(
+                option_group=option_group,
+                delivery_option=del_opt
+            )
+            sdo.group_delivery_option = gdo
+            order.selected_delivery_option = sdo
+            order.save()
+        else:
+            raise errors.InvalidOrderDeliveryMethodError(
+                'The delivery method is not correctly specified'
+            )
+
+    def _create_selected_delivery_option(self, delivery_options):
+        sdo = models.SelectedDeliveryOption(
             copies=delivery_options.numberOfCopies,
             annotation=self._c(delivery_options.productAnnotation),
             special_instructions=self._c(delivery_options.specialInstructions),
         )
-        req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
-        del_opt = models.OnlineDataAccess(protocol=req_protocol)
-        option_group = order.option_group
-        gdo = models.GroupDeliveryOption.objects.get(option_group=option_group,
-                                                     delivery_option=del_opt)
-        selected_delivery_option.group_delivery_option = gdo
-        selected_delivery_option.customizable_item = order
-        selected_delivery_option.save()
-
-    def _add_online_data_delivery_data(self, order, order_specification):
-        '''
-        '''
-
-        raise NotImplementedError
-
-    def _add_media_delivery_data(self, order, order_specification):
-        '''
-        '''
-
-        raise NotImplementedError
-
+        return sdo
 
     def _validate_online_data_access_protocol(self, protocol, order_type):
         available_protocols = []
