@@ -15,8 +15,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
+# OSEOSERVER OPTIONS
+OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in the settings_local.py module
+
 # GIOSYSTEM SPECIFIC
-GIOSYSTEM_SETTINGS_URL = ''
+GIOSYSTEM_SETTINGS_URL = '' # redefined in the settings_local.py module
 
 # CELERY OPTIONS
 CELERY_ACCEPT_CONTENT = ['json']

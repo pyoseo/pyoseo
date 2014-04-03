@@ -16,7 +16,7 @@
 Custom exception classes for oseoserver
 '''
 
-class InvalidUserError(Exception):
+class NonSoapRequestError(Exception):
     pass
 
 class InvalidOrderDeliveryMethodError(Exception):
@@ -39,3 +39,10 @@ class SubmitSubscriptionError(Exception):
 
 class SubmitMassiveOrderError(Exception):
     pass
+
+class OseoError(Exception):
+
+    def __init__(self, code, text, locator=None):
+        self.code = code
+        self.text = text
+        self.locator = locator

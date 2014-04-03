@@ -42,10 +42,12 @@ Creating the ParameterData element:
 import logging
 import re
 import datetime as dt
+import importlib
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.db import transaction
+from django.conf import settings as django_settings
 from lxml import etree
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
@@ -63,9 +65,12 @@ class OseoServer(object):
     _namespaces = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
         'soap1.1': 'http://schemas.xmlsoap.org/soap/envelope/',
+        'wsse': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-' \
+                'wssecurity-secext-1.0.xsd',
         'ows': 'http://www.opengis.net/ows/2.0',
     }
     _exception_codes = {
+            'AuthorizationFailed': 'client',
             'InvalidOrderIdentifier': 'client',
             'UnsupportedCollection': 'client',
     }
@@ -94,17 +99,6 @@ class OseoServer(object):
         response_headers = dict()
         soap_version = self._is_soap(element)
         if soap_version is not None:
-            #soap_headers = self.parse_soap_headers(element, soap_version)
-            # now validate the headers, including:
-            # * the VITO token
-            # * user name and credentials
-            # valid_request = self.validate_request_user()
-            #if valid_request:
-            #    user = soap_headers['user_name']
-            #    # all the remaining code
-            #else:
-            #    raise errors.InvalidUserError('Unauthorized request')
-            #    status_code = 400
             data = self._get_soap_data(element, soap_version)
             if soap_version == '1.2':
                 logger.debug('SOAP 1.2 request')
@@ -116,71 +110,85 @@ class OseoServer(object):
             logger.debug('Non SOAP request')
             data = element
             response_headers['Content-Type'] = 'application/xml'
-        schema_instance = self._parse_xml(data)
-        op_map = {
-            'GetStatusRequestType': self.get_status,
-            'SubmitOrderRequestType': self.submit,
-            'OrderOptionsRequestType': self.get_options,
-            'DescribeResultAccessRequestType': self.describe_result_access,
-        }
-        operation = op_map[schema_instance.__class__.__name__]
-        result, status_code = operation(schema_instance, soap_version)
+
+        try:
+            user_name = self.authenticate_request(element, soap_version)
+            schema_instance = self._parse_xml(data)
+            op_map = {
+                'GetStatusRequestType': self.get_status,
+                'SubmitOrderRequestType': self.submit,
+                'OrderOptionsRequestType': self.get_options,
+                'DescribeResultAccessRequestType': self.describe_result_access,
+            }
+            operation = op_map[schema_instance.__class__.__name__]
+            response, status_code = operation(schema_instance, user_name)
+            if soap_version is not None:
+                result = self._wrap_soap(response, soap_version)
+            else:
+                result = response.toxml(encoding=self._encoding)
+        except errors.OseoError as err:
+            if err.code == 'AuthorizationFailed':
+                status_code = 401
+                # we should probably also adjust the response's headers to 
+                # include a WWW-authenticate HTTP header as well
+            else:
+                status_code = 400
+            result = self.create_exception_report(err.code, err.text,
+                                                  soap_version,
+                                                  locator=err.locator)
+        except errors.NonSoapRequestError as err:
+            status_code = 400
+            result = err
         return result, status_code, response_headers
 
-    def describe_result_access(self, request, soap_version):
+    def describe_result_access(self, request, user_name):
         '''
         Implements the OSEO DescribeResultAccess operation.
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
-        :arg soap_version: Version of the SOAP protocol in use
-        :type soap_version: str or None
+        :arg user_name: User making the request
+        :type user_name: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         '''
 
         status_code = 200
-        result = None
         try:
             order = models.Order.get(id=request.orderId)
         except ObjectDoesNotExist:
-            status_code = 400
-            result = self._create_exception_report(
-                'InvalidOrderIdentifier',
-                'Invalid value for order',
-                soap_version,
-                locator=request.orderId
-            )
-        if result is None:
-            completed_items = self._get_completed_items(order,
-                                                        request.subFunction)
-            logger.info('completed_items: %s' % completed_items)
-            order.last_describe_result_access_request = dt.datetime.utcnow()
-            order.save()
-            response = oseo.DescribeResultAccessResponse(status='success')
-            for i in completed_items:
+            raise errors.OseoError('InvalidOrderIdentifier',
+                                   'Invalid value for order',
+                                   locator=request.orderId)
+        completed_items = self._get_completed_items(order,
+                                                    request.subFunction)
+        logger.info('completed_items: %s' % completed_items)
+        order.last_describe_result_access_request = dt.datetime.utcnow()
+        order.save()
+        response = oseo.DescribeResultAccessResponse(status='success')
+        for i in completed_items:
+            try:
+                gdo = i.selected_delivery_option.group_delivery_option
+            except ObjectDoesNotExist:
                 try:
-                    gdo = i.selected_delivery_option.group_delivery_option
-                except ObjectDoesNotExist:
-                    try:
-                        gdo = order.selected_delivery_option.group_delivery_option
-                    except ObjectDoesNotExist:
-                        pass
-                try:
-                    protocol = gdo.delivery_option.onlinedataaccess.protocol
-                    iut = oseo.ItemURLType()
-                    iut.itemId = i.item_id
-                    iut.productId = oseo.ProductIdType(
-                        identifier=i.identifier,
-                        collectionId=self._n(i.collection_id)
-                    )
-                    iut.itemAddress = oseo.OnLineAccessAddressType()
-                    iut.itemAddress.ResourceAddress = pyxb.BIND()
-                    iut.itemAddress.ResourceAddress.URL = ''
-                    response.URLs.append(iut)
+                    gdo = order.selected_delivery_option.group_delivery_option
                 except ObjectDoesNotExist:
                     pass
-        return result, status_code
+            try:
+                protocol = gdo.delivery_option.onlinedataaccess.protocol
+                iut = oseo.ItemURLType()
+                iut.itemId = i.item_id
+                iut.productId = oseo.ProductIdType(
+                    identifier=i.identifier,
+                    collectionId=self._n(i.collection_id)
+                )
+                iut.itemAddress = oseo.OnLineAccessAddressType()
+                iut.itemAddress.ResourceAddress = pyxb.BIND()
+                iut.itemAddress.ResourceAddress.URL = ''
+                response.URLs.append(iut)
+            except ObjectDoesNotExist:
+                pass
+        return '', status_code
 
     def _get_completed_items(self, order, behaviour):
         '''
@@ -204,15 +212,15 @@ class OseoServer(object):
                         completed_items.append(order_item)
         return completed_items
 
-    def get_options(self, request, soap_version):
+    def get_options(self, request, user_name):
         '''
         Implements the OSEO GetOptions operation.
 
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
-        :arg soap_version: Version of the SOAP protocol in use
-        :type soap_version: str or None
+        :arg user_name: User making the request
+        :type user_name: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
 
@@ -239,10 +247,8 @@ class OseoServer(object):
         '''
 
         status_code = 200
-        result = None
         if any(request.identifier): # product identifier query
-            for id in request.identifier:
-                raise NotImplementedError
+            raise NotImplementedError
         elif request.collectionId is not None: # product or collection query
             try:
                 p = models.Product.objects.get(
@@ -270,21 +276,12 @@ class OseoServer(object):
                         )
                         response.orderOptions.append(order_opts)
             except ObjectDoesNotExist:
-                result = self._create_exception_report(
-                    'UnsupportedCollection',
-                    'Subscription not supported',
-                    soap_version,
-                    locator=request.collectionId
-                )
-                status_code = 400
+                raise errors.OseoError('UnsupportedCollection',
+                                       'Subscription not supported',
+                                       locator=request.collectionId)
         elif request.taskingRequestId is not None:
             raise NotImplementedError
-        if result is None:
-            if soap_version is not None:
-                result = self._wrap_soap(response, soap_version)
-            else:
-                result = response.toxml(encoding=self._encoding)
-        return result, status_code
+        return response, status_code
 
     def _get_order_options(self, option_group, options, delivery_options,
                            order_type, order_item=None):
@@ -363,7 +360,7 @@ class OseoServer(object):
         return c
 
     @transaction.atomic
-    def submit(self, request, soap_version):
+    def submit(self, request, user_name):
         '''
         Implements the OSEO Submit operation.
 
@@ -374,8 +371,8 @@ class OseoServer(object):
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
-        :arg soap_version: Version of the SOAP protocol in use
-        :type soap_version: str or None
+        :arg user_name: User making the request
+        :type user_name: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         '''
@@ -443,11 +440,7 @@ class OseoServer(object):
                                                   'not implemented.')
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
-        if soap_version is not None:
-            result = self._wrap_soap(response, soap_version)
-        else:
-            result = response.toxml(encoding=self._encoding)
-        return result, status_code
+        return response, status_code
 
     def create_normal_order_batch(self, order_specification, order):
         '''
@@ -496,7 +489,7 @@ class OseoServer(object):
         raise errors.SubmitMassiveOrderError('Submission of massive orders is '
                                              'not implemented')
 
-    def get_status(self, request, soap_version):
+    def get_status(self, request, user_name):
         '''
         Implements the OSEO Getstatus operation.
 
@@ -505,27 +498,22 @@ class OseoServer(object):
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
-        :arg soap_version: Version of the SOAP protocol in use
-        :type soap_version: str or None
+        :arg user_name: User making the request
+        :type user_name: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         '''
 
         status_code = 200
         records = []
-        result = None
         if request.orderId is not None: # 'order retrieve' type of request
             try:
                 records.append(models.Order.objects.get(id=int(
                                request.orderId)))
             except ObjectDoesNotExist:
-                result = self._create_exception_report(
-                    'InvalidOrderIdentifier',
-                    'Invalid value for order',
-                    soap_version,
-                    locator=request.orderId
-                )
-                status_code = 400
+                raise errors.OseoError('InvalidOrderIdentifier',
+                                       'Invalid value for order',
+                                       locator=request.orderId)
         else: # 'order search' type of request
             records = models.Order.objects
 
@@ -548,14 +536,9 @@ class OseoServer(object):
             statuses = [s for s in request.filteringCriteria.orderStatus]
             if any(statuses):
                 records = records.filter(status__in=statuses)
-        if result is None:
-            response = self._generate_get_status_response(records,
-                                                          request.presentation)
-            if soap_version is not None:
-                result = self._wrap_soap(response, soap_version)
-            else:
-                result = response.toxml(encoding=self._encoding)
-        return result, status_code
+        response = self._generate_get_status_response(records,
+                                                      request.presentation)
+        return response, status_code
 
     def _generate_get_status_response(self, records, presentation):
         '''
@@ -697,24 +680,30 @@ class OseoServer(object):
             response.orderMonitorSpecification.append(om)
         return response
 
-    def parse_soap_headers(self, request_element, soap_version):
+    def authenticate_request(self, request_element, soap_version):
         '''
-        Extract the relevant SOAP headers from the incoming request
-
-        :arg request_element:
-        :type request_element:
-        :arg soap_version:
-        :type soap_version:
-        '''
-
-        raise NotImplementedError
-
-    def validate_request_user(self):
-        '''
-        Validate the user that made the OSEO request.
+        :arg request_element: The full request object
+        :type request_element: lxml.etree.Element
+        :arg soap_version: The SOAP version in use
+        :type soap_version: str or None
+        :return: The username of the end user that is responsible for this 
+                 request
+        :rtype: str
         '''
 
-        raise NotImplementedError
+        auth_class = getattr(
+            django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
+        if auth_class is not None:
+            module_path, sep, class_name = auth_class.rpartition('.')
+            the_module = importlib.import_module(module_path)
+            the_class = getattr(the_module, class_name)
+            instance = the_class()
+            user_name = instance.authenticate_request(request_element,
+                                                      soap_version)
+        else:
+            user_name = 'oseoserver_user'
+            logger.warning('No authentication in use')
+        return user_name
 
     def _set_delivery_options(self, options, order_type):
         '''
@@ -1118,7 +1107,7 @@ class OseoServer(object):
         oseo_request = oseo.CreateFromDocument(document)
         return oseo_request
 
-    def _create_exception_report(self, code, text, soap_version, locator=None):
+    def create_exception_report(self, code, text, soap_version, locator=None):
         '''
         :arg code: OSEO exception code. Can be any of the defined
         exceptionCode values in the OSEO and OWS Common specifications.
@@ -1204,7 +1193,7 @@ class OseoServer(object):
         '''
 
         code_msg = 'soap:%s' % soap_code.capitalize()
-        reason_msg = '%s exception was encoutered' % soap_code.capitalize()
+        reason_msg = '%s exception was encountered' % soap_code.capitalize()
         exception_string = exception_report.toxml(encoding=self._encoding)
         exception_string = exception_string.encode(self._encoding)
         exception_element = etree.fromstring(exception_string)
