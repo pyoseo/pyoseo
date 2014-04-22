@@ -46,3 +46,9 @@ class OseoError(Exception):
         self.code = code
         self.text = text
         self.locator = locator
+
+class InvalidSettingsError(Exception):
+    pass
+
+class AuthenticationError(Exception):
+    pass

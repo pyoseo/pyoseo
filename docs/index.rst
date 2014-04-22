@@ -6,6 +6,13 @@
 Welcome to pyoseo's documentation!
 ==================================
 
+pyoseo is an ordering server that implements the Open Geospatial Consortium's
+OSEO specification.
+
+pyoseo can be used to handle the dissemination of geospatial data.
+
+It is implemented as a django application.
+
 Contents:
 
 .. toctree::

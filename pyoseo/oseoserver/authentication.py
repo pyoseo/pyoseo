@@ -16,7 +16,7 @@
 Authentication and authorization classes for pyoseo.
 
 This functionality is implemented as a separate module in order to allow
-different authentication methods to be uses by the oseoserver.server.OseoServer
+different authentication methods to be used by the oseoserver.server.OseoServer
 class.
 
 The only requirement is that the authentication class have an 
@@ -46,9 +46,9 @@ class VitoAuthentication(object):
                            the WSDL distributed with the specification uses
                            SOAP 1.1. This method supports both versions.
         :type soap_version: str
-        :return: The username of the end user that is responsible for this 
-                 request
-        :rtype: str
+        :return: A two-value tuple indicating if the authentication has been
+                 successfull and the username of the authenticated end user.
+        :rtype: (bool, str)
         '''
 
         if soap_version is None:
@@ -63,14 +63,15 @@ class VitoAuthentication(object):
         auth_data = self._get_auth_data(request_element, soap_ns_key)
         print('auth_data[vito_token]: %s' % auth_data['vito_token'])
         if auth_data['vito_token'] == self._VITO_TOKEN:
-            result = auth_data['user_name']
+            result = (True, auth_data['user_name'])
         else:
-            operation = self._get_oseo_operation(request_element, soap_ns_key)
-            raise oseoserver.errors.OseoError(
-                'AuthorizationFailed',
-                'The client is not authorized to call the operation',
-                locator=operation
-            )
+            result = (False, 'Unauthorized user')
+            #operation = self._get_oseo_operation(request_element, soap_ns_key)
+            #raise oseoserver.errors.OseoError(
+            #    'AuthorizationFailed',
+            #    'The client is not authorized to call the operation',
+            #    locator=operation
+            #)
         return result
 
     def _get_auth_data(self, request_element, soap_namespace_key):
