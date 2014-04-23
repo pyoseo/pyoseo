@@ -29,9 +29,6 @@ class OseoOperation(object):
 
     NAME = None # to be reimplemented in child classes
 
-    def __init__(self, server):
-        self.server = server
-
     def _get_delivery_options(self, db_item):
         '''
         Return the delivery options for an input database item.

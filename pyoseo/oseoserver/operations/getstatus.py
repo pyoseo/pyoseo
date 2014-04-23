@@ -24,7 +24,7 @@ import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
 from oseoserver import errors
-from oseoserver.oseooperations.base import OseoOperation
+from oseoserver.operations.base import OseoOperation
 
 class GetStatus(OseoOperation):
     NAME = 'GetStatus'

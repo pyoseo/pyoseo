@@ -17,6 +17,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # OSEOSERVER OPTIONS
 OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in the settings_local.py module
+OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
 
 # GIOSYSTEM SPECIFIC
 GIOSYSTEM_SETTINGS_URL = '' # redefined in the settings_local.py module

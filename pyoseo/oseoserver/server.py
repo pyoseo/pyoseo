@@ -70,13 +70,13 @@ class OseoServer(object):
     MASSIVE_ORDER_REFERENCE = 'Massive order'
 
     _operation_classes = {
-        'GetStatusRequestType': 'oseoserver.oseooperations.getstatus.' \
+        'GetStatusRequestType': 'oseoserver.operations.getstatus.' \
                                 'GetStatus',
-        'SubmitOrderRequestType': 'oseoserver.oseooperations.submit.Submit',
-        'DescribeResultAccessRequestType': 'oseoserver.oseooperations.' \
+        'SubmitOrderRequestType': 'oseoserver.operations.submit.Submit',
+        'DescribeResultAccessRequestType': 'oseoserver.operations.' \
                                            'describeresultaccess.' \
                                            'DescribeResultAccess',
-        'OrderOptionsRequestType': 'oseoserver.oseooperations.getoptions.' \
+        'OrderOptionsRequestType': 'oseoserver.operations.getoptions.' \
                                    'GetOptions',
     }
 
@@ -204,7 +204,7 @@ class OseoServer(object):
             response_headers['Content-Type'] = 'application/xml'
         try:
             schema_instance = self._parse_xml(data)
-            operation = self._get_operation(schema_instance)
+            operation = self._get_operation(schema_instance.__class__.__name__)
             user_name = self.authenticate_request(element, soap_version,
                                                   operation.NAME)
             response, status_code = operation(schema_instance, user_name)
@@ -260,12 +260,12 @@ class OseoServer(object):
         oseo_request = oseo.CreateFromDocument(document)
         return oseo_request
 
-    def _get_operation(self, schema_instance):
-        op = self._operation_classes[schema_instance.__class__.__name__]
+    def _get_operation(self, class_name):
+        op = self._operation_classes[class_name]
         module_path, sep, class_name = op.rpartition('.')
         the_module = importlib.import_module(module_path)
         operation_class = getattr(the_module, class_name)
-        operation = operation_class(self)
+        operation = operation_class()
         return operation
 
     def _get_soap_data(self, element, soap_version):

@@ -6,14 +6,12 @@ from django.conf import settings as django_settings
 import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
-from oseoserver import server
-from oseoserver.oseooperations import getstatus
+from oseoserver.operations import getstatus
 
 class GetStatusTestCase(TestCase):
 
     def setUp(self):
-        server = server.OseoServer()
-        self.operation = getstatus.GetStatus(server)
+        self.operation = getstatus.GetStatus()
         self.user = 'oseoserver'
         root_dir = os.path.dirname(django_settings.BASE_DIR)
         self.sample_directory = os.path.join(root_dir, 'samples')

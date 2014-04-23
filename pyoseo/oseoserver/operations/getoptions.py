@@ -24,7 +24,7 @@ import pyxb.bundles.opengis.swe_2_0 as swe
 
 from oseoserver import models
 from oseoserver import errors
-from oseoserver.oseooperations.base import OseoOperation
+from oseoserver.operations.base import OseoOperation
 
 class GetOptions(OseoOperation):
     NAME = 'GetOptions'

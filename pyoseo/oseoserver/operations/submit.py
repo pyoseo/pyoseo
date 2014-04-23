@@ -20,11 +20,12 @@ import datetime as dt
 import logging
 
 from django.db import transaction
+from django.core import settings as django_settings
 import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
 from oseoserver import tasks
-from oseoserver.oseooperations.base import OseoOperation
+from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -64,7 +65,13 @@ class Submit(OseoOperation):
             )
             if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
                 ref = self._c(ord_spec.orderReference)
-                if ref == self.server.MASSIVE_ORDER_REFERENCE:
+                massive_order_reference = getattr(
+                    django_settings.OSEOSERVER_MASSIVE_ORDER_REFERENCE,
+                    None
+                )
+
+                if massive_order_reference is not None and \
+                        ref == massive_order_reference:
                     order.order_type = models.OrderType.objects.get(
                             name=models.OrderType.MASSIVE_ORDER)
                     order.status = models.CustomizableItem.SUBMITTED

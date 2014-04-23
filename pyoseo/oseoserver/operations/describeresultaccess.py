@@ -25,6 +25,7 @@ import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
 from oseoserver import errors
+from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -38,6 +39,9 @@ class DescribeResultAccess(OseoOperation):
     def __call__(self, request, user_name):
         '''
         Implements the OSEO DescribeResultAccess operation.
+
+        This operation returns the location of the order items that are 
+        ready to be downloaded by the user...
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
