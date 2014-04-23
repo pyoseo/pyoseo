@@ -23,15 +23,12 @@ The celery worker can be started with the command:
 '''
 
 # TODO
-# * Refine the task that processes orders
-# * Break it down into smaller tasks
 # * Instead of calling oseoserver.models directly, develop a RESTful API
 #   and communicate with the database over HTTP. This allows the task to
 #   run somewhere else, instead of having it in the same machine
 
 import os
 import datetime as dt
-import time # DELETE THIS IMPORT AFTER TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
@@ -43,10 +40,10 @@ import giosystemcore.settings
 import giosystemcore.files
 import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
+
 from oseoserver import models
 
 logger = get_task_logger(__name__)
-
 
 @shared_task(bind=True)
 def process_normal_order(self, order_id):
@@ -89,8 +86,8 @@ def process_batch(self, batch_id):
                      % batch_id)
         raise
     g = []
-    for item in [item.identifier for item in batch.order_items.all()]:
-        g.append(process_order_item.s(item))
+    for item in batch.order_items.all():
+        g.append(process_order_item.s(item.id))
     job = group(g)
     job.apply_async()
 
@@ -99,20 +96,20 @@ def process_order_item(self, order_item_id):
     '''
     Process an order item.
 
-    :arg order_item_id: Catalogue identifier of the ordered item
-    :type order_item_id: str
+    :arg order_item_id: Database identifier of the ordered item
+    :type order_item_id: int
     '''
 
     giosystemcore.settings.get_settings(django_settings.GIOSYSTEM_SETTINGS_URL,
                                         initialize_logging=False)
     csw_interface = giosystemcore.catalogue.cswinterface.CswInterface()
+    order_item = models.OrderItem.objects.get(pk=order_item_id)
     try:
-        id, title = csw_interface.get_records([order_item_id])[0]
+        id, title = csw_interface.get_records([order_item.identifier])[0]
     except IndexError:
         logger.error('could not find order item %s in the catalogue' % \
                      order_item_id)
         raise 
-    order_item = models.OrderItem.objects.get(identifier=order_item_id)
     user_name = order_item.batch.order.user.username
     preparator = op.OrderPreparator(user_name)
     order_item.status = models.CustomizableItem.IN_PRODUCTION
@@ -127,8 +124,26 @@ def process_order_item(self, order_item_id):
         order_item.completed_on = dt.datetime.utcnow()
         order_item.status = models.CustomizableItem.COMPLETED
         order_item.save()
+        _update_order_status(order_item.batch.order)
     else:
         pass
-    sleep_time = 30
-    logger.info('-------- sleeping for %i seconds -------- ' % sleep_time)
-    time.sleep(sleep_time)
+
+def _update_order_status(order):
+    '''
+    Update the status of a normal order whenever the status of its batch
+    changes
+
+    :arg order:
+    :type order: oseoserver.models.Order
+    '''
+
+    if order.order_type.name == models.OrderType.PRODUCT_ORDER:
+        batch_statuses = set([b.status() for b in order.batches.all()])
+        old_order_status = order.status
+        if len(batch_statuses) == 1:
+            new_order_status = batch_statuses.pop()
+            if old_order_status != new_order_status:
+                order.status = new_order_status
+                if new_order_status == models.CustomizableItem.COMPLETED:
+                    order.completed_on = dt.datetime.utcnow()
+                order.save()

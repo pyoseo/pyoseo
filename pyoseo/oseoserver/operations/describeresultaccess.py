@@ -41,7 +41,10 @@ class DescribeResultAccess(OseoOperation):
         Implements the OSEO DescribeResultAccess operation.
 
         This operation returns the location of the order items that are 
-        ready to be downloaded by the user...
+        ready to be downloaded by the user.
+
+        The DescribeResultAccess operation only reports on the availability
+        of order items that specify onlineDataAccess as their delivery option.
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
@@ -71,7 +74,7 @@ class DescribeResultAccess(OseoOperation):
                 try:
                     gdo = order.selected_delivery_option.group_delivery_option
                 except ObjectDoesNotExist:
-                    pass
+                    pass # this object does not specify onlineDataAccess
             try:
                 protocol = gdo.delivery_option.onlinedataaccess.protocol
                 iut = oseo.ItemURLType()
@@ -92,7 +95,8 @@ class DescribeResultAccess(OseoOperation):
         '''
         :arg order:
         :type order: oseoserver.models.Order
-        :arg behaviour:
+        :arg behaviour: Either 'allReady' or 'nextReady', as defined in the 
+                        OSEO specification
         :type behaviour: str
         :return: a list with the completed order items for this order
         '''
@@ -109,4 +113,3 @@ class DescribeResultAccess(OseoOperation):
                             order_item.completed_on >= last_time:
                         completed_items.append(order_item)
         return completed_items
-

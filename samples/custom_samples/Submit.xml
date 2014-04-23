@@ -1,0 +1,19 @@
+<Submit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/oseo/1.0" xmlns:sps="http://www.opengis.net/sps/2.0" xmlns:swe="http://www.opengis.net/swe/2.0" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/oseo/1.0 http://schemas.opengis.net/oseo/1.0/oseo.xsd" service="OS" version="1.0.0">
+    <orderSpecification>
+        <orderReference>Test reference</orderReference>
+        <orderRemark>A remark</orderRemark>
+        <deliveryOptions>
+            <onlineDataAccess>
+                <protocol>http</protocol>
+            </onlineDataAccess>
+        </deliveryOptions>
+        <orderType>PRODUCT_ORDER</orderType>
+        <orderItem>
+            <itemId>item_01</itemId>
+            <productId>
+                <identifier>01729024-8dba-11e3-b102-0019995d2a58</identifier>
+            </productId>
+        </orderItem>
+    </orderSpecification>
+    <statusNotification>None</statusNotification>
+</Submit>

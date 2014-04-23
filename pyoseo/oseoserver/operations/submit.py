@@ -20,7 +20,7 @@ import datetime as dt
 import logging
 
 from django.db import transaction
-from django.core import settings as django_settings
+from django.conf import settings as django_settings
 import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
@@ -66,7 +66,8 @@ class Submit(OseoOperation):
             if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
                 ref = self._c(ord_spec.orderReference)
                 massive_order_reference = getattr(
-                    django_settings.OSEOSERVER_MASSIVE_ORDER_REFERENCE,
+                    django_settings,
+                    'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
                     None
                 )
 
@@ -180,7 +181,7 @@ class Submit(OseoOperation):
           for the user to download. We can use one of several protocols (HTTP,
           FTP, ...) as implementations become available.
 
-          The available implementations are sored as records of the
+          The available implementations are stored as records of the
           oseoserver.models.OnlineDataAccess model, but they can be restricted
           to certain OptionGroups and further restricted to certain Order
           types. This means that altough the server may support online data 
@@ -220,10 +221,16 @@ class Submit(OseoOperation):
             else:
                 requested_type = models.MediaDelivery
         else: # we can have either online delivery or mail delivery
-            if any(list(order_specification.onlineAddress)):
-                requested_type = models.OnlineDataDelivery
-            elif order_specification.mailAddress is not None:
-                requested_type = models.MediaDelivery
+            delivery_information = order_specification.deliveryInformation
+            if delivery_information is not None:
+                if any(list(delivery_information.onlineAddress)):
+                    requested_type = models.OnlineDataDelivery
+                elif order_specification.mailAddress is not None:
+                    requested_type = models.MediaDelivery
+                else:
+                    raise errors.InvalidOrderDeliveryMethodError(
+                        'No valid delivery method found'
+                    )
             else:
                 raise errors.InvalidOrderDeliveryMethodError(
                     'No valid delivery method found'
@@ -263,6 +270,7 @@ class Submit(OseoOperation):
         req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
         if req_protocol in protocols:
             sdo = self._create_selected_delivery_option(delivery_options)
+            logger.debug('sdo: %s' % sdo)
             del_opt = models.OnlineDataAccess.objects.get(
                                                 protocol=req_protocol)
             option_group = order.option_group
@@ -276,6 +284,7 @@ class Submit(OseoOperation):
             )
             sdo.group_delivery_option = gdo
             order.selected_delivery_option = sdo
+            sdo.save()
             order.save()
         else:
             # the requested protocol is not allowed
