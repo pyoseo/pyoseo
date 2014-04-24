@@ -18,6 +18,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # OSEOSERVER OPTIONS
 OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in the settings_local.py module
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
+OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/var/www'
+OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/var/www'
 
 # GIOSYSTEM SPECIFIC
 GIOSYSTEM_SETTINGS_URL = '' # redefined in the settings_local.py module

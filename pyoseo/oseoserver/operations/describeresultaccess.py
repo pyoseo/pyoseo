@@ -81,8 +81,9 @@ class DescribeResultAccess(OseoOperation):
                 iut.itemId = i.item_id
                 iut.productId = oseo.ProductIdType(
                     identifier=i.identifier,
-                    collectionId=self._n(i.collection_id)
                 )
+                if i.collection_id is not None:
+                    iut.productId.collectionId = self._n(i.collection_id)
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
                 iut.itemAddress.ResourceAddress.URL = ''

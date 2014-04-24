@@ -82,22 +82,34 @@ def process_batch(self, batch_id):
     try:
         batch = models.Batch.objects.get(pk=batch_id)
     except ObjectDoesNotExist:
-        logger.error('could not find batch %s in the order server database'
+        logger.error('Could not find batch %s in the order server database'
                      % batch_id)
         raise
     g = []
     for item in batch.order_items.all():
-        g.append(process_order_item.s(item.id))
+        try:
+            selected = item.selected_delivery_option
+        except ObjectDoesNotExist:
+            selected = item.batch.order.selected_delivery_option
+        delivery_option = selected.group_delivery_option.delivery_option
+        if hasattr(delivery_option, 'onlinedataaccess'):
+            g.append(process_online_data_access_item(order_item.id,
+                     delivery_option.id))
+        elif hasattr(delivery_option, 'onlinedatadelivery'):
+            g.append(process_online_data_delivery_item(order_item.id,
+                     delivery_option.id))
+        elif hasattr(delivery_option, 'mediadelivery'):
+            g.append(process_media_delivery_item(order_item.id,
+                     delivery_option.id))
+        else:
+            raise
     job = group(g)
     job.apply_async()
 
 @shared_task(bind=True)
-def process_order_item(self, order_item_id):
+def process_online_data_access_item(self, order_item_id, delivery_option_id):
     '''
-    Process an order item.
-
-    :arg order_item_id: Database identifier of the ordered item
-    :type order_item_id: int
+    Process an order item that specifies online data access as delivery
     '''
 
     giosystemcore.settings.get_settings(django_settings.GIOSYSTEM_SETTINGS_URL,
@@ -111,7 +123,29 @@ def process_order_item(self, order_item_id):
                      order_item_id)
         raise 
     user_name = order_item.batch.order.user.username
-    preparator = op.OrderPreparator(user_name)
+    delivery_option = models.DeliveryOption.objects.get(pk=delivery_option_id)
+    chosen_protocol = delivery_option.onlinedataaccess.protocol
+    protocol_path_map = {
+        models.OnlineDataAccess.HTTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
+                                      'HTTP_PROTOCOL_ROOT_DIR',
+        models.OnlineDataAccess.FTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
+                                     'FTP_PROTOCOL_ROOT_DIR',
+    }
+    try:
+        output_root = getattr(
+            django_settings,
+            protocol_path_map.get(chosen_protocol, ''),
+            None
+        )
+    except AttributeError:
+        raise errors.InvalidSettingsError('Protocol %s is not available' %
+                                          chosen_protocol)
+    if output_root is not None:
+        output_directory = os.path.join(output_root, user_name, 'data',
+                                        str(order_item.batch.order.id))
+    else:
+        raise
+    preparator = op.OrderPreparator(output_directory)
     order_item.status = models.CustomizableItem.IN_PRODUCTION
     order_item.save()
     gio_file = giosystemcore.files.GioFile.from_file_name(title)
@@ -127,6 +161,22 @@ def process_order_item(self, order_item_id):
         _update_order_status(order_item.batch.order)
     else:
         pass
+
+@shared_task(bind=True)
+def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
+    '''
+    Process an order item that specifies online data delivery
+    '''
+
+    raise NotImplementedError
+
+@shared_task(bind=True)
+def process_media_delivery_item(self, order_item_id, delivery_option_id):
+    '''
+    Process an order item that specifies media delivery
+    '''
+
+    raise NotImplementedError
 
 def _update_order_status(order):
     '''

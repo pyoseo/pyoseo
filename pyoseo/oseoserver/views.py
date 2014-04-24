@@ -1,5 +1,6 @@
 import os
 
+from django.conf import settings as django_settings
 from django.shortcuts import render
 from django.http import HttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
@@ -21,7 +22,7 @@ def oseo_endpoint(request):
         raise Http404
     return response
 
-def show_item(request, username, order_id, item_file_name):
+def show_item(request, user_name, order_id, item_file_name):
     '''
     Return the already available order item
 
@@ -30,12 +31,19 @@ def show_item(request, username, order_id, item_file_name):
     '''
 
     try:
-        order_item = models.OrderItem.get(file_name=item_file_name)
+        order_item = models.OrderItem.objects.get(file_name=item_file_name)
     except ObjectDoesNotExist:
         raise Http404
-    orders_root_dir = '/var/www' # find a nice way to set this value
-    item_path = os.path.join(orders_root_dir, username, order_id,
+    orders_root_dir = getattr(
+        django_settings,
+        'OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR',
+        None
+    )
+    if orders_root_dir is None:
+        raise
+    item_path = os.path.join(orders_root_dir, user_name, 'data', order_id,
                              item_file_name)
+    print('item_path: %s' % item_path)
     if os.path.isfile(item_path):
         if item_file_name.endswith('tar.bz2'):
             ct = 'application/x-tar'
