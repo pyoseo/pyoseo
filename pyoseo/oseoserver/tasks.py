@@ -66,7 +66,8 @@ def process_normal_order(self, order_id):
         raise
     g = []
     for batch in order.batches.all():
-        g.append(process_batch.s(batch.id))
+        sig = process_batch.subtask((batch.id,))
+        g.append(sig)
     job = group(g)
     job.apply_async()
 
@@ -86,23 +87,28 @@ def process_batch(self, batch_id):
                      % batch_id)
         raise
     g = []
-    for item in batch.order_items.all():
+    for order_item in batch.order_items.all():
         try:
-            selected = item.selected_delivery_option
+            selected = order_item.selected_delivery_option
         except ObjectDoesNotExist:
-            selected = item.batch.order.selected_delivery_option
+            selected = order_item.batch.order.selected_delivery_option
         delivery_option = selected.group_delivery_option.delivery_option
         if hasattr(delivery_option, 'onlinedataaccess'):
-            g.append(process_online_data_access_item(order_item.id,
-                     delivery_option.id))
+            sig = process_online_data_access_item.subtask(
+                (order_item.id, delivery_option.id)
+            )
+            g.append(sig)
         elif hasattr(delivery_option, 'onlinedatadelivery'):
-            g.append(process_online_data_delivery_item(order_item.id,
-                     delivery_option.id))
+            sig = process_online_data_delivery_item.subtask(
+                (order_item.id, delivery_option.id)
+            )
         elif hasattr(delivery_option, 'mediadelivery'):
-            g.append(process_media_delivery_item(order_item.id,
-                     delivery_option.id))
+            sig = process_media_delivery_item.subtask(
+                (order_item.id, delivery_option.id)
+            )
         else:
             raise
+        g.append(sig)
     job = group(g)
     job.apply_async()
 
@@ -158,7 +164,7 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         order_item.completed_on = dt.datetime.utcnow()
         order_item.status = models.CustomizableItem.COMPLETED
         order_item.save()
-        _update_order_status(order_item.batch.order)
+        #update_order_status(order_item.batch.order)
     else:
         pass
 
@@ -178,7 +184,7 @@ def process_media_delivery_item(self, order_item_id, delivery_option_id):
 
     raise NotImplementedError
 
-def _update_order_status(order):
+def update_order_status(order_id):
     '''
     Update the status of a normal order whenever the status of its batch
     changes
@@ -187,13 +193,19 @@ def _update_order_status(order):
     :type order: oseoserver.models.Order
     '''
 
+    print('update_order_status method called')
+    order = models.Order.objects.get(pk=order_id)
     if order.order_type.name == models.OrderType.PRODUCT_ORDER:
+        print('order: {}'.format(order))
         batch_statuses = set([b.status() for b in order.batches.all()])
         old_order_status = order.status
+        print('old_order_status: {}'.format(old_order_status))
         if len(batch_statuses) == 1:
             new_order_status = batch_statuses.pop()
+            print('new_order_status: {}'.format(new_order_status))
             if old_order_status != new_order_status:
                 order.status = new_order_status
+                print('updated_order_status: {}'.format(order.status))
                 if new_order_status == models.CustomizableItem.COMPLETED:
                     order.completed_on = dt.datetime.utcnow()
                 order.save()

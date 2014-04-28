@@ -18,13 +18,16 @@ Implements the OSEO DescribeResultAccess operation
 
 import logging
 import datetime as dt
+import socket
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.urlresolvers import reverse
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 
 from oseoserver import models
 from oseoserver import errors
+from oseoserver import views
 from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -50,16 +53,22 @@ class DescribeResultAccess(OseoOperation):
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
         :arg user_name: User making the request
         :type user_name: str
-        :return: The XML response object and the HTTP status code
-        :rtype: tuple(str, int)
+        :return: The DescribeResultAccess response object and the HTTP status
+                 code
+        :rtype: tuple(pyxb.bundles.opengis.oseo.DescribeResultAccessResponse,
+                int)
         '''
 
         status_code = 200
         try:
-            order = models.Order.get(id=request.orderId)
+            order = models.Order.objects.get(id=request.orderId)
         except ObjectDoesNotExist:
             raise errors.OseoError('InvalidOrderIdentifier',
                                    'Invalid value for order',
+                                   locator=request.orderId)
+        if order.user.username != user_name:
+            raise errors.OseoError('AuthorizationFailed', 'The client is not '
+                                   'authorized to call the operation',
                                    locator=request.orderId)
         completed_items = self._get_completed_items(order,
                                                     request.subFunction)
@@ -86,11 +95,13 @@ class DescribeResultAccess(OseoOperation):
                     iut.productId.collectionId = self._n(i.collection_id)
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
-                iut.itemAddress.ResourceAddress.URL = ''
+                iut.itemAddress.ResourceAddress.URL = self.get_url(protocol,
+                                                                   i,
+                                                                   user_name)
                 response.URLs.append(iut)
             except ObjectDoesNotExist:
                 pass
-        return '', status_code
+        return response, status_code
 
     def _get_completed_items(self, order, behaviour):
         '''
@@ -114,3 +125,31 @@ class DescribeResultAccess(OseoOperation):
                             order_item.completed_on >= last_time:
                         completed_items.append(order_item)
         return completed_items
+
+    def get_url(self, protocol, order_item, user_name):
+        '''
+        Return the URL where the order item is available for online access.
+
+        :arg protocol:
+        :type protocol: str
+        :arg order_item:
+        :type order_item:
+        :arg user_name:
+        :type user_name: str
+        '''
+
+        host_name = socket.gethostname()
+        if protocol == models.OnlineDataAccess.HTTP:
+            uri = reverse(views.show_item, args=(user_name,
+                          order_item.batch.order.id, order_item.file_name))
+            url = ''.join(('http://', host_name, uri))
+        elif protocol == models.OnlineDataAccess.FTP:
+            url = 'ftp://{user}:{password}@{host}/data/{order}/{file}'.format(
+                user=user_name,
+                password='dummy',
+                host=host_name,
+                order=order_item.batch.order.id,
+                file=order_item.file_name)
+        else:
+            raise NotImplementedError
+        return url

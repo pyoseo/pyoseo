@@ -59,7 +59,9 @@ class VitoAuthentication(object):
             '1.1': 'soap1.1',
             '1.2': 'soap',
         }
+        print('soap_version: {}'.format(soap_version))
         soap_ns_key = soap_ns_map[soap_version]
+        print('soap_ns_key: {}'.format(soap_ns_key))
         auth_data = self._get_auth_data(request_element, soap_ns_key)
         print('auth_data[vito_token]: %s' % auth_data['vito_token'])
         if auth_data['vito_token'] == self._VITO_TOKEN:

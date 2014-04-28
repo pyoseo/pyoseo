@@ -117,14 +117,23 @@ class OseoServer(object):
         if auth_class is not None:
             try:
                 module_path, sep, class_name = auth_class.rpartition('.')
+                logger.debug('module_path: {}'.format(module_path))
+                logger.debug('class_name: {}'.format(class_name))
                 the_module = importlib.import_module(module_path)
+                logger.debug('the_module: {}'.format(the_module))
                 the_class = getattr(the_module, class_name)
+                logger.debug('the_class: {}'.format(the_class))
                 instance = the_class()
+                logger.debug('instance: {}'.format(instance))
                 authenticated, info = instance.authenticate_request(
                     request_element,
                     soap_version
                 )
-            except Exception:
+                logger.debug('authenticated: {}'.format(authenticated))
+                logger.debug('info: {}'.format(info))
+            except Exception as err:
+                logger.error(err.__class__.__name__)
+                logger.error(err.args)
                 raise errors.InvalidSettingsError('Invalid authentication '
                                                   'class')
             if authenticated:
@@ -205,8 +214,8 @@ class OseoServer(object):
         try:
             schema_instance = self._parse_xml(data)
             operation = self._get_operation(schema_instance.__class__.__name__)
-            user_name = self.authenticate_request(element, soap_version,
-                                                  operation.NAME)
+            user_name = self.authenticate_request(element, operation.NAME,
+                                                  soap_version)
             response, status_code = operation(schema_instance, user_name)
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
