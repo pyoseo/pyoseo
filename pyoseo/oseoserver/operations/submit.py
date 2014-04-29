@@ -105,7 +105,7 @@ class Submit(OseoOperation):
                 )
             if order.order_type.name == models.OrderType.PRODUCT_ORDER:
                 self.create_normal_order_batch(ord_spec, order)
-                tasks.process_normal_order(order.id)
+                tasks.process_normal_order.apply_async((order.id,))
             elif order.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
                 # do not create any batch yet
                 # batches will be created on demand, whenever new products

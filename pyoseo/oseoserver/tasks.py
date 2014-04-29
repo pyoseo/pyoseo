@@ -33,7 +33,7 @@ import datetime as dt
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
 from celery import shared_task
-from celery import group
+from celery import group, chord
 from celery.utils.log import get_task_logger
 
 import giosystemcore.settings
@@ -86,7 +86,7 @@ def process_batch(self, batch_id):
         logger.error('Could not find batch %s in the order server database'
                      % batch_id)
         raise
-    g = []
+    header = []
     for order_item in batch.order_items.all():
         try:
             selected = order_item.selected_delivery_option
@@ -97,7 +97,6 @@ def process_batch(self, batch_id):
             sig = process_online_data_access_item.subtask(
                 (order_item.id, delivery_option.id)
             )
-            g.append(sig)
         elif hasattr(delivery_option, 'onlinedatadelivery'):
             sig = process_online_data_delivery_item.subtask(
                 (order_item.id, delivery_option.id)
@@ -108,9 +107,10 @@ def process_batch(self, batch_id):
             )
         else:
             raise
-        g.append(sig)
-    job = group(g)
-    job.apply_async()
+        header.append(sig)
+    body = update_order_status.subtask((batch.order.id,), immutable=True)
+    c = chord(header, body)
+    c.apply_async()
 
 @shared_task(bind=True)
 def process_online_data_access_item(self, order_item_id, delivery_option_id):
@@ -164,7 +164,6 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         order_item.completed_on = dt.datetime.utcnow()
         order_item.status = models.CustomizableItem.COMPLETED
         order_item.save()
-        #update_order_status(order_item.batch.order)
     else:
         pass
 
@@ -184,7 +183,8 @@ def process_media_delivery_item(self, order_item_id, delivery_option_id):
 
     raise NotImplementedError
 
-def update_order_status(order_id):
+@shared_task(bind=True)
+def update_order_status(self, order_id):
     '''
     Update the status of a normal order whenever the status of its batch
     changes
