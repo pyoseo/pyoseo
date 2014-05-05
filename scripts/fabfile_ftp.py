@@ -24,6 +24,11 @@ def install_ftp_service():
     local('sudo apt-get install vsftpd libpam-pwdfile')
     vsftpd_dir = '/etc/vsftpd'
     ftp_service_root = '/var/www'
+    local('sudo chmod a+r %s' % ftp_service_root)
+    local('sudo chmod a+x %s' % ftp_service_root)
+    local('sudo chown -R www-data:www-data %s' % ftp_service_root)
+    local('sudo chmod -R g+w %s' % ftp_service_root)
+    local('sudo adduser %s www-data' % os.environ['USER'])
     if not os.path.isdir(vsftpd_dir):
         local('sudo mkdir %s' % vsftpd_dir)
         local('sudo chown root:%s %s' % (os.environ['USER'], vsftpd_dir))
@@ -33,10 +38,8 @@ def install_ftp_service():
     passwords_path = os.path.join(vsftpd_dir, 'ftpd.passwd')
     _create_pam_config(pam_service_name, passwords_path)
     _create_vsftpd_system_user()
-    _create_password_file('teste', 'teste', passwords_path)
+    _create_password_file('teste', 'teste', passwords_path, ftp_service_root)
     #add_ftp_user('teste', 'teste', passwords_path, ftp_service_root)
-    local('sudo chmod a+r %s' % ftp_service_root)
-    local('sudo chmod a+x %s' % ftp_service_root)
     local('sudo service vsftpd stop')
     local('sudo service vsftpd start')
 
@@ -55,6 +58,9 @@ def add_ftp_user(user, password, password_file, ftp_root, chroot=True):
     '''
 
     _update_password_file(user, password, password_file)
+    _create_virtual_user_home(user, ftp_root)
+
+def _create_virtual_user_home(user, ftp_root):
     user_home = os.path.join(ftp_root, user)
     try:
         os.makedirs(os.path.join(user_home, 'data'))
@@ -137,12 +143,13 @@ def _update_password_file(user, password, path):
         fh.writelines(contents)
     local('mv %s %s' % (os.path.basename(path), path))
 
-def _create_password_file(first_user, password, path):
+def _create_password_file(first_user, password, path, ftp_root):
     hashed_password = local('openssl passwd -1 %s' % password, capture=True)
     contents = ['%s:%s\n' % (first_user, hashed_password)]
     with open(os.path.basename(path),'w') as fh:
         fh.writelines(contents)
     local('mv %s %s' % (os.path.basename(path), path))
+    _create_virtual_user_home(first_user, ftp_root)
 
 def _backup_file(path):
     file_name = os.path.basename(path)

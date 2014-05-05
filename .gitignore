@@ -9,3 +9,4 @@ src/*
 pyoseo/sitestatic/*
 settings_local.py
 docs/_build/*
+*.bak.*
