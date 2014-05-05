@@ -12,6 +12,12 @@ It will:
     * create a new user called vsftpd without login rights
     * set up the /var/www directory to be used as the root for virtual FTP 
       users
+
+NOTE: If this script fails, try running the command
+
+    newgrp www-data
+
+In order to refresh the www-data's group permissions
 '''
 
 import os
@@ -50,6 +56,7 @@ def _create_vsftpd_system_user():
     if not os.path.isdir(home_dir):
         local('sudo useradd --home %s --gid nogroup --create-home '
               '--shell /bin/false %s' % (home_dir, user_name))
+        local('sudo adduser {} www-data'.format(user_name))
 
 def add_ftp_user(user, password, chroot):
     '''
