@@ -19,27 +19,28 @@ import datetime as dt
 from fabric.api import settings, local
 
 LOCAL_DIR = os.path.dirname(os.path.realpath(__file__))
+VSFTPD_DIR = '/etc/vsftpd'
+FTP_SERVICE_ROOT = '/var/www'
+PAM_SERVICE_NAME = 'vsftpd.virtual'
+PASSWORDS_PATH = os.path.join(VSFTPD_DIR, 'ftpd.passwd')
+CHROOT_FILE = os.path.join(VSFTPD_DIR, 'vsftpd.chroot_list')
 
 def install_ftp_service():
     local('sudo apt-get install vsftpd libpam-pwdfile')
-    vsftpd_dir = '/etc/vsftpd'
-    ftp_service_root = '/var/www'
-    local('sudo chmod a+r %s' % ftp_service_root)
-    local('sudo chmod a+x %s' % ftp_service_root)
-    local('sudo chown -R www-data:www-data %s' % ftp_service_root)
-    local('sudo chmod -R g+w %s' % ftp_service_root)
+    local('sudo chmod a+r %s' % FTP_SERVICE_ROOT)
+    local('sudo chmod a+x %s' % FTP_SERVICE_ROOT)
+    local('sudo chown --recursive www-data:www-data %s' % FTP_SERVICE_ROOT)
+    local('sudo chmod --recursive g+w %s' % FTP_SERVICE_ROOT)
     local('sudo adduser %s www-data' % os.environ['USER'])
-    if not os.path.isdir(vsftpd_dir):
-        local('sudo mkdir %s' % vsftpd_dir)
-        local('sudo chown root:%s %s' % (os.environ['USER'], vsftpd_dir))
-        local('sudo chmod g+w %s' % vsftpd_dir)
-    pam_service_name = 'vsftpd.virtual'
-    _create_vsftpd_config(ftp_service_root, pam_service_name)
-    passwords_path = os.path.join(vsftpd_dir, 'ftpd.passwd')
-    _create_pam_config(pam_service_name, passwords_path)
+    local('sudo chmod g+s %s' % FTP_SERVICE_ROOT)
+    if not os.path.isdir(VSFTPD_DIR):
+        local('sudo mkdir %s' % VSFTPD_DIR)
+        local('sudo chown root:%s %s' % (os.environ['USER'], VSFTPD_DIR))
+        local('sudo chmod g+w %s' % VSFTPD_DIR)
+    _create_vsftpd_config()
+    _create_pam_config()
     _create_vsftpd_system_user()
-    _create_password_file('teste', 'teste', passwords_path, ftp_service_root)
-    #add_ftp_user('teste', 'teste', passwords_path, ftp_service_root)
+    _create_password_file('teste', 'teste')
     local('sudo service vsftpd stop')
     local('sudo service vsftpd start')
 
@@ -50,18 +51,21 @@ def _create_vsftpd_system_user():
         local('sudo useradd --home %s --gid nogroup --create-home '
               '--shell /bin/false %s' % (home_dir, user_name))
 
-# TODO
-# * Implement the chroot argument
-def add_ftp_user(user, password, password_file, ftp_root, chroot=True):
+def add_ftp_user(user, password, chroot):
     '''
     Add a new vsftpd virtual user.
     '''
 
-    _update_password_file(user, password, password_file)
-    _create_virtual_user_home(user, ftp_root)
+    if not isinstance(chroot, bool):
+        if chroot.lower() == 'true':
+            chroot = True
+        else:
+            chroot = False
+    _update_password_file(user, password)
+    _create_virtual_user_home(user, chroot)
 
-def _create_virtual_user_home(user, ftp_root):
-    user_home = os.path.join(ftp_root, user)
+def _create_virtual_user_home(user, chroot):
+    user_home = os.path.join(FTP_SERVICE_ROOT, user)
     try:
         os.makedirs(os.path.join(user_home, 'data'))
     except OSError as err:
@@ -70,18 +74,19 @@ def _create_virtual_user_home(user, ftp_root):
             pass
         else:
             raise
-    local('sudo chmod a-w %s' % user_home)
-    local('sudo chmod --recursive 755  %s' % os.path.join(user_home, 'data'))
-    local('sudo chown --recursive vsftpd:www-data  %s' % user_home)
+    local('chmod g-w %s' % user_home)
+    local('chmod --recursive 775  %s' % os.path.join(user_home, 'data'))
+    if not chroot:
+        _update_chroot_list(user)
 
-def _create_pam_config(pam_service_name, ftp_passwords_file):
+def _create_pam_config():
     '''
     Create the PAM configuration file for vsftpd.
     '''
 
-    pam_file = '/etc/pam.d/%s' % pam_service_name
+    pam_file = '/etc/pam.d/%s' % PAM_SERVICE_NAME
     pam_contents = [
-        'auth required pam_pwdfile.so pwdfile %s\n' % ftp_passwords_file,
+        'auth required pam_pwdfile.so pwdfile %s\n' % PASSWORDS_PATH,
         'account required pam_permit.so\n'
     ]
     with open(os.path.basename(pam_file), 'w') as fh:
@@ -90,7 +95,7 @@ def _create_pam_config(pam_service_name, ftp_passwords_file):
           pam_file))
     local('sudo chown root:root %s' % pam_file)
 
-def _create_vsftpd_config(ftp_root_path, pam_service_name):
+def _create_vsftpd_config():
     '''
     Create the vsftpd configuration file and place it in the correct path.
 
@@ -109,11 +114,13 @@ def _create_vsftpd_config(ftp_root_path, pam_service_name):
         'virtual_use_local_privs=YES\n',
         'guest_enable=YES\n',
         'user_sub_token=$USER\n',
-        'local_root=%s/$USER\n' % ftp_root_path,
+        'local_root=%s/$USER\n' % FTP_SERVICE_ROOT,
         'chroot_local_user=YES\n',
+        'chroot_list_enable=YES\n',
+        'chroot_list_file=%s\n' % CHROOT_FILE,
         'hide_ids=YES\n',
         'guest_username=vsftpd\n',
-        'pam_service_name=%s\n' % pam_service_name,
+        'pam_service_name=%s\n' % PAM_SERVICE_NAME,
         'xferlog_enable=YES\n',
         'xferlog_file=/var/log/vsftpd.log\n',
     ]
@@ -123,10 +130,10 @@ def _create_vsftpd_config(ftp_root_path, pam_service_name):
           vsftpd_conf_path))
     local('sudo chown root:root %s' % vsftpd_conf_path)
 
-def _update_password_file(user, password, path):
+def _update_password_file(user, password):
     contents = []
     hashed_password = local('openssl passwd -1 %s' % password, capture=True)
-    with open(path) as fh:
+    with open(PASSWORDS_PATH) as fh:
         for line in fh:
             contents.append(line)
     already_present = False
@@ -139,17 +146,37 @@ def _update_password_file(user, password, path):
             already_present = True
     if not already_present:
         contents.append('%s:%s\n' % (user, hashed_password))
-    with open(os.path.basename(path), 'w') as fh:
+    with open(os.path.basename(PASSWORDS_PATH), 'w') as fh:
         fh.writelines(contents)
-    local('mv %s %s' % (os.path.basename(path), path))
+    local('mv %s %s' % (os.path.basename(PASSWORDS_PATH), PASSWORDS_PATH))
 
-def _create_password_file(first_user, password, path, ftp_root):
+def _update_chroot_list(user):
+    found = False
+    contents = []
+    with open(CHROOT_FILE) as fh:
+        for line in fh:
+            contents.append(line)
+    for count, line in enumerate(contents):
+        old_user = line.strip()
+        if old_user == user:
+            print('user {} is already exempt from chroot'.format(user))
+            found = True
+    if not found:
+        contents.append('{}\n'.format(user))
+        with open(os.path.basename(CHROOT_FILE), 'w') as fh:
+                fh.writelines(contents)
+        local('mv %s %s' % (os.path.basename(CHROOT_FILE), CHROOT_FILE))
+
+def _create_password_file(first_user, password):
     hashed_password = local('openssl passwd -1 %s' % password, capture=True)
     contents = ['%s:%s\n' % (first_user, hashed_password)]
-    with open(os.path.basename(path),'w') as fh:
+    with open(os.path.basename(PASSWORDS_PATH),'w') as fh:
         fh.writelines(contents)
-    local('mv %s %s' % (os.path.basename(path), path))
-    _create_virtual_user_home(first_user, ftp_root)
+    local('mv %s %s' % (os.path.basename(PASSWORDS_PATH), PASSWORDS_PATH))
+    # creating an empty chroot_list file, otherwise vsftpd barfs
+    local('touch {}'.format(os.path.basename(CHROOT_FILE)))
+    local('mv {} {}'.format(os.path.basename(CHROOT_FILE), CHROOT_FILE))
+    _create_virtual_user_home(first_user, True)
 
 def _backup_file(path):
     file_name = os.path.basename(path)
