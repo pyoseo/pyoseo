@@ -28,8 +28,8 @@ import oseoserver.errors
 
 class VitoAuthentication(object):
 
-    _VITO_ATTRIBUTE = 'type'
-    _VITO_TOKEN = 'BBBB#VITO'
+    _VITO_ATTRIBUTE = 'domain'
+    _VITO_TOKEN = 'VITO'
     _ns = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
         'soap1.1': 'http://schemas.xmlsoap.org/soap/envelope/',
@@ -62,18 +62,20 @@ class VitoAuthentication(object):
         print('soap_version: {}'.format(soap_version))
         soap_ns_key = soap_ns_map[soap_version]
         print('soap_ns_key: {}'.format(soap_ns_key))
-        auth_data = self._get_auth_data(request_element, soap_ns_key)
-        print('auth_data[vito_token]: %s' % auth_data['vito_token'])
+        operation = self._get_oseo_operation(request_element, soap_ns_key)
+        try:
+            auth_data = self._get_auth_data(request_element, soap_ns_key)
+        except Exception as err:
+            raise oseoserver.errors.OseoError(
+                'AuthenticationFailed',
+                'Invalid or missing identity information',
+                locator=operation
+            )
+        print('auth_data[vito_token]: {}'.format(auth_data['vito_token']))
         if auth_data['vito_token'] == self._VITO_TOKEN:
             result = (True, auth_data['user_name'])
         else:
             result = (False, 'Unauthorized user')
-            #operation = self._get_oseo_operation(request_element, soap_ns_key)
-            #raise oseoserver.errors.OseoError(
-            #    'AuthorizationFailed',
-            #    'The client is not authorized to call the operation',
-            #    locator=operation
-            #)
         return result
 
     def _get_auth_data(self, request_element, soap_namespace_key):

@@ -64,6 +64,7 @@ class OseoServer(object):
     }
     _exception_codes = {
             'AuthorizationFailed': 'client',
+            'AuthenticationFailed': 'client',
             'InvalidOrderIdentifier': 'client',
             'UnsupportedCollection': 'client',
     }
@@ -131,9 +132,13 @@ class OseoServer(object):
                 )
                 logger.debug('authenticated: {}'.format(authenticated))
                 logger.debug('info: {}'.format(info))
+            except errors.OseoError as err:
+                 # this error is handled by the calling process_request() method
+                raise
             except Exception as err:
-                logger.error(err.__class__.__name__)
-                logger.error(err.args)
+                # other errors are re-raised as InvalidSettings
+                logger.error('exception class: {}'.format(err.__class__.__name__))
+                logger.error('exception args: {}'.format(err.args))
                 raise errors.InvalidSettingsError('Invalid authentication '
                                                   'class')
             if authenticated:
@@ -233,6 +238,9 @@ class OseoServer(object):
                                                   locator=err.locator)
         except errors.NonSoapRequestError as err:
             status_code = 400
+            result = err
+        except errors.InvalidSettingsError as err:
+            status_code = 500
             result = err
         return result, status_code, response_headers
 
