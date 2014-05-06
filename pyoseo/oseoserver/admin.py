@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.core.urlresolvers import reverse
+from django.utils.html import format_html
 import models
 
 class OptionChoiceInline(admin.StackedInline):
@@ -26,7 +28,6 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = ('status_changed_on', 'completed_on',
                        'last_describe_result_access_request',)
 
-
 class OrderItemAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
@@ -41,9 +42,25 @@ class OrderItemAdmin(admin.ModelAdmin):
                        'mission_specific_status_info')
         }),
     )
-    list_display = ('id', 'item_id', 'batch', 'status', 'status_changed_on',)
+    list_display = ('id', 'item_id', 'link_to_batch', 'link_to_order',
+                    'status', 'status_changed_on',)
     readonly_fields = ('status_changed_on', 'completed_on', 'file_name',
                        'downloads',)
+
+    def link_to_batch(self, obj):
+        url = reverse('admin:oseoserver_batch_change', args=(obj.batch_id,))
+        html = '<a href="{0}">{1}</a>'.format(url, obj.batch_id)
+        return format_html(html)
+    link_to_batch.short_description = 'Batch'
+    link_to_batch.allow_tags = True
+
+    def link_to_order(self, obj):
+        url = reverse('admin:oseoserver_order_change',
+                      args=(obj.batch.order_id,))
+        html = '<a href="{0}">{1}</a>'.format(url, obj.batch.order_id)
+        return format_html(html)
+    link_to_order.short_description = 'Order'
+    link_to_order.allow_tags = True
 
 class OptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'type', 'product', 'available_choices',)
