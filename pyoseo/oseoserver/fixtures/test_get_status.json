@@ -1,0 +1,1741 @@
+[
+{
+    "pk": 1, 
+    "model": "oseoserver.optiongroup", 
+    "fields": {
+        "name": "pyoseo options", 
+        "description": "Options available for customizing orders and individual order items"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "A remark", 
+        "completed_on": "2014-04-29T16:16:31.410Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.388Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:31.410Z"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "", 
+        "completed_on": "2014-04-29T16:16:25.646Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.403Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:25.647Z"
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "", 
+        "completed_on": "2014-04-29T16:16:27.181Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.407Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:27.181Z"
+    }
+},
+{
+    "pk": 4, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "", 
+        "completed_on": "2014-04-29T16:16:28.426Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.411Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:28.426Z"
+    }
+},
+{
+    "pk": 5, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "", 
+        "completed_on": "2014-04-29T16:16:29.574Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.413Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:29.574Z"
+    }
+},
+{
+    "pk": 6, 
+    "model": "oseoserver.customizableitem", 
+    "fields": {
+        "status": "Completed", 
+        "remark": "", 
+        "completed_on": "2014-04-29T16:16:30.785Z", 
+        "option_group": 1, 
+        "additional_status_info": "", 
+        "created_on": "2014-04-29T16:16:23.416Z", 
+        "mission_specific_status_info": "", 
+        "status_changed_on": "2014-04-29T16:16:30.785Z"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "PRODUCT_ORDER"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "MASSIVE_ORDER"
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.ordertype", 
+    "fields": {
+        "name": "SUBSCRIPTION_ORDER"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.batch", 
+    "fields": {
+        "order": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "file_name": "g2_BIOPAR_LST_201402041400_EURO_GEO_v1.bz2", 
+        "downloads": 0, 
+        "batch": 1, 
+        "item_id": "item_01", 
+        "collection_id": "", 
+        "identifier": "01729024-8dba-11e3-b102-0019995d2a58"
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "file_name": "g2_BIOPAR_LST_201404220200_AFRI_GEO_v1.bz2", 
+        "downloads": 0, 
+        "batch": 1, 
+        "item_id": "item_02", 
+        "collection_id": "", 
+        "identifier": "96aa298c-c9d7-11e3-89f2-0019995d2a58"
+    }
+},
+{
+    "pk": 4, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "file_name": "g2_BIOPAR_LST_201404220500_AFRI_GEO_v1.bz2", 
+        "downloads": 0, 
+        "batch": 1, 
+        "item_id": "item_03", 
+        "collection_id": "", 
+        "identifier": "ca6c6afa-c9f0-11e3-89f2-0019995d2a58"
+    }
+},
+{
+    "pk": 5, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "file_name": "g2_BIOPAR_LST_201404220600_AFRI_GEO_v1.bz2", 
+        "downloads": 0, 
+        "batch": 1, 
+        "item_id": "item_04", 
+        "collection_id": "", 
+        "identifier": "1f9cca80-c9f9-11e3-89f2-0019995d2a58"
+    }
+},
+{
+    "pk": 6, 
+    "model": "oseoserver.orderitem", 
+    "fields": {
+        "file_name": "g2_BIOPAR_LST_201404220700_AFRI_GEO_v1.bz2", 
+        "downloads": 0, 
+        "batch": 1, 
+        "item_id": "item_05", 
+        "collection_id": "", 
+        "identifier": "00c808c2-ca03-11e3-89f2-0019995d2a58"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.deliveryoption", 
+    "fields": {}
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.deliveryoption", 
+    "fields": {}
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.groupdeliveryoption", 
+    "fields": {
+        "delivery_option": 1, 
+        "option_group": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.groupdeliveryoption", 
+    "fields": {
+        "delivery_option": 2, 
+        "option_group": 1
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.selecteddeliveryoption", 
+    "fields": {
+        "copies": null, 
+        "annotation": "", 
+        "special_instructions": "", 
+        "group_delivery_option": 1, 
+        "customizable_item": 1
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.onlinedataaccess", 
+    "fields": {
+        "protocol": "http"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.onlinedataaccess", 
+    "fields": {
+        "protocol": "ftp"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.product", 
+    "fields": {
+        "collection_id": "364a3048-d012-11e1-9678-0019995d2a56", 
+        "short_name": "LST"
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.product", 
+    "fields": {
+        "collection_id": "phony", 
+        "short_name": "LST10"
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 2
+    }
+},
+{
+    "pk": 3, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 1, 
+        "order_type": 3
+    }
+},
+{
+    "pk": 4, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 1
+    }
+},
+{
+    "pk": 5, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 2
+    }
+},
+{
+    "pk": 6, 
+    "model": "oseoserver.deliveryoptionordertype", 
+    "fields": {
+        "delivery_option": 2, 
+        "order_type": 3
+    }
+},
+{
+    "pk": 1, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "optiongroup", 
+        "name": "option group", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 2, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "customizableitem", 
+        "name": "customizable item", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 3, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "ordertype", 
+        "name": "order type", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 4, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "order", 
+        "name": "order", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 5, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "batch", 
+        "name": "batch", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 6, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "orderitem", 
+        "name": "order item", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 7, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "deliveryoption", 
+        "name": "delivery option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 8, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "groupdeliveryoption", 
+        "name": "group delivery option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 9, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "selecteddeliveryoption", 
+        "name": "selected delivery option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 10, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "onlinedataaccess", 
+        "name": "online data access", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 11, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "onlinedatadelivery", 
+        "name": "online data delivery", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 12, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "mediadelivery", 
+        "name": "media delivery", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 13, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "deliveryaddress", 
+        "name": "delivery address", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 14, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "deliveryinformation", 
+        "name": "delivery information", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 15, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "onlineaddress", 
+        "name": "online address", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 16, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "invoiceaddress", 
+        "name": "invoice address", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 17, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "product", 
+        "name": "product", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 18, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "option", 
+        "name": "option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 19, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "optionordertype", 
+        "name": "option order type", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 20, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "deliveryoptionordertype", 
+        "name": "delivery option order type", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 21, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "optionchoice", 
+        "name": "option choice", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 22, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "groupoption", 
+        "name": "group option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 23, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "selectedoption", 
+        "name": "selected option", 
+        "app_label": "oseoserver"
+    }
+},
+{
+    "pk": 24, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "logentry", 
+        "name": "log entry", 
+        "app_label": "admin"
+    }
+},
+{
+    "pk": 25, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "permission", 
+        "name": "permission", 
+        "app_label": "auth"
+    }
+},
+{
+    "pk": 26, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "group", 
+        "name": "group", 
+        "app_label": "auth"
+    }
+},
+{
+    "pk": 27, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "user", 
+        "name": "user", 
+        "app_label": "auth"
+    }
+},
+{
+    "pk": 28, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "contenttype", 
+        "name": "content type", 
+        "app_label": "contenttypes"
+    }
+},
+{
+    "pk": 29, 
+    "model": "contenttypes.contenttype", 
+    "fields": {
+        "model": "session", 
+        "name": "session", 
+        "app_label": "sessions"
+    }
+},
+{
+    "pk": "88fontftte2rie3gjtw0swey3mnwh5se", 
+    "model": "sessions.session", 
+    "fields": {
+        "expire_date": "2014-04-16T14:24:50.538Z", 
+        "session_data": "MWNiNTFhNGE0NDZmYTJhMmZhZWU0ZDVhODYxODJjYWI1MzU2YTZjNDp7Il9hdXRoX3VzZXJfYmFja2VuZCI6ImRqYW5nby5jb250cmliLmF1dGguYmFja2VuZHMuTW9kZWxCYWNrZW5kIiwiX2F1dGhfdXNlcl9pZCI6MX0="
+    }
+},
+{
+    "pk": "l9drqx4kd47f6uew7c7znb6sahjk22k1", 
+    "model": "sessions.session", 
+    "fields": {
+        "expire_date": "2014-05-13T14:28:18.257Z", 
+        "session_data": "MWNiNTFhNGE0NDZmYTJhMmZhZWU0ZDVhODYxODJjYWI1MzU2YTZjNDp7Il9hdXRoX3VzZXJfYmFja2VuZCI6ImRqYW5nby5jb250cmliLmF1dGguYmFja2VuZHMuTW9kZWxCYWNrZW5kIiwiX2F1dGhfdXNlcl9pZCI6MX0="
+    }
+},
+{
+    "pk": "plb2wxwwsk27h24kv88msp5ur4stq0ef", 
+    "model": "sessions.session", 
+    "fields": {
+        "expire_date": "2014-05-20T10:29:48.283Z", 
+        "session_data": "MWNiNTFhNGE0NDZmYTJhMmZhZWU0ZDVhODYxODJjYWI1MzU2YTZjNDp7Il9hdXRoX3VzZXJfYmFja2VuZCI6ImRqYW5nby5jb250cmliLmF1dGguYmFja2VuZHMuTW9kZWxCYWNrZW5kIiwiX2F1dGhfdXNlcl9pZCI6MX0="
+    }
+},
+{
+    "pk": "tyr7goahr9wzqs5xsqr1czuz2gz4k92o", 
+    "model": "sessions.session", 
+    "fields": {
+        "expire_date": "2014-05-06T19:04:38.231Z", 
+        "session_data": "MWNiNTFhNGE0NDZmYTJhMmZhZWU0ZDVhODYxODJjYWI1MzU2YTZjNDp7Il9hdXRoX3VzZXJfYmFja2VuZCI6ImRqYW5nby5jb250cmliLmF1dGguYmFja2VuZHMuTW9kZWxCYWNrZW5kIiwiX2F1dGhfdXNlcl9pZCI6MX0="
+    }
+},
+{
+    "pk": 1, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_optiongroup", 
+        "name": "Can add option group", 
+        "content_type": 1
+    }
+},
+{
+    "pk": 2, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_optiongroup", 
+        "name": "Can change option group", 
+        "content_type": 1
+    }
+},
+{
+    "pk": 3, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_optiongroup", 
+        "name": "Can delete option group", 
+        "content_type": 1
+    }
+},
+{
+    "pk": 4, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_customizableitem", 
+        "name": "Can add customizable item", 
+        "content_type": 2
+    }
+},
+{
+    "pk": 5, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_customizableitem", 
+        "name": "Can change customizable item", 
+        "content_type": 2
+    }
+},
+{
+    "pk": 6, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_customizableitem", 
+        "name": "Can delete customizable item", 
+        "content_type": 2
+    }
+},
+{
+    "pk": 7, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_ordertype", 
+        "name": "Can add order type", 
+        "content_type": 3
+    }
+},
+{
+    "pk": 8, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_ordertype", 
+        "name": "Can change order type", 
+        "content_type": 3
+    }
+},
+{
+    "pk": 9, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_ordertype", 
+        "name": "Can delete order type", 
+        "content_type": 3
+    }
+},
+{
+    "pk": 10, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_order", 
+        "name": "Can add order", 
+        "content_type": 4
+    }
+},
+{
+    "pk": 11, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_order", 
+        "name": "Can change order", 
+        "content_type": 4
+    }
+},
+{
+    "pk": 12, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_order", 
+        "name": "Can delete order", 
+        "content_type": 4
+    }
+},
+{
+    "pk": 13, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_batch", 
+        "name": "Can add batch", 
+        "content_type": 5
+    }
+},
+{
+    "pk": 14, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_batch", 
+        "name": "Can change batch", 
+        "content_type": 5
+    }
+},
+{
+    "pk": 15, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_batch", 
+        "name": "Can delete batch", 
+        "content_type": 5
+    }
+},
+{
+    "pk": 16, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_orderitem", 
+        "name": "Can add order item", 
+        "content_type": 6
+    }
+},
+{
+    "pk": 17, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_orderitem", 
+        "name": "Can change order item", 
+        "content_type": 6
+    }
+},
+{
+    "pk": 18, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_orderitem", 
+        "name": "Can delete order item", 
+        "content_type": 6
+    }
+},
+{
+    "pk": 19, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_deliveryoption", 
+        "name": "Can add delivery option", 
+        "content_type": 7
+    }
+},
+{
+    "pk": 20, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_deliveryoption", 
+        "name": "Can change delivery option", 
+        "content_type": 7
+    }
+},
+{
+    "pk": 21, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_deliveryoption", 
+        "name": "Can delete delivery option", 
+        "content_type": 7
+    }
+},
+{
+    "pk": 22, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_groupdeliveryoption", 
+        "name": "Can add group delivery option", 
+        "content_type": 8
+    }
+},
+{
+    "pk": 23, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_groupdeliveryoption", 
+        "name": "Can change group delivery option", 
+        "content_type": 8
+    }
+},
+{
+    "pk": 24, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_groupdeliveryoption", 
+        "name": "Can delete group delivery option", 
+        "content_type": 8
+    }
+},
+{
+    "pk": 25, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_selecteddeliveryoption", 
+        "name": "Can add selected delivery option", 
+        "content_type": 9
+    }
+},
+{
+    "pk": 26, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_selecteddeliveryoption", 
+        "name": "Can change selected delivery option", 
+        "content_type": 9
+    }
+},
+{
+    "pk": 27, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_selecteddeliveryoption", 
+        "name": "Can delete selected delivery option", 
+        "content_type": 9
+    }
+},
+{
+    "pk": 28, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_onlinedataaccess", 
+        "name": "Can add online data access", 
+        "content_type": 10
+    }
+},
+{
+    "pk": 29, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_onlinedataaccess", 
+        "name": "Can change online data access", 
+        "content_type": 10
+    }
+},
+{
+    "pk": 30, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_onlinedataaccess", 
+        "name": "Can delete online data access", 
+        "content_type": 10
+    }
+},
+{
+    "pk": 31, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_onlinedatadelivery", 
+        "name": "Can add online data delivery", 
+        "content_type": 11
+    }
+},
+{
+    "pk": 32, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_onlinedatadelivery", 
+        "name": "Can change online data delivery", 
+        "content_type": 11
+    }
+},
+{
+    "pk": 33, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_onlinedatadelivery", 
+        "name": "Can delete online data delivery", 
+        "content_type": 11
+    }
+},
+{
+    "pk": 34, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_mediadelivery", 
+        "name": "Can add media delivery", 
+        "content_type": 12
+    }
+},
+{
+    "pk": 35, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_mediadelivery", 
+        "name": "Can change media delivery", 
+        "content_type": 12
+    }
+},
+{
+    "pk": 36, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_mediadelivery", 
+        "name": "Can delete media delivery", 
+        "content_type": 12
+    }
+},
+{
+    "pk": 37, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_deliveryaddress", 
+        "name": "Can add delivery address", 
+        "content_type": 13
+    }
+},
+{
+    "pk": 38, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_deliveryaddress", 
+        "name": "Can change delivery address", 
+        "content_type": 13
+    }
+},
+{
+    "pk": 39, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_deliveryaddress", 
+        "name": "Can delete delivery address", 
+        "content_type": 13
+    }
+},
+{
+    "pk": 40, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_deliveryinformation", 
+        "name": "Can add delivery information", 
+        "content_type": 14
+    }
+},
+{
+    "pk": 41, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_deliveryinformation", 
+        "name": "Can change delivery information", 
+        "content_type": 14
+    }
+},
+{
+    "pk": 42, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_deliveryinformation", 
+        "name": "Can delete delivery information", 
+        "content_type": 14
+    }
+},
+{
+    "pk": 43, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_onlineaddress", 
+        "name": "Can add online address", 
+        "content_type": 15
+    }
+},
+{
+    "pk": 44, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_onlineaddress", 
+        "name": "Can change online address", 
+        "content_type": 15
+    }
+},
+{
+    "pk": 45, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_onlineaddress", 
+        "name": "Can delete online address", 
+        "content_type": 15
+    }
+},
+{
+    "pk": 46, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_invoiceaddress", 
+        "name": "Can add invoice address", 
+        "content_type": 16
+    }
+},
+{
+    "pk": 47, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_invoiceaddress", 
+        "name": "Can change invoice address", 
+        "content_type": 16
+    }
+},
+{
+    "pk": 48, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_invoiceaddress", 
+        "name": "Can delete invoice address", 
+        "content_type": 16
+    }
+},
+{
+    "pk": 49, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_product", 
+        "name": "Can add product", 
+        "content_type": 17
+    }
+},
+{
+    "pk": 50, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_product", 
+        "name": "Can change product", 
+        "content_type": 17
+    }
+},
+{
+    "pk": 51, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_product", 
+        "name": "Can delete product", 
+        "content_type": 17
+    }
+},
+{
+    "pk": 52, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_option", 
+        "name": "Can add option", 
+        "content_type": 18
+    }
+},
+{
+    "pk": 53, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_option", 
+        "name": "Can change option", 
+        "content_type": 18
+    }
+},
+{
+    "pk": 54, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_option", 
+        "name": "Can delete option", 
+        "content_type": 18
+    }
+},
+{
+    "pk": 55, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_optionordertype", 
+        "name": "Can add option order type", 
+        "content_type": 19
+    }
+},
+{
+    "pk": 56, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_optionordertype", 
+        "name": "Can change option order type", 
+        "content_type": 19
+    }
+},
+{
+    "pk": 57, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_optionordertype", 
+        "name": "Can delete option order type", 
+        "content_type": 19
+    }
+},
+{
+    "pk": 58, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_deliveryoptionordertype", 
+        "name": "Can add delivery option order type", 
+        "content_type": 20
+    }
+},
+{
+    "pk": 59, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_deliveryoptionordertype", 
+        "name": "Can change delivery option order type", 
+        "content_type": 20
+    }
+},
+{
+    "pk": 60, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_deliveryoptionordertype", 
+        "name": "Can delete delivery option order type", 
+        "content_type": 20
+    }
+},
+{
+    "pk": 61, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_optionchoice", 
+        "name": "Can add option choice", 
+        "content_type": 21
+    }
+},
+{
+    "pk": 62, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_optionchoice", 
+        "name": "Can change option choice", 
+        "content_type": 21
+    }
+},
+{
+    "pk": 63, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_optionchoice", 
+        "name": "Can delete option choice", 
+        "content_type": 21
+    }
+},
+{
+    "pk": 64, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_groupoption", 
+        "name": "Can add group option", 
+        "content_type": 22
+    }
+},
+{
+    "pk": 65, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_groupoption", 
+        "name": "Can change group option", 
+        "content_type": 22
+    }
+},
+{
+    "pk": 66, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_groupoption", 
+        "name": "Can delete group option", 
+        "content_type": 22
+    }
+},
+{
+    "pk": 67, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_selectedoption", 
+        "name": "Can add selected option", 
+        "content_type": 23
+    }
+},
+{
+    "pk": 68, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_selectedoption", 
+        "name": "Can change selected option", 
+        "content_type": 23
+    }
+},
+{
+    "pk": 69, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_selectedoption", 
+        "name": "Can delete selected option", 
+        "content_type": 23
+    }
+},
+{
+    "pk": 70, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_logentry", 
+        "name": "Can add log entry", 
+        "content_type": 24
+    }
+},
+{
+    "pk": 71, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_logentry", 
+        "name": "Can change log entry", 
+        "content_type": 24
+    }
+},
+{
+    "pk": 72, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_logentry", 
+        "name": "Can delete log entry", 
+        "content_type": 24
+    }
+},
+{
+    "pk": 73, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_permission", 
+        "name": "Can add permission", 
+        "content_type": 25
+    }
+},
+{
+    "pk": 74, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_permission", 
+        "name": "Can change permission", 
+        "content_type": 25
+    }
+},
+{
+    "pk": 75, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_permission", 
+        "name": "Can delete permission", 
+        "content_type": 25
+    }
+},
+{
+    "pk": 76, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_group", 
+        "name": "Can add group", 
+        "content_type": 26
+    }
+},
+{
+    "pk": 77, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_group", 
+        "name": "Can change group", 
+        "content_type": 26
+    }
+},
+{
+    "pk": 78, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_group", 
+        "name": "Can delete group", 
+        "content_type": 26
+    }
+},
+{
+    "pk": 79, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_user", 
+        "name": "Can add user", 
+        "content_type": 27
+    }
+},
+{
+    "pk": 80, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_user", 
+        "name": "Can change user", 
+        "content_type": 27
+    }
+},
+{
+    "pk": 81, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_user", 
+        "name": "Can delete user", 
+        "content_type": 27
+    }
+},
+{
+    "pk": 82, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_contenttype", 
+        "name": "Can add content type", 
+        "content_type": 28
+    }
+},
+{
+    "pk": 83, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_contenttype", 
+        "name": "Can change content type", 
+        "content_type": 28
+    }
+},
+{
+    "pk": 84, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_contenttype", 
+        "name": "Can delete content type", 
+        "content_type": 28
+    }
+},
+{
+    "pk": 85, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "add_session", 
+        "name": "Can add session", 
+        "content_type": 29
+    }
+},
+{
+    "pk": 86, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "change_session", 
+        "name": "Can change session", 
+        "content_type": 29
+    }
+},
+{
+    "pk": 87, 
+    "model": "auth.permission", 
+    "fields": {
+        "codename": "delete_session", 
+        "name": "Can delete session", 
+        "content_type": 29
+    }
+},
+{
+    "pk": 1, 
+    "model": "auth.user", 
+    "fields": {
+        "username": "ricardo", 
+        "first_name": "", 
+        "last_name": "", 
+        "is_active": true, 
+        "is_superuser": true, 
+        "is_staff": true, 
+        "last_login": "2014-05-06T10:29:48.140Z", 
+        "groups": [], 
+        "user_permissions": [], 
+        "password": "pbkdf2_sha256$12000$EFdFXhsaGJ6N$xN0qAkGyuVv4g/1vNqrzeSRnbPkX3SWIEX8WJ4o9s3g=", 
+        "email": "", 
+        "date_joined": "2014-04-02T14:23:58.035Z"
+    }
+},
+{
+    "pk": 1, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-02T16:19:24.444Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 2, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T15:56:08.223Z", 
+        "object_repr": "PRODUCT_ORDER(13)", 
+        "object_id": "13", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 3, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T15:56:08.387Z", 
+        "object_repr": "PRODUCT_ORDER(7)", 
+        "object_id": "7", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 4, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T15:56:08.546Z", 
+        "object_repr": "PRODUCT_ORDER(5)", 
+        "object_id": "5", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 5, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T15:56:08.706Z", 
+        "object_repr": "PRODUCT_ORDER(3)", 
+        "object_id": "3", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 6, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T15:56:08.865Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 7, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:01:22.101Z", 
+        "object_repr": "PRODUCT_ORDER(3)", 
+        "object_id": "3", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 8, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:01:22.274Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 9, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:17:23.016Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 10, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:18:18.511Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 11, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:18:26.776Z", 
+        "object_repr": "SelectedDeliveryOption object", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 9
+    }
+},
+{
+    "pk": 12, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:54:34.167Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 13, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-23T16:56:45.171Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 14, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 2, 
+        "action_time": "2014-04-28T14:09:17.344Z", 
+        "object_repr": "item_01", 
+        "object_id": "2", 
+        "change_message": "Changed status.", 
+        "user": 1, 
+        "content_type": 6
+    }
+},
+{
+    "pk": 15, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 2, 
+        "action_time": "2014-04-28T14:21:56.834Z", 
+        "object_repr": "SelectedDeliveryOption object", 
+        "object_id": "1", 
+        "change_message": "Changed group_delivery_option.", 
+        "user": 1, 
+        "content_type": 9
+    }
+},
+{
+    "pk": 16, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 2, 
+        "action_time": "2014-04-28T14:22:29.111Z", 
+        "object_repr": "SelectedDeliveryOption object", 
+        "object_id": "1", 
+        "change_message": "Changed group_delivery_option.", 
+        "user": 1, 
+        "content_type": 9
+    }
+},
+{
+    "pk": 17, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-28T14:24:02.971Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 18, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-28T14:43:04.901Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 19, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-28T14:45:05.247Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 20, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-28T15:17:10.412Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 21, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-28T15:29:44.822Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 22, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-29T14:47:56.175Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 23, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-29T15:55:34.086Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 24, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-29T16:10:00.408Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 25, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-29T16:10:12.720Z", 
+        "object_repr": "PRODUCT_ORDER(7)", 
+        "object_id": "7", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 26, 
+    "model": "admin.logentry", 
+    "fields": {
+        "action_flag": 3, 
+        "action_time": "2014-04-29T16:15:52.782Z", 
+        "object_repr": "PRODUCT_ORDER(1)", 
+        "object_id": "1", 
+        "change_message": "", 
+        "user": 1, 
+        "content_type": 4
+    }
+},
+{
+    "pk": 1, 
+    "model": "oseoserver.order", 
+    "fields": {
+        "packaging": "", 
+        "order_type": 1, 
+        "reference": "Test reference", 
+        "last_describe_result_access_request": "2014-04-29T16:37:00.821Z", 
+        "user": 1, 
+        "priority": ""
+    }
+}
+]

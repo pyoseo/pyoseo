@@ -1,0 +1,22 @@
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ows="http://www.opengis.net/ows/2.0">
+   <soap:Body>
+      <ns1:GetStatusResponse xmlns:ns1="http://www.opengis.net/oseo/1.0">
+         <ns1:status>success</ns1:status>
+         <ns1:orderMonitorSpecification>
+            <ns1:orderReference>Test reference</ns1:orderReference>
+            <ns1:orderRemark>A remark</ns1:orderRemark>
+            <ns1:deliveryOptions>
+               <ns1:onlineDataAccess>
+                  <ns1:protocol>http</ns1:protocol>
+               </ns1:onlineDataAccess>
+            </ns1:deliveryOptions>
+            <ns1:orderType>PRODUCT_ORDER</ns1:orderType>
+            <ns1:orderId>1</ns1:orderId>
+            <ns1:orderStatusInfo>
+               <ns1:status>Completed</ns1:status>
+            </ns1:orderStatusInfo>
+            <ns1:orderDateTime>2014-04-29T16:16:31.410737Z</ns1:orderDateTime>
+         </ns1:orderMonitorSpecification>
+      </ns1:GetStatusResponse>
+   </soap:Body>
+</soap:Envelope>
