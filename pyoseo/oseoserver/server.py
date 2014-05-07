@@ -126,12 +126,11 @@ class OseoServer(object):
                 logger.debug('the_class: {}'.format(the_class))
                 instance = the_class()
                 logger.debug('instance: {}'.format(instance))
-                authenticated, info = instance.authenticate_request(
+                auth = instance.authenticate_request(
                     request_element,
                     soap_version
                 )
-                logger.debug('authenticated: {}'.format(authenticated))
-                logger.debug('info: {}'.format(info))
+                logger.debug('auth: {}'.format(auth))
             except errors.OseoError as err:
                  # this error is handled by the calling process_request() method
                 raise
@@ -141,10 +140,15 @@ class OseoServer(object):
                 logger.error('exception args: {}'.format(err.args))
                 raise errors.InvalidSettingsError('Invalid authentication '
                                                   'class')
-            if authenticated:
-                user_name = info
+            if auth is not None:
+                user_name, password = auth
                 logger.info('User %s authenticated successfully' % 
                             user_name)
+                try:
+                    user = models.OseoUser.objects.get(
+                        user__username=user_name)
+                except ObjectDoesNotExist:
+                    user = models.User.create_user(user_name)
             else:
                 raise errors.OseoError(
                     'AuthorizationFailed',

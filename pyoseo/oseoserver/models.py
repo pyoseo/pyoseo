@@ -23,6 +23,25 @@ from django.db.models import signals
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
 
+class OseoUser(models.Model):
+    user = models.OneToOneField(User)
+    disk_quota = models.SmallIntegerField(default=50, help_text='Disk space '
+                                          'available to each user. Expressed '
+                                          'in Gigabytes')
+    order_availability_time = models.SmallIntegerField(
+        default=10,
+        help_text='How many days does a completed order stay on the server, '
+                  'waiting to be downloaded'
+    )
+    delete_downloaded_order_files = models.BooleanField(
+        default=True,
+        help_text='If this option is selected, ordered items will be deleted '
+                  'from the server as soon as their download has been '
+                  'aknowledged. If not, the ordered items are only deleted '
+                  'after the expiration of the "order availability time" '
+                  'period.'
+    )
+
 class OptionGroup(models.Model):
     name = models.CharField(max_length=40, help_text='Id for the group of '
                             'options')
@@ -103,7 +122,7 @@ class Order(CustomizableItem):
     STANDARD = 'STANDARD'
     FAST_TRACK = 'FAST_TRACK'
     PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
-    user = models.ForeignKey(User, related_name='orders')
+    user = models.ForeignKey(OseoUser, related_name='orders')
     order_type = models.ForeignKey('OrderType', related_name='orders')
     last_describe_result_access_request = models.DateTimeField(null=True,
                                                                blank=True)
@@ -410,6 +429,15 @@ class SelectedOption(models.Model):
 
 # signal handlers
 
+def add_user_profile_callback(sender, **kwargs):
+    instance = kwargs['instance']
+    try:
+        profile = OseoUser.objects.get(user__id=instance.id)
+    except ObjectDoesNotExist:
+        profile = OseoUser()
+        profile.user = kwargs['instance']
+    profile.save()
+
 def get_old_status_callback(sender, **kwargs):
     instance = kwargs['instance']
     instance.old_status = instance.status
@@ -419,6 +447,13 @@ def update_status_changed_on_callback(sender, **kwargs):
     if instance.status_changed_on is None or \
             instance.status != instance.old_status:
         instance.status_changed_on = dt.datetime.utcnow()
+
+signals.post_save.connect(
+    add_user_profile_callback,
+    User,
+    weak=False,
+    dispatch_uid='id_for_add_user_profile'
+)
 
 signals.post_init.connect(
     get_old_status_callback,

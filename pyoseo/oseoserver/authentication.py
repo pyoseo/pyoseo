@@ -46,9 +46,9 @@ class VitoAuthentication(object):
                            the WSDL distributed with the specification uses
                            SOAP 1.1. This method supports both versions.
         :type soap_version: str
-        :return: A two-value tuple indicating if the authentication has been
-                 successfull and the username of the authenticated end user.
-        :rtype: (bool, str)
+        :return: A two-value tuple with the user name and password of the 
+                 successfully authenticated user or None.
+        :rtype: (str, str)
         '''
 
         if soap_version is None:
@@ -72,10 +72,9 @@ class VitoAuthentication(object):
                 locator=operation
             )
         print('auth_data[vito_token]: {}'.format(auth_data['vito_token']))
+        result = None
         if auth_data['vito_token'] == self._VITO_TOKEN:
-            result = (True, auth_data['user_name'])
-        else:
-            result = (False, 'Unauthorized user')
+            result = (auth_data['user_name'], auth_data['password'])
         return result
 
     def _get_auth_data(self, request_element, soap_namespace_key):

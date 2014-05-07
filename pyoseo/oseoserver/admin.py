@@ -7,6 +7,13 @@ class OptionChoiceInline(admin.StackedInline):
     model = models.OptionChoice
     extra = 1
 
+class OseoUserAdmin(admin.ModelAdmin):
+    list_display = ('user', 'disk_quota', 'order_availability_time',
+                    'delete_downloaded_order_files',)
+    fields = ('user', 'disk_quota', 'order_availability_time',
+              'delete_downloaded_order_files')
+    readonly_fields = ('user',)
+
 class OptionGroupAdmin(admin.ModelAdmin):
     pass
 
@@ -83,6 +90,7 @@ class GroupDeliveryOptionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.OrderType)
+admin.site.register(models.OseoUser, OseoUserAdmin)
 admin.site.register(models.GroupOption, GroupOptionAdmin)
 admin.site.register(models.GroupDeliveryOption, GroupDeliveryOptionAdmin)
 admin.site.register(models.OnlineDataAccess)
