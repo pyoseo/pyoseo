@@ -24,18 +24,31 @@ authenticate_request() method, which is called by the server to authenticate
 and authorize a request.
 '''
 
+import logging
+
+#import ldap
+
 import oseoserver.errors
+
+logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class VitoAuthentication(object):
 
     _VITO_ATTRIBUTE = 'domain'
     _VITO_TOKEN = 'VITO'
+    _VITO_PASSWORD = 'CCCC'
     _ns = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
         'soap1.1': 'http://schemas.xmlsoap.org/soap/envelope/',
         'wsse': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-' \
                 'wssecurity-secext-1.0.xsd',
     }
+
+    _LDAP_SERVER = 'eodldap.vgt.vito.be'
+    _LDAP_PROTOCOL = 'ldaps'
+    _LDAP_DN = 'cn=reader,ou=ldap_accounts,ou=gio,dc=eodata,dc=vito,dc=be'
+    _LDAP_PASSWORD = 'WJfSB4Fb'
+    _LDAP_TIMEOUT = 5.0 # seconds
 
     def authenticate_request(self, request_element, soap_version):
         '''
@@ -46,8 +59,8 @@ class VitoAuthentication(object):
                            the WSDL distributed with the specification uses
                            SOAP 1.1. This method supports both versions.
         :type soap_version: str
-        :return: A two-value tuple with the user name and password of the 
-                 successfully authenticated user or None.
+        :return: The user_name and password of the successfully authenticated
+                 user
         :rtype: (str, str)
         '''
 
@@ -59,25 +72,27 @@ class VitoAuthentication(object):
             '1.1': 'soap1.1',
             '1.2': 'soap',
         }
-        print('soap_version: {}'.format(soap_version))
         soap_ns_key = soap_ns_map[soap_version]
-        print('soap_ns_key: {}'.format(soap_ns_key))
-        operation = self._get_oseo_operation(request_element, soap_ns_key)
         try:
-            auth_data = self._get_auth_data(request_element, soap_ns_key)
+            user, vito_token, vito_pass = self.get_identity_token(
+                request_element,
+                soap_ns_key
+            )
+            valid_request = self.validate_vito_identity(vito_token, vito_pass)
+            if valid_request:
+                user_name, password = self.get_user_data(user)
+            else:
+                raise Exception('Could not validate VITO identity')
         except Exception as err:
+            logger.error(err)
             raise oseoserver.errors.OseoError(
                 'AuthenticationFailed',
                 'Invalid or missing identity information',
-                locator=operation
+                locator='identity_token'
             )
-        print('auth_data[vito_token]: {}'.format(auth_data['vito_token']))
-        result = None
-        if auth_data['vito_token'] == self._VITO_TOKEN:
-            result = (auth_data['user_name'], auth_data['password'])
-        return result
+        return user_name, password
 
-    def _get_auth_data(self, request_element, soap_namespace_key):
+    def get_identity_token(self, request_element, soap_namespace_key):
         token_path = '/%s:Envelope/%s:Header/wsse:Security/' \
                      'wsse:UsernameToken' % (soap_namespace_key,
                      soap_namespace_key)
@@ -86,21 +101,45 @@ class VitoAuthentication(object):
         password_type_path = '/'.join((password_path,
                                       '@%s' % self._VITO_ATTRIBUTE))
         password_text_path = '/'.join((password_path, 'text()'))
-        result = {
-            'user_name': request_element.xpath(user_name_path,
-                                              namespaces=self._ns)[0],
-            'vito_token': request_element.xpath(password_type_path,
-                                                namespaces=self._ns)[0],
-            'password': request_element.xpath(password_text_path,
-                                              namespaces=self._ns)[0],
-        }
+        user = request_element.xpath(user_name_path, namespaces=self._ns)[0]
+        vito_token = request_element.xpath(password_type_path,
+                                           namespaces=self._ns)[0]
+        vito_pass = request_element.xpath(password_text_path,
+                                          namespaces=self._ns)[0]
+        return user, vito_token, vito_pass
+
+    def validate_vito_identity(self, vito_token, vito_password):
+        result = False
+        if vito_token == self._VITO_TOKEN and \
+                vito_password == self._VITO_PASSWORD:
+            result = True
         return result
 
-    def _get_oseo_operation(self, request_element, soap_namespace_key):
-        request_body = request_element.xpath(
-            '/%s:Envelope/%s:Body/*[1]' % (soap_namespace_key,
-                                           soap_namespace_key),
-            namespaces=self._ns
-        )[0]
-        operation = request_body.tag.rpartition('}')[-1]
-        return operation
+    def get_user_data(self, user_name):
+        '''
+        Access VITO's LDAP server and get user data
+
+        :arg user_name: The username to authenticate
+        :type user_name: str
+        :return: two-value tuple with username and password
+        :rtype: (str, str)
+        '''
+
+        return user_name, 'dummy_password' # for now
+        #connection = ldap.initialize('://'.join((self._LDAP_PROTOCOL,
+        #                             self._LDAP_SERVER)))
+        #connection.set_option(ldap.OPT_TIMEOUT, self._LDAP_TIMEOUT)
+        #connection.set_option(ldap.OPT_NETWORK_TIMEOUT, self._LDAP_TIMEOUT)
+        #connection.bind_s(self._LDAP_DN, self._LDAP_PASSWORD,
+        #                  ldap.AUTH_SIMPLE)
+        ## rest of the authentication stuff
+
+    # unused??
+    #def _get_oseo_operation(self, request_element, soap_namespace_key):
+    #    request_body = request_element.xpath(
+    #        '/%s:Envelope/%s:Body/*[1]' % (soap_namespace_key,
+    #                                       soap_namespace_key),
+    #        namespaces=self._ns
+    #    )[0]
+    #    operation = request_body.tag.rpartition('}')[-1]
+    #    return operation

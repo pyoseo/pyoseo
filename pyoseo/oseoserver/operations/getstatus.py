@@ -27,9 +27,8 @@ from oseoserver import errors
 from oseoserver.operations.base import OseoOperation
 
 class GetStatus(OseoOperation):
-    NAME = 'GetStatus'
 
-    def __call__(self, request, user_name):
+    def __call__(self, request, user, **kwargs):
         '''
         Implements the OSEO Getstatus operation.
 
@@ -38,8 +37,8 @@ class GetStatus(OseoOperation):
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
-        :arg user_name: User making the request
-        :type user_name: str
+        :arg user: User making the request
+        :type user: oseoserver.models.OseoUser
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         '''
@@ -49,7 +48,7 @@ class GetStatus(OseoOperation):
         if request.orderId is not None: # 'order retrieve' type of request
             try:
                 order = models.Order.objects.get(id=int(request.orderId))
-                if self._is_user_authorized(user_name, order):
+                if self._is_user_authorized(user, order):
                     records.append(order)
                 else:
                     raise errors.OseoError('AuthorizationFailed',
@@ -61,7 +60,7 @@ class GetStatus(OseoOperation):
                                        'Invalid value for order',
                                        locator=request.orderId)
         else: # 'order search' type of request
-            records = self._find_orders(request, user_name)
+            records = self._find_orders(request, user)
         response = self._generate_get_status_response(records,
                                                       request.presentation)
         return response, status_code
@@ -206,22 +205,22 @@ class GetStatus(OseoOperation):
             response.orderMonitorSpecification.append(om)
         return response
 
-    def _is_user_authorized(self, user_name, order):
+    def _is_user_authorized(self, user, order):
         '''
         Test if a user is allowed to check on the status of an order
         '''
 
         result = False
-        if order.user.username == user_name:
+        if order.user == user:
             result = True
         return result
 
-    def _find_orders(self, request, user_name):
+    def _find_orders(self, request, user):
         '''
         Find orders that match the request's filtering criteria
         '''
 
-        records = models.Order.objects.filter(user__username=user_name)
+        records = models.Order.objects.filter(user=user)
         if request.filteringCriteria.lastUpdate is not None:
             lu = request.filteringCriteria.lastUpdate
             records = records.filter(status_changed_on__gte=lu)

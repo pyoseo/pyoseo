@@ -30,10 +30,9 @@ from oseoserver.operations.base import OseoOperation
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class Submit(OseoOperation):
-    NAME = 'Submit'
 
     @transaction.atomic
-    def __call__(self, request, user_name):
+    def __call__(self, request, user, **kwargs):
         '''
         Implements the OSEO Submit operation.
 
@@ -44,8 +43,8 @@ class Submit(OseoOperation):
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
-        :arg user_name: User making the request
-        :type user_name: str
+        :arg user: User making the request
+        :type user: oseoserver.models.OseoUser
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         '''
@@ -80,7 +79,7 @@ class Submit(OseoOperation):
                     order.order_type = models.OrderType.objects.get(
                             name=models.OrderType.PRODUCT_ORDER)
                     order.status = models.CustomizableItem.ACCEPTED
-            order.user = models.User.objects.get(id=1) # for testing purposes only
+            order.user = user
             #  not very nice but we will deal with option groups some other day
             order.option_group = models.OptionGroup.objects.get(id=1)
             order.save()

@@ -27,17 +27,16 @@ from oseoserver import errors
 from oseoserver.operations.base import OseoOperation
 
 class GetOptions(OseoOperation):
-    NAME = 'GetOptions'
 
-    def __call__(self, request, user_name):
+    def __call__(self, request, user, **kwargs):
         '''
         Implements the OSEO GetOptions operation.
 
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
-        :arg user_name: User making the request
-        :type user_name: str
+        :arg user: User making the request
+        :type user: oseoserver.models.OseoUser
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
 

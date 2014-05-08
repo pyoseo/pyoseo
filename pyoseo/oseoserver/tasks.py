@@ -128,7 +128,7 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         logger.error('could not find order item %s in the catalogue' % \
                      order_item_id)
         raise 
-    user_name = order_item.batch.order.user.username
+    user_name = order_item.batch.order.user.user.username
     delivery_option = models.DeliveryOption.objects.get(pk=delivery_option_id)
     chosen_protocol = delivery_option.onlinedataaccess.protocol
     protocol_path_map = {

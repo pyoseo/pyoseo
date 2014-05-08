@@ -43,10 +43,12 @@ import logging
 import importlib
 
 from django.conf import settings as django_settings
+from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
+from oseoserver import models
 from oseoserver import errors
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -70,7 +72,11 @@ class OseoServer(object):
     }
     MASSIVE_ORDER_REFERENCE = 'Massive order'
 
-    _operation_classes = {
+    # default normal user, created by the fixtures and used for anonymous 
+    # servers
+    DEFAULT_USER_NAME = 'oseoserver_user'
+
+    _OPERATION_CLASSES = {
         'GetStatusRequestType': 'oseoserver.operations.getstatus.' \
                                 'GetStatus',
         'SubmitOrderRequestType': 'oseoserver.operations.submit.Submit',
@@ -81,7 +87,7 @@ class OseoServer(object):
                                    'GetOptions',
     }
 
-    def authenticate_request(self, request_element, operation, soap_version):
+    def authenticate_request(self, request_element, soap_version):
         '''
         Authenticate an OSEO request.
 
@@ -97,40 +103,28 @@ class OseoServer(object):
 
         authenticate_request(request_element, soap_version)
 
-        This method must return a two-value tuple with the following:
-
-        * a boolean indicating if authentication has been successfull
-        * a string with either the name of the user that has been successfully
-          authenticated or an error message specifying what went wrong with
-          the authentication process
+        This method must return a two-value tuple with the username and 
+        password of the successfully authenticated user. If the authentication
+        is not successfull, the method must raise an exception.
 
         :arg request_element: The full request object
         :type request_element: lxml.etree.Element
         :arg soap_version: The SOAP version in use
         :type soap_version: str or None
-        :return: The username of the end user that is responsible for this 
-                 request
-        :rtype: str
+        :return: The end user that is responsible for this request and the
+                 user's password
+        :rtype: (oseoserver.models.OseoUser, str)
         '''
 
         auth_class = getattr(
             django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
         if auth_class is not None:
             try:
-                module_path, sep, class_name = auth_class.rpartition('.')
-                logger.debug('module_path: {}'.format(module_path))
-                logger.debug('class_name: {}'.format(class_name))
-                the_module = importlib.import_module(module_path)
-                logger.debug('the_module: {}'.format(the_module))
-                the_class = getattr(the_module, class_name)
-                logger.debug('the_class: {}'.format(the_class))
-                instance = the_class()
-                logger.debug('instance: {}'.format(instance))
-                auth = instance.authenticate_request(
+                instance = self._import_class(auth_class)
+                user_name, password = instance.authenticate_request(
                     request_element,
                     soap_version
                 )
-                logger.debug('auth: {}'.format(auth))
             except errors.OseoError as err:
                  # this error is handled by the calling process_request() method
                 raise
@@ -140,25 +134,17 @@ class OseoServer(object):
                 logger.error('exception args: {}'.format(err.args))
                 raise errors.InvalidSettingsError('Invalid authentication '
                                                   'class')
-            if auth is not None:
-                user_name, password = auth
-                logger.info('User %s authenticated successfully' % 
-                            user_name)
-                try:
-                    user = models.OseoUser.objects.get(
-                        user__username=user_name)
-                except ObjectDoesNotExist:
-                    user = models.User.create_user(user_name)
-            else:
-                raise errors.OseoError(
-                    'AuthorizationFailed',
-                    'The client is not authorized to call the operation',
-                    locator=operation
-                )
+            logger.info('User {} authenticated successfully'.format(user_name))
         else:
-            user_name = 'oseoserver_user'
+            user_name = self.DEFAULT_USER_NAME
             logger.warning('No authentication in use')
-        return user_name
+        try:
+            oseo_user = models.OseoUser.objects.get(user__username=user_name)
+        except ObjectDoesNotExist:
+            # create a new user, but don't store the password in the database
+            user = models.User.objects.create_user(user_name, password=None)
+            oseo_user = user.oseouser
+        return oseo_user, password
 
     def create_exception_report(self, code, text, soap_version, locator=None):
         '''
@@ -223,9 +209,9 @@ class OseoServer(object):
         try:
             schema_instance = self._parse_xml(data)
             operation = self._get_operation(schema_instance.__class__.__name__)
-            user_name = self.authenticate_request(element, operation.NAME,
-                                                  soap_version)
-            response, status_code = operation(schema_instance, user_name)
+            user, password = self.authenticate_request(element, soap_version)
+            response, status_code = operation(schema_instance, user,
+                                              user_password=password)
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
@@ -282,7 +268,7 @@ class OseoServer(object):
         return oseo_request
 
     def _get_operation(self, class_name):
-        op = self._operation_classes[class_name]
+        op = self._OPERATION_CLASSES[class_name]
         module_path, sep, class_name = op.rpartition('.')
         the_module = importlib.import_module(module_path)
         operation_class = getattr(the_module, class_name)
@@ -388,3 +374,13 @@ class OseoServer(object):
             detail.append(exception_element)
         return etree.tostring(soap_env, encoding=self._encoding,
                               pretty_print=True)
+
+    def _import_class(self, python_path):
+        '''
+        '''
+
+        module_path, sep, class_name = python_path.rpartition('.')
+        the_module = importlib.import_module(module_path)
+        the_class = getattr(the_module, class_name)
+        instance = the_class()
+        return instance

@@ -33,13 +33,12 @@ from oseoserver.operations.base import OseoOperation
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class DescribeResultAccess(OseoOperation):
-    NAME = 'DescribeResultAccess'
 
     # subFunction values for DescribeResultAccess operation
     ALL_READY = 'allReady'
     NEXT_READY = 'nextReady'
 
-    def __call__(self, request, user_name):
+    def __call__(self, request, user, user_password=None, **kwargs):
         '''
         Implements the OSEO DescribeResultAccess operation.
 
@@ -51,8 +50,10 @@ class DescribeResultAccess(OseoOperation):
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.OrderOptionsRequestType
-        :arg user_name: User making the request
-        :type user_name: str
+        :arg user: User making the request
+        :type user: oseoserver.models.OseoUser
+        :arg user_password: Password of the user making the request
+        :type user_password: str
         :return: The DescribeResultAccess response object and the HTTP status
                  code
         :rtype: tuple(pyxb.bundles.opengis.oseo.DescribeResultAccessResponse,
@@ -66,7 +67,7 @@ class DescribeResultAccess(OseoOperation):
             raise errors.OseoError('InvalidOrderIdentifier',
                                    'Invalid value for order',
                                    locator=request.orderId)
-        if order.user.username != user_name:
+        if order.user != user:
             raise errors.OseoError('AuthorizationFailed', 'The client is not '
                                    'authorized to call the operation',
                                    locator=request.orderId)
@@ -95,9 +96,12 @@ class DescribeResultAccess(OseoOperation):
                     iut.productId.collectionId = self._n(i.collection_id)
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
-                iut.itemAddress.ResourceAddress.URL = self.get_url(protocol,
-                                                                   i,
-                                                                   user_name)
+                iut.itemAddress.ResourceAddress.URL = self.get_url(
+                    protocol,
+                    i,
+                    user.user.username,
+                    user_password
+                )
                 response.URLs.append(iut)
             except ObjectDoesNotExist:
                 pass
@@ -126,7 +130,7 @@ class DescribeResultAccess(OseoOperation):
                         completed_items.append(order_item)
         return completed_items
 
-    def get_url(self, protocol, order_item, user_name):
+    def get_url(self, protocol, order_item, user_name, user_password):
         '''
         Return the URL where the order item is available for online access.
 
@@ -134,6 +138,8 @@ class DescribeResultAccess(OseoOperation):
         :type protocol: str
         :arg order_item:
         :type order_item:
+        :arg user: User that made the order
+        :type user: oseoserver.models.OseoUser
         :arg user_name:
         :type user_name: str
         '''
@@ -146,7 +152,7 @@ class DescribeResultAccess(OseoOperation):
         elif protocol == models.OnlineDataAccess.FTP:
             url = 'ftp://{user}:{password}@{host}/data/{order}/{file}'.format(
                 user=user_name,
-                password='dummy',
+                password=user_password,
                 host=host_name,
                 order=order_item.batch.order.id,
                 file=order_item.file_name)
