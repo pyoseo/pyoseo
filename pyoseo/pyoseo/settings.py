@@ -16,13 +16,22 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # OSEOSERVER OPTIONS
-OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in the settings_local.py module
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
 OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/var/www'
 OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/var/www'
 
+# FTP SERVER SPECIFIC OPTIONS
+OSEOSERVER_FTP_PASSWORD_FILE_PATH = None # redefined in settings_local
+
+# AUTHENTICATION OPTIONS
+OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in settings_local
+OSEOSERVER_LDAP_SERVER = None # redefined in settings_local
+OSEOSERVER_LDAP_DN = None # redefined in settings_local
+OSEOSERVER_LDAP_PASSWORD = None # redefined in settings_local
+
+
 # GIOSYSTEM SPECIFIC
-GIOSYSTEM_SETTINGS_URL = '' # redefined in the settings_local.py module
+GIOSYSTEM_SETTINGS_URL = '' # redefined in settings_local
 
 # CELERY OPTIONS
 CELERY_RESULT_BACKEND = 'amqp'
@@ -40,7 +49,7 @@ CELERY_DISABLE_RATE_LIMITS = True
 SECRET_KEY = 'adc!i+t)9(r^(++at!t^+ke_9#vnrnsrp_z1(8!dthyt38ae5r'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False # redefined in settings_local
 
 TEMPLATE_DEBUG = True
 

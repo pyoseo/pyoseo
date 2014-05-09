@@ -26,7 +26,8 @@ and authorize a request.
 
 import logging
 
-#import ldap
+#import ldap # add the ldap installation steps first
+from django.conf import settings as django_settings
 
 import oseoserver.errors
 
@@ -44,10 +45,7 @@ class VitoAuthentication(object):
                 'wssecurity-secext-1.0.xsd',
     }
 
-    _LDAP_SERVER = 'eodldap.vgt.vito.be'
     _LDAP_PROTOCOL = 'ldaps'
-    _LDAP_DN = 'cn=reader,ou=ldap_accounts,ou=gio,dc=eodata,dc=vito,dc=be'
-    _LDAP_PASSWORD = 'WJfSB4Fb'
     _LDAP_TIMEOUT = 5.0 # seconds
 
     def authenticate_request(self, request_element, soap_version):
@@ -126,12 +124,14 @@ class VitoAuthentication(object):
         '''
 
         return user_name, 'dummy_password' # for now
+        #ldap_server = getattr(django_settings, 'OSEOSERVER_LDAP_SERVER')
+        #ldap_dn = getattr(django_settings, 'OSEOSERVER_LDAP_DN')
+        #ldap_password = getattr(django_settings, 'OSEOSERVER_LDAP_PASSWORD')
         #connection = ldap.initialize('://'.join((self._LDAP_PROTOCOL,
-        #                             self._LDAP_SERVER)))
+        #                             ldap_server)))
         #connection.set_option(ldap.OPT_TIMEOUT, self._LDAP_TIMEOUT)
         #connection.set_option(ldap.OPT_NETWORK_TIMEOUT, self._LDAP_TIMEOUT)
-        #connection.bind_s(self._LDAP_DN, self._LDAP_PASSWORD,
-        #                  ldap.AUTH_SIMPLE)
+        #connection.bind_s(ldap_dn, ldap_password, ldap.AUTH_SIMPLE)
         ## rest of the authentication stuff
 
     # unused??

@@ -193,19 +193,18 @@ def update_order_status(self, order_id):
     :type order: oseoserver.models.Order
     '''
 
-    print('update_order_status method called')
     order = models.Order.objects.get(pk=order_id)
     if order.order_type.name == models.OrderType.PRODUCT_ORDER:
-        print('order: {}'.format(order))
         batch_statuses = set([b.status() for b in order.batches.all()])
         old_order_status = order.status
-        print('old_order_status: {}'.format(old_order_status))
         if len(batch_statuses) == 1:
             new_order_status = batch_statuses.pop()
-            print('new_order_status: {}'.format(new_order_status))
             if old_order_status != new_order_status:
                 order.status = new_order_status
-                print('updated_order_status: {}'.format(order.status))
                 if new_order_status == models.CustomizableItem.COMPLETED:
                     order.completed_on = dt.datetime.utcnow()
                 order.save()
+
+@shared_task(bind=True)
+def monitor_ftp_downloads(self):
+    raise NotImplementedError
