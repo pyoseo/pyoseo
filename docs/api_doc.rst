@@ -1,10 +1,12 @@
 oseoserver API
 ==============
 
-.. automodule:: oseoserver.server
-   :members:
-   :undoc-members:
+.. toctree::
+   :maxdepth: 1
 
-.. automodule:: oseoserver.operations.submit
-   :members:
-   :undoc-members:
+   oseoserverapi
+   submitapi
+   getstatusapi
+   describeresultaccessapi
+   getoptionsapi
+

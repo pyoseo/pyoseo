@@ -22,9 +22,13 @@ import datetime as dt
 from django.core.exceptions import ObjectDoesNotExist
 import pyxb.bundles.opengis.oseo as oseo
 
-from oseoserver import models
-from oseoserver import errors
-from oseoserver.operations.base import OseoOperation
+#from oseoserver import models
+#from oseoserver import errors
+#from oseoserver.operations.base import OseoOperation
+
+from pyoseo.oseoserver import models
+from pyoseo.oseoserver import errors
+from pyoseo.oseoserver.operations.base import OseoOperation
 
 class GetStatus(OseoOperation):
 

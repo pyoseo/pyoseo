@@ -6,19 +6,35 @@ the data available to the requesting user upon completion.
 
 It implements the OGC OSEO standard
 
-OSEO operations
----------------
+GetOptions operation
+--------------------
 
-* GetCapabilities - Not implemented
-* GetOptions
-* GetQuotation - Not implemented
-* GetQuotationResponse - Not implemented
-* Submit
-* SubmitResponse - Not implemented
-* Getstatus
-* DescribeResultAccess
-* Cancel
-* CancelResponse - Not implemented
+For more info refer to section ?? of the OSEO specification
+
+Submit operation
+----------------
+
+For more info refer to section ?? of the OSEO specification
+
+Getstatus operation
+-------------------
+
+For more info refer to section ?? of the OSEO specification
+
+DescribeResultAccess operation
+------------------------------
+
+For more info refer to section ?? of the OSEO specification
+Cancel operation
+----------------
+
+For more info refer to section ?? of the OSEO specification
+
+GetCapabilities - Not implemented
+GetQuotation - Not implemented
+GetQuotationResponse - Not implemented
+SubmitResponse - Not implemented
+CancelResponse - Not implemented
 
 How it works internally
 -----------------------

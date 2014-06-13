@@ -48,8 +48,10 @@ from lxml import etree
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
-from oseoserver import models
-from oseoserver import errors
+#from oseoserver import models
+#from oseoserver import errors
+import models
+import errors
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -149,7 +151,8 @@ class OseoServer(object):
     def create_exception_report(self, code, text, soap_version, locator=None):
         '''
         :arg code: OSEO exception code. Can be any of the defined
-        exceptionCode values in the OSEO and OWS Common specifications.
+                   exceptionCode values in the OSEO and OWS Common 
+                   specifications.
         :type code: str
         :arg text: Text to display in the exception report
         :type text: str

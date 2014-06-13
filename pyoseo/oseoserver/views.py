@@ -7,8 +7,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.servers.basehttp import FileWrapper
 from django.core.exceptions import ObjectDoesNotExist
 
-from oseoserver import server
-from oseoserver import models
+#from oseoserver import server
+#from oseoserver import models
+
+import server
+import models
 
 @csrf_exempt
 def oseo_endpoint(request):

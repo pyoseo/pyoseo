@@ -26,9 +26,13 @@ from django.db import transaction
 from django.conf import settings as django_settings
 import pyxb.bundles.opengis.oseo as oseo
 
-from oseoserver import models
-from oseoserver import tasks
-from oseoserver.operations.base import OseoOperation
+#from oseoserver import models
+#from oseoserver import tasks
+#from oseoserver.operations.base import OseoOperation
+
+from pyoseo.oseoserver import models
+from pyoseo.oseoserver import tasks
+from pyoseo.oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 

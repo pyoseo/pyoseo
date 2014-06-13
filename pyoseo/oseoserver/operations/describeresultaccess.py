@@ -25,10 +25,15 @@ from django.core.urlresolvers import reverse
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 
-from oseoserver import models
-from oseoserver import errors
-from oseoserver import views
-from oseoserver.operations.base import OseoOperation
+#from oseoserver import models
+#from oseoserver import errors
+#from oseoserver import views
+#from oseoserver.operations.base import OseoOperation
+
+from pyoseo.oseoserver import models
+from pyoseo.oseoserver import errors
+from pyoseo.oseoserver import views
+from pyoseo.oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
