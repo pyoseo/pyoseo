@@ -7,7 +7,9 @@ Welcome to pyoseo's documentation!
 ==================================
 
 pyoseo is an ordering server that implements the Open Geospatial Consortium's
-OSEO specification.
+`OSEO specification`_.
+
+.. _OSEO specification: http://www.opengeospatial.org/standards/oseo
 
 pyoseo can be used to handle the dissemination of geospatial data.
 
@@ -18,6 +20,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   introduction
    installation
    api_doc
 
