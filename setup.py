@@ -13,7 +13,9 @@ setup(
     classifiers=[''],
     platforms=[''],
     license='',
-    packages=find_packages(),
+    #packages=find_packages(),
+    package_dir={'': 'pyoseo',},
+    packages=find_packages('pyoseo'),
     install_requires=[
         'django',
         'pyxb',

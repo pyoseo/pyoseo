@@ -1,5 +1,6 @@
 dist/*
 *.egg-info/*
+pyoseo/*.egg-info/*
 pyoseo/db.sqlite3
 *.pyc
 *.un~
