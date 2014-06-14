@@ -1,6 +1,7 @@
 OseoServer
 ==========
 
-.. automodule:: pyoseo.oseoserver.server
+.. automodule:: oseoserver.server
    :members:
+   :show-inheritance:
    :undoc-members:

@@ -41,8 +41,8 @@ import giosystemcore.files
 import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
 
-#from oseoserver import models
-from pyoseo.oseoserver import models
+from oseoserver import models
+#from pyoseo.oseoserver import models
 
 logger = get_task_logger(__name__)
 

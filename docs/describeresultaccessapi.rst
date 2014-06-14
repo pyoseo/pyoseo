@@ -1,6 +1,6 @@
 DescribeResultAccess
 ====================
 
-.. automodule:: pyoseo.oseoserver.operations.describeresultaccess
+.. automodule:: oseoserver.operations.describeresultaccess
    :members:
    :undoc-members:

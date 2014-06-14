@@ -13,31 +13,35 @@
 #   limitations under the License.
 
 '''
-- Assuming that massive orders will come with some special reference
+This module defines the OseoServer class, which implements general request 
+processing operations and then delegates to specialized operation classes
+that preform each OSEO operation.
 
+.. code:: python
 
-Creating the ParameterData element:
-
-* create an appropriate XML Schema Definition file (xsd)
-* generate pyxb bindings for the XML schema with:
-
-  pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
-
-* in ipython
-
-  import pyxb.binding.datatypes as xsd
-  import pyxb.bundles.opengis.oseo as oseo
-  import pyoseo_schema
-
-  pd = oseo.ParameterData()
-  pd.encoding = 'XMLEncoding'
-  pd.values = xsd.anyType()
-  pd.values.append(pyoseo_schema.fileFormat('o valor'))
-  pd.values.append(pyoseo_schema.projection('a projeccao'))
-  pd.toxml()
-
-
+   s = oseoserver.OseoServer()
+   result, status_code, response_headers = s.process_request(request)
 '''
+
+#Creating the ParameterData element:
+#
+#* create an appropriate XML Schema Definition file (xsd)
+#* generate pyxb bindings for the XML schema with:
+#
+#  pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
+#
+#* in ipython
+#
+#  import pyxb.binding.datatypes as xsd
+#  import pyxb.bundles.opengis.oseo as oseo
+#  import pyoseo_schema
+#
+#  pd = oseo.ParameterData()
+#  pd.encoding = 'XMLEncoding'
+#  pd.values = xsd.anyType()
+#  pd.values.append(pyoseo_schema.fileFormat('o valor'))
+#  pd.values.append(pyoseo_schema.projection('a projeccao'))
+#  pd.toxml()
 
 import logging
 import importlib
@@ -48,14 +52,29 @@ from lxml import etree
 import pyxb.bundles.opengis.oseo as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
-#from oseoserver import models
-#from oseoserver import errors
 import models
 import errors
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class OseoServer(object):
+    '''
+    Handle requests that come from Django and process them.
+
+    This class performs some pre-procesing of requests, such as schema
+    validation and user authentication. It then offloads the actual processing
+    of requests to specialized OSEO operation classes. After the request has
+    been processed, there is also some post-processing stuff, such as wrapping
+    the result with the correct SOAP headers.
+
+    Clients of this class should use only the process_request method.
+    '''
+
+    MASSIVE_ORDER_REFERENCE = 'Massive order'
+    '''Identifies an order as being a "massive order"'''
+
+    DEFAULT_USER_NAME = 'oseoserver_user'
+    '''Used for anonymous servers'''
 
     _oseo_version = '1.0.0'
     _encoding = 'utf-8'
@@ -72,12 +91,6 @@ class OseoServer(object):
             'InvalidOrderIdentifier': 'client',
             'UnsupportedCollection': 'client',
     }
-    MASSIVE_ORDER_REFERENCE = 'Massive order'
-
-    # default normal user, created by the fixtures and used for anonymous 
-    # servers
-    DEFAULT_USER_NAME = 'oseoserver_user'
-
     _OPERATION_CLASSES = {
         'GetStatusRequestType': 'oseoserver.operations.getstatus.' \
                                 'GetStatus',
@@ -88,6 +101,65 @@ class OseoServer(object):
         'OrderOptionsRequestType': 'oseoserver.operations.getoptions.' \
                                    'GetOptions',
     }
+
+    def process_request(self, request_data):
+        '''
+        Entry point for the ordering service.
+
+        This method receives the raw request data as a string and then parses
+        it into a valid pyxb OSEO object. It will then send the request to the
+        appropriate operation processing class.
+
+        :arg request_data: The raw request data
+        :type request_data: str
+        :return: The response XML document, as a string, the HTTP status
+                 code and a dictionary with HTTP headers to be set by the 
+                 wsgi server
+        :rtype: tuple(str, int, dict)
+        '''
+
+        element = etree.fromstring(request_data)
+        response_headers = dict()
+        soap_version = self._is_soap(element)
+        if soap_version is not None:
+            data = self._get_soap_data(element, soap_version)
+            if soap_version == '1.2':
+                logger.debug('SOAP 1.2 request')
+                response_headers['Content-Type'] = 'application/soap+xml'
+            else:
+                logger.debug('SOAP 1.1 request')
+                response_headers['Content-Type'] = 'text/xml'
+        else:
+            logger.debug('Non SOAP request')
+            data = element
+            response_headers['Content-Type'] = 'application/xml'
+        try:
+            schema_instance = self._parse_xml(data)
+            operation = self._get_operation(schema_instance.__class__.__name__)
+            user, password = self.authenticate_request(element, soap_version)
+            response, status_code = operation(schema_instance, user,
+                                              user_password=password)
+            if soap_version is not None:
+                result = self._wrap_soap(response, soap_version)
+            else:
+                result = response.toxml(encoding=self._encoding)
+        except errors.OseoError as err:
+            if err.code == 'AuthorizationFailed':
+                status_code = 401
+                # we should probably also adjust the response's headers to 
+                # include a WWW-authenticate HTTP header as well
+            else:
+                status_code = 400
+            result = self.create_exception_report(err.code, err.text,
+                                                  soap_version,
+                                                  locator=err.locator)
+        except errors.NonSoapRequestError as err:
+            status_code = 400
+            result = err
+        except errors.InvalidSettingsError as err:
+            status_code = 500
+            result = err
+        return result, status_code, response_headers
 
     def authenticate_request(self, request_element, soap_version):
         '''
@@ -177,65 +249,6 @@ class OseoServer(object):
         else:
             result = exception_report.toxml(encoding=self._encoding)
         return result
-
-    def process_request(self, request_data):
-        '''
-        Entry point for the ordering service.
-
-        This method receives the raw request data as a string and then parses
-        it into a valid pyxb OSEO object. It will then send the request to the
-        appropriate operation processing class.
-
-        :arg request_data: The raw request data
-        :type request_data: str
-        :return: The response XML document, as a string, the HTTP status
-                 code and a dictionary with HTTP headers to be set by the 
-                 wsgi server
-        :rtype: tuple(str, int, dict)
-        '''
-
-        element = etree.fromstring(request_data)
-        response_headers = dict()
-        soap_version = self._is_soap(element)
-        if soap_version is not None:
-            data = self._get_soap_data(element, soap_version)
-            if soap_version == '1.2':
-                logger.debug('SOAP 1.2 request')
-                response_headers['Content-Type'] = 'application/soap+xml'
-            else:
-                logger.debug('SOAP 1.1 request')
-                response_headers['Content-Type'] = 'text/xml'
-        else:
-            logger.debug('Non SOAP request')
-            data = element
-            response_headers['Content-Type'] = 'application/xml'
-        try:
-            schema_instance = self._parse_xml(data)
-            operation = self._get_operation(schema_instance.__class__.__name__)
-            user, password = self.authenticate_request(element, soap_version)
-            response, status_code = operation(schema_instance, user,
-                                              user_password=password)
-            if soap_version is not None:
-                result = self._wrap_soap(response, soap_version)
-            else:
-                result = response.toxml(encoding=self._encoding)
-        except errors.OseoError as err:
-            if err.code == 'AuthorizationFailed':
-                status_code = 401
-                # we should probably also adjust the response's headers to 
-                # include a WWW-authenticate HTTP header as well
-            else:
-                status_code = 400
-            result = self.create_exception_report(err.code, err.text,
-                                                  soap_version,
-                                                  locator=err.locator)
-        except errors.NonSoapRequestError as err:
-            status_code = 400
-            result = err
-        except errors.InvalidSettingsError as err:
-            status_code = 500
-            result = err
-        return result, status_code, response_headers
 
     def _is_soap(self, request_element):
         '''

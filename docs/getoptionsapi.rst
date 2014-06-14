@@ -1,6 +1,6 @@
 GetOptions
 ==========
 
-.. automodule:: pyoseo.oseoserver.operations.getoptions
+.. automodule:: oseoserver.operations.getoptions
    :members:
    :undoc-members:

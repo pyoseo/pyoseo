@@ -1,6 +1,6 @@
 Submit
 ======
 
-.. automodule:: pyoseo.oseoserver.operations.submit
+.. automodule:: oseoserver.operations.submit
    :members:
    :undoc-members:
