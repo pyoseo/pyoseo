@@ -1,6 +1,11 @@
 Installing pyoseo
 =================
 
+.. toctree::
+   :maxdepth: 2
+
+   celery
+
 Don't forget to populate the database with the initial values for the following
 models:
 
