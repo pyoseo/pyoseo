@@ -84,8 +84,6 @@ Installing pyoseo requires following these instructions:
    Now access `http://geo2.meteo.pt:8000/admin` in your browser and confirm you
    can access pyoseo's administration backend
 
-#. Install celery as a service that runs at boot
-
 #. Configure an apache2 virtual host for serving the site
 
 PyOSEO glues together several software packages and makes them work together in
@@ -156,8 +154,10 @@ Celery installation and configuration requires the following:
 
    .. code:: bash
 
-      sudo cp scripts/celeryd.init /etc/init.d/celeryd
       sudo cp scripts/celeryd.conf /etc/default/celeryd
+
+#. Tweak the configuration file by pointing the `CELERY_BIN` and `CELERY_CHDIR`
+   variables to the correct paths
 
 #. Install the service
 
@@ -178,6 +178,9 @@ Celery installation and configuration requires the following:
       sudo service celeryd status
 
 #.  From now on, celery will be auto started at boot
+
+#. You can inspect the celery daemon's log file at
+   `/var/log/celery/worker1.log`
 
 
 

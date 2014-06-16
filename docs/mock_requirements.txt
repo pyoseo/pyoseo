@@ -1,6 +1,6 @@
 # this file holds some fake requirements to fool the readthedocs website into
 # building the documentation
 Django==1.6.2
-PyXB
+#PyXB
 celery
 lxml
