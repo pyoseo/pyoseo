@@ -26,4 +26,11 @@ setup(
         'librabbitmq',
     ],
     include_package_data=True,
+    entry_points={
+        'console_scripts': [
+            'install_celery_service = oseoserver.scripts.installcelery:main',
+            'install_proftpd = oseoserver.scripts.installproftpd:main',
+            'configure_apache = oseoserver.scripts.configureapache:main',
+        ],
+    },
 )

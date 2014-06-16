@@ -36,7 +36,7 @@ class Mock(object):
             return Mock()
 
 MOCK_MODULES = ['giosystemcore', 'pyxb.bundles.opengis.oseo',
-                'pyxb.bundles.opengis.ows',]
+                'pyxb', 'pyxb.bundles.opengis.ows',]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = Mock()
 

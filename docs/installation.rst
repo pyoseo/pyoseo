@@ -147,14 +147,14 @@ Celery installation and configuration requires the following:
 
    .. code:: bash
 
-      sudo cp scripts/celeryd.init /etc/init.d/celeryd
+      sudo cp pyoseo/oseoserver/scripts/celeryd.init /etc/init.d/celeryd
       sudo chmod 755 /etc/init.d/celeryd
 
 #. Copy the init configuration file to the correct location
 
    .. code:: bash
 
-      sudo cp scripts/celeryd.conf /etc/default/celeryd
+      sudo cp pyoseo/oseoserver/scripts/celeryd.conf /etc/default/celeryd
 
 #. Tweak the configuration file by pointing the `CELERY_BIN` and `CELERY_CHDIR`
    variables to the correct paths
