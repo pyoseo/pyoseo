@@ -23,7 +23,9 @@ Installing pyoseo requires following these instructions:
 
 #. Install the giosystemcore library. For now pyoseo depends on this library,
    but in the future it will be independent. Follow the installation
-   instructions available at giosystemcore's readthedocs page.
+   instructions available at `giosystemcore's readthedocs page`_.
+
+.. _giosystemcore's readthedocs page: http://giosystemcore.readthedocs.org
 
 #. Be sure to install pyxb with the OGC schemas. It is part of giosystemcore's
    install procedure.
@@ -47,17 +49,17 @@ Installing pyoseo requires following these instructions:
        STATIC_URL = '/giosystem/ordering/static/'
        DEBUG = False
        ALLOWED_HOSTS = ['.geo2.meteo.pt',]
-       GIOSYSTEM_SETTINGS_URL = http://gio-gl.meteo.pt/giosystem/settings/api/v1/
+       GIOSYSTEM_SETTINGS_URL = 'http://gio-gl.meteo.pt/giosystem/settings/api/v1/'
 
-    Add any other settings that you may need, for example, for the
-    authentication module
+   Add any other settings that you may need, for example, for the
+   authentication module
 
 #. Create the django database structure, choosing to create a superuser for
    django administration when prompted
 
    .. code:: bash
 
-      cd venv/src/pyoseo/pyoseo
+      cd ..
       python manage.py syncdb
 
 #. Populate the django database with some initial fixture data
@@ -73,24 +75,52 @@ Installing pyoseo requires following these instructions:
 
       python manage.py collectstatic --noinput --verbosity=0
 
-#. Test that the django admin can be accessed using the development server.
-   Since we turned debug off in the settings_local.py file, we must start the
-   development server like this:
+#. Configure an apache2 virtual host for serving the site
 
    .. code:: bash
 
-      python manage.py runserver geo2.meteo.pt:8000
+      sudo vim /etc/apache2/sites-available/giosystem.conf
 
-   Now access `http://geo2.meteo.pt:8000/admin` in your browser and confirm you
-   can access pyoseo's administration backend
+   Add the following lines inside the `VirtualHost` directive:
 
-#. Configure an apache2 virtual host for serving the site
+       # settings for the ordering server (preview)
+       Alias /giosystem/ordering/static /home/geo6/giosystem/venv/src/pyoseo/pyoseo/sitestatic/
+
+       <Directory /home/geo6/giosystem/venv/src/pyoseo/pyoseo/sitestatic/>
+           Order deny,allow
+           Allow from all
+       </Directory>
+
+       WSGIDaemonProcess giosystem_ordering user=geo6 group=geo6 processes=1 
+       threads=1 display-name='%{GROUP}' 
+       python-path=/home/geo6/giosystem/venv/lib/python2.7/site-packages:/home/geo6/giosystem/venv/src/pyoseo/pyoseo
+       WSGIProcessGroup giosystem_ordering
+       WSGIScriptAlias /giosystem/ordering /home/geo6/giosystem/venv/src/pyoseo/pyoseo/pyoseo/wsgi.py
+
+       <Location /giosystem/ordering>
+           WSGIProcessGroup giosystem_ordering
+       </Location>
+
+       <Directory /home/geo6/giosystem/venv/src/pyoseo/pyoseo/pyoseo>
+           <Files wsgi.py>
+               Order deny,allow
+               Allow from all
+           </Files>
+       </Directory>
+
+#. The server should now be available on your host. Test it by visiting the
+   admin section. Access:
+
+       http://yourserver/giosystem/ordering/admin/
+
+Installing other components
+---------------------------
 
 PyOSEO glues together several software packages and makes them work together in
 order to receive and process ordering requests
 
 proftpd
--------
+.......
 
 ProFTPd is an FTP server. Depending on your use case you may not need an FTP
 server in order to use pyoseo. If you do need one, there are some to choose
@@ -130,8 +160,25 @@ scheme.
 
       newgrp ftpuser
 
+#. Add write permission to the *ftpuser* group on /home/ftpuser
+
+   .. code:: bash
+
+      sudo chmod 775 /home/ftpuser
+
+#. When creating a new virtual user for FTP, remember to remove execution 
+   permissions of the *ftpuser* on the virtual user root dir. This way the
+   giosystem user is allowed to place the ordered items there (because it
+   owns this directory) and the *ftpuser* user can't upload files to the
+   server
+
+   .. code:: bash
+
+      mkdir /home/ftpuser/johndoe
+      chmod 755 /home/ftpuser/johndoe
+
 celery
-------
+......
 
 In order to process orders, pyoseo uses the celery distributed task queue.
 Celery installation and configuration requires the following:
