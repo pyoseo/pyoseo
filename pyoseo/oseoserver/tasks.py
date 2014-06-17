@@ -148,7 +148,9 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         raise errors.InvalidSettingsError('Protocol %s is not available' %
                                           chosen_protocol)
     if output_root is not None:
-        output_directory = os.path.join(output_root, user_name, 'data',
+        #output_directory = os.path.join(output_root, user_name, 'data',
+        #                                str(order_item.batch.order.id))
+        output_directory = os.path.join(output_root, user_name,
                                         str(order_item.batch.order.id))
     else:
         raise

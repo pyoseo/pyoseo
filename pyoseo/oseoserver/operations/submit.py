@@ -17,6 +17,7 @@ Implements the OSEO Submit operation
 '''
 
 import os
+import stat
 import shutil
 import datetime as dt
 import logging
@@ -89,7 +90,7 @@ class Submit(OseoOperation):
             order.option_group = models.OptionGroup.objects.get(id=1)
             order.save()
             self.parse_order_delivery_method(ord_spec, order)
-            self.configure_delivery(order, user, user_password)
+            self.configure_delivery(order, user)
             # add options
             if ord_spec.invoiceAddress is not None:
                 ia = ord_spec.invoiceAddress
@@ -255,7 +256,7 @@ class Submit(OseoOperation):
                 'The chosen delivery method is not allowed'
             )
 
-    def configure_delivery(self, order, user, password):
+    def configure_delivery(self, order, user):
         '''
         Perform delivery related operations.
 
@@ -277,65 +278,35 @@ class Submit(OseoOperation):
         logger.debug('create_ftp_account: {}'.format(create_ftp_account))
         if create_ftp_account:
             user_name = user.user.username
-            self._add_ftp_user(user_name, password)
+            self._add_ftp_user(user_name)
 
-    def _add_ftp_user(self, user, password):
+    def _add_ftp_user(self, user):
         '''
         Create a new FTP user.
 
         These FTP users are virtual and their creation relies on the vsftpd
         server being already correctly set up.
+
+        :arg user: the name of the user that is to be added
+        :type user: str
         '''
 
-        self._update_ftp_passwords_file(user, password)
-        self._create_virtual_user_home(user)
-
-    def _update_ftp_passwords_file(self, user, password):
-        contents = []
-        process = Popen(['openssl', 'passwd', '-1', password], stdout=PIPE,
-                        stderr=PIPE)
-        stdout, stderr = process.communicate()
-        hashed_password = stdout.strip()
-        passwords_path = getattr(django_settings,
-                                 'OSEOSERVER_FTP_PASSWORD_FILE_PATH')
-        logger.debug('FTP_PASSWORD_FILE_PATH: {}'.format(passwords_path))
-        with open(passwords_path) as fh:
-            for line in fh:
-                contents.append(line)
-        already_present = False
-        for count, line in enumerate(contents):
-            old_user, old_hashed_pass = line.strip().split(':')
-            if old_user == user:
-                print('this user is already present in the password file. '
-                      'Updating the password...')
-                contents[count] = '%s:%s\n' % (user, hashed_password)
-                already_present = True
-        if not already_present:
-            contents.append('%s:%s\n' % (user, hashed_password))
-        with open(os.path.basename(passwords_path), 'w') as fh:
-            fh.writelines(contents)
-        shutil.move(os.path.basename(passwords_path), passwords_path)
-
-    def _create_virtual_user_home(self, user):
         ftp_service_root = getattr(
             django_settings,
             'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR'
         )
         user_home = os.path.join(ftp_service_root, user)
         try:
-            os.makedirs(os.path.join(user_home, 'data'))
+            os.makedirs(user_home)
+            # python's equivalent to chmod 755 user_home
+            os.chmod(user_home, stat.S_IRWXU | stat.S_IRGRP | 
+                     stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except OSError as err:
             if err.errno == 17:
-                print('user home already exists')
+                logger.debug('user home already exists')
                 pass
             else:
                 raise
-        first_chmod = Popen(['chmod', 'g-w', user_home], stdout=PIPE, stderr=PIPE)
-        first_chmod.communicate()
-        second_chmod = Popen(['chmod', '--recursive', '775',
-                             os.path.join(user_home, 'data')],
-                             stdout=PIPE, stderr=PIPE)
-        second_chmod.communicate()
 
     def _add_online_data_access_data(self, order, order_specification,
                                      available_options):

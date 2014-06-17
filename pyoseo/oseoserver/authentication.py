@@ -26,7 +26,6 @@ and authorize a request.
 
 import logging
 
-#import ldap # add the ldap installation steps first
 from django.conf import settings as django_settings
 
 import oseoserver.errors
@@ -35,18 +34,12 @@ logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class VitoAuthentication(object):
 
-    _VITO_ATTRIBUTE = 'domain'
-    _VITO_TOKEN = 'VITO'
-    _VITO_PASSWORD = 'CCCC'
     _ns = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
         'soap1.1': 'http://schemas.xmlsoap.org/soap/envelope/',
         'wsse': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-' \
                 'wssecurity-secext-1.0.xsd',
     }
-
-    _LDAP_PROTOCOL = 'ldaps'
-    _LDAP_TIMEOUT = 5.0 # seconds
 
     def authenticate_request(self, request_element, soap_version):
         '''
@@ -96,8 +89,10 @@ class VitoAuthentication(object):
                      soap_namespace_key)
         user_name_path = '/'.join((token_path, 'wsse:Username/text()'))
         password_path = '/'.join((token_path, 'wsse:Password'))
+        the_attribute = getattr(django_settings,
+                                'OSEOSERVER_AUTH_VITO_ATTRIBUTE')
         password_type_path = '/'.join((password_path,
-                                      '@%s' % self._VITO_ATTRIBUTE))
+                                      '@%s' % the_attribute))
         password_text_path = '/'.join((password_path, 'text()'))
         user = request_element.xpath(user_name_path, namespaces=self._ns)[0]
         vito_token = request_element.xpath(password_type_path,
@@ -108,8 +103,9 @@ class VitoAuthentication(object):
 
     def validate_vito_identity(self, vito_token, vito_password):
         result = False
-        if vito_token == self._VITO_TOKEN and \
-                vito_password == self._VITO_PASSWORD:
+        the_token = getattr(django_settings, 'OSEOSERVER_AUTH_VITO_TOKEN')
+        the_pass = getattr(django_settings, 'OSEOSERVER_AUTH_VITO_PASSWORD')
+        if vito_token == the_token and vito_password == the_pass:
             result = True
         return result
 
@@ -124,15 +120,6 @@ class VitoAuthentication(object):
         '''
 
         return user_name, 'dummy_password' # for now
-        #ldap_server = getattr(django_settings, 'OSEOSERVER_LDAP_SERVER')
-        #ldap_dn = getattr(django_settings, 'OSEOSERVER_LDAP_DN')
-        #ldap_password = getattr(django_settings, 'OSEOSERVER_LDAP_PASSWORD')
-        #connection = ldap.initialize('://'.join((self._LDAP_PROTOCOL,
-        #                             ldap_server)))
-        #connection.set_option(ldap.OPT_TIMEOUT, self._LDAP_TIMEOUT)
-        #connection.set_option(ldap.OPT_NETWORK_TIMEOUT, self._LDAP_TIMEOUT)
-        #connection.bind_s(ldap_dn, ldap_password, ldap.AUTH_SIMPLE)
-        ## rest of the authentication stuff
 
     # unused??
     #def _get_oseo_operation(self, request_element, soap_namespace_key):
