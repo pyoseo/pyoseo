@@ -9,7 +9,8 @@ Installing pyoseo requires following these instructions:
 
    .. code:: bash
 
-      sudo apt-get install apache2 rabbitmq-server python-dev python-virtualenv
+      sudo apt-get install apache2 rabbitmq-server redis-server python-dev \
+          python-virtualenv
 
 #. Decide on a directory to host your server, create a virtualenv and activate
    it
@@ -183,11 +184,19 @@ celery
 In order to process orders, pyoseo uses the celery distributed task queue.
 Celery installation and configuration requires the following:
 
-1. Create a *celery* user with the useradd command
+1. Install the following system-wide dependencies:
 
    .. code:: bash
 
-      sudo useradd --system celery
+      sudo apt-get install rabbitmq-server redis-server
+
+#. Since it is currently a hard dependency of pyoseo, celery has already been
+   installed by pip. For the record, these are the additional python packages
+   needed (there are others, that get pulled automatically by these):
+
+   .. code:: bash
+
+      pip install celery redis
 
 #. Place a copy of the celeryd sysv init script in /etc/init.d and give it
    executable permissions
@@ -204,7 +213,8 @@ Celery installation and configuration requires the following:
       sudo cp pyoseo/oseoserver/scripts/celeryd.conf /etc/default/celeryd
 
 #. Tweak the configuration file by pointing the `CELERY_BIN` and `CELERY_CHDIR`
-   variables to the correct paths
+   variables to the correct paths and adjusting the `CELERY_USER` and
+   `CELERY_GROUP` variables
 
 #. Install the service
 
@@ -229,12 +239,18 @@ Celery installation and configuration requires the following:
 #. You can inspect the celery daemon's log file at
    `/var/log/celery/worker1.log`
 
+#. There is also a graphical tool for inspecting celery. It is called
+   *flower*. You can install it by running:
 
+   .. code:: bash
 
-Don't forget to populate the database with the initial values for the following
-models:
+      pip install flower
 
-* OptionGroup
-* At least one of OnlineDataAccess OnlineDataDelivery, MediaDelivery
-* DeliveryOptionOrderType
-* GroupDeliveryOption
+   Start flower with:
+
+   .. code:: bash
+
+      celery flower
+
+   Now point your web browser to `http://localhost:5555`
+

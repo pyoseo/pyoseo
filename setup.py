@@ -19,6 +19,7 @@ setup(
     install_requires=[
         'django',
         'pyxb',
+        'redis',
         'celery',
         'lxml',
         'wsgiref',
