@@ -150,12 +150,11 @@ class DescribeResultAccess(OseoOperation):
                           order_item.batch.order.id, order_item.file_name))
             url = ''.join(('http://', host_name, uri))
         elif protocol == models.OnlineDataAccess.FTP:
-            url = 'ftp://{user}:{password}@{host}/data/{order}/{file}'.format(
-                user=user_name,
-                password=user_password,
-                host=host_name,
-                order=order_item.batch.order.id,
-                file=order_item.file_name)
+            url_template = 'ftp://{user}@{host}/order_{order:02d}/{file}'
+            url = url_template.format(user=user_name, password=user_password,
+                                      host=host_name,
+                                      order=order_item.batch.order.id,
+                                      file=order_item.file_name)
         else:
             raise NotImplementedError
         return url

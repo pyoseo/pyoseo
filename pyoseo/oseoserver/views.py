@@ -33,8 +33,11 @@ def show_item(request, user_name, order_id, item_file_name):
     set to DOWNLOADED.
     '''
 
+    order_id = int(order_id)
     try:
-        order_item = models.OrderItem.objects.get(file_name=item_file_name)
+        #order_item = models.OrderItem.objects.get(file_name=item_file_name)
+        order_item = models.OrderItem.objects.get(batch__order__id=order_id,
+                                                  file_name=item_file_name)
     except ObjectDoesNotExist:
         raise Http404
     orders_root_dir = getattr(
@@ -44,7 +47,8 @@ def show_item(request, user_name, order_id, item_file_name):
     )
     if orders_root_dir is None:
         raise
-    item_path = os.path.join(orders_root_dir, user_name, 'data', order_id,
+    item_path = os.path.join(orders_root_dir, user_name,
+                             'order_{:02d}'.format(order_id),
                              item_file_name)
     print('item_path: %s' % item_path)
     if os.path.isfile(item_path):
