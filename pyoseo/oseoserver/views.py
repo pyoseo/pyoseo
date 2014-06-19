@@ -2,7 +2,7 @@ import os
 
 from django.conf import settings as django_settings
 from django.shortcuts import render
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 from django.core.servers.basehttp import FileWrapper
 from django.core.exceptions import ObjectDoesNotExist
@@ -22,7 +22,7 @@ def oseo_endpoint(request):
         for k,v in headers.iteritems():
             response[k] = v
     else:
-        raise Http404
+        response = HttpResponseForbidden()
     return response
 
 def show_item(request, user_name, order_id, item_file_name):
