@@ -18,10 +18,10 @@ Implements the OSEO DescribeResultAccess operation
 
 import logging
 import datetime as dt
-import socket
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
+from django.conf import settings as django_settings
 import pyxb
 import pyxb.bundles.opengis.oseo as oseo
 
@@ -144,7 +144,7 @@ class DescribeResultAccess(OseoOperation):
         :type user_name: str
         '''
 
-        host_name = socket.gethostname()
+        host_name = django_settings.ALLOWED_HOSTS[0][1:]
         if protocol == models.OnlineDataAccess.HTTP:
             uri = reverse(views.show_item, args=(user_name,
                           order_item.batch.order.id, order_item.file_name))
