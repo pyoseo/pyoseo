@@ -17,19 +17,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # OSEOSERVER OPTIONS
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
-#OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/var/www'
 OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
-
-# FTP SERVER SPECIFIC OPTIONS
-OSEOSERVER_FTP_PASSWORD_FILE_PATH = None # redefined in settings_local
-
-# AUTHENTICATION OPTIONS
-OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in settings_local
-OSEOSERVER_LDAP_SERVER = None # redefined in settings_local
-OSEOSERVER_LDAP_DN = None # redefined in settings_local
-OSEOSERVER_LDAP_PASSWORD = None # redefined in settings_local
-
 
 # GIOSYSTEM SPECIFIC
 GIOSYSTEM_SETTINGS_URL = '' # redefined in settings_local
@@ -47,8 +36,31 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_IGNORE_RESULT = False
 CELERY_DISABLE_RATE_LIMITS = True
 
+def find_or_create_secret_key():
+    '''
+    Look for secret_key.py and return the SECRET_KEY entry in it if the file 
+    exists. Otherwise, generate a new secret key, save it in secret_key.py, 
+    and return the key.
+
+    Adapted from Miles Steel's blog at
+    http://blog.milessteele.com/posts/2013-07-07-hiding-djangos-secret-key.html
+    '''
+
+    secret_key_filepath = os.path.join(os.path.dirname(__file__), 'secret_key.py')
+    if not os.path.isfile(secret_key_filepath):
+        from django.utils.crypto import get_random_string
+        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&amp;*(-_=+)'
+        new_key = get_random_string(50, chars)
+        with file(secret_key_filepath, 'w') as fh:
+            fh.write('# Django secret key\n')
+            fh.write('# Do NOT check this into version control.\n\n')
+            fh.write('SECRET_KEY = "{}"\n'.format(new_key))
+    from secret_key import SECRET_KEY
+    result = SECRET_KEY
+    return result
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'adc!i+t)9(r^(++at!t^+ke_9#vnrnsrp_z1(8!dthyt38ae5r'
+SECRET_KEY = find_or_create_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False # redefined in settings_local
