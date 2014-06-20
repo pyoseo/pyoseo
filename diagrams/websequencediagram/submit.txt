@@ -9,48 +9,42 @@ participant "web server" as ws
 participant "django" as dj
 participant "oseoserver" as oseo
 participant "Submit" as submit
-participant "GetStatus" as getstatus
 participant "database" as db
 participant "celery daemon" as cel
 
-client -> ws: OSEO Submit
+client -> ws: OSEO Submit(notification=None)
 activate client
 activate ws
 ws -> dj: oseo_endpoint(request)
 activate dj
-dj -> oseo: create_oseo_server
-activate oseo
-oseo --> dj: server
-deactivate oseo
 dj -> oseo: process_request(request)
 activate oseo
-oseo -> oseo: parse_request()
 oseo -> oseo: authenticate_request()
-oseo -> submit: create_operation()
-activate submit
-submit --> oseo: operation
-deactivate submit
-oseo -> submit: process_request()
+oseo -> submit: process_request(request_data)
 activate submit
 submit -> db: save_order()
 activate db
-db --> submit: order_id
+db -->> submit: order_id
 deactivate db
-submit -->> cel: process_order(order_id)
-submit --> oseo: result
+submit ->> cel: process_order(order_id)
+activate cel
+deactivate cel
+submit -->> oseo: result
 deactivate submit
 oseo -> oseo: wrap_soap(result)
-oseo -> dj: SubmitResponse()
+oseo -->> dj: SubmitResponse
 deactivate oseo
-dj --> ws: HttpResponse(SubmitResponse)
+dj -->> ws: HttpResponse
 deactivate dj
-ws --> client: OSEO SubmitResponse(order id)
+ws -->> client: OSEO SubmitResponse
 deactivate client
 deactivate ws
 cel -> cel: process_order(order_id)
 activate cel
-cel -> db: order_status_changed(order_id,\nstatus)
+cel -> db: get_order_details(order_id)
 activate db
+db -->> cel: order_details
+cel -> db: order_status_changed(order_id,\nstatus)
 deactivate db
 deactivate cel
 
