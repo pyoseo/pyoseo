@@ -1,7 +1,7 @@
-Submit
+Base
 ======
 
-.. automodule:: oseoserver.operations.submit
+.. automodule:: oseoserver.operations.base
    :show-inheritance:
    :members:
    :undoc-members:

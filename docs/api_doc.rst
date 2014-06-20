@@ -5,6 +5,7 @@ oseoserver API
    :maxdepth: 1
 
    oseoserverapi
+   baseapi
    submitapi
    getstatusapi
    describeresultaccessapi
