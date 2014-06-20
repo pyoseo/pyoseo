@@ -82,7 +82,7 @@ Installing pyoseo requires following these instructions:
 
       sudo vim /etc/apache2/sites-available/giosystem.conf
 
-   Add the following lines inside the `VirtualHost` directive:
+   Add the following lines inside the `VirtualHost` directive::
 
        # settings for the ordering server (preview)
        Alias /giosystem/ordering/static /home/geo6/giosystem/venv/src/pyoseo/pyoseo/sitestatic/

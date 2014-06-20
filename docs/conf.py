@@ -14,31 +14,25 @@
 
 import sys
 import os
+import mock
 
-class Mock(object):
-    __all__ = []
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def __call__(self, *args, **kwargs):
-        return Mock()
-
-    @classmethod
-    def __getattr__(cls, name):
-        if name in ('__file__', '__path__'):
-            return '/dev/null'
-        elif name[0] == name[0].upper():
-            mockType = type(name, (), {})
-            mockType.__module__ = __name__
-            return mockType
-        else:
-            return Mock()
-
-MOCK_MODULES = ['giosystemcore', 'pyxb.bundles.opengis.oseo',
-                'pyxb', 'pyxb.bundles.opengis.ows',]
+MOCK_MODULES = [
+    'pyxb',
+    'pyxb.bundles',
+    'pyxb.bundles.opengis',
+    'pyxb.bundles.opengis.oseo',
+    'pyxb.bundles.opengis.ows',
+    'pyxb.bundles.opengis.swe_2_0',
+    'giosystemcore',
+    'giosystemcore.settings',
+    'giosystemcore.files',
+    'giosystemcore.catalogue',
+    'giosystemcore.catalogue.cswinterface',
+    'giosystemcore.orders',
+    'giosystemcore.orders.orderpreparator',
+]
 for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = Mock()
+    sys.modules[mod_name] = mock.Mock()
 
 
 sys.path.append(os.path.dirname(__file__))

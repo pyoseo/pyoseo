@@ -24,3 +24,5 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'oseoserver', # This is where you put your app
 )
+
+SECRET_KEY = 'abc'
