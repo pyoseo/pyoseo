@@ -125,7 +125,7 @@ proftpd
 
 ProFTPd is an FTP server. Depending on your use case you may not need an FTP
 server in order to use pyoseo. If you do need one, there are some to choose
-from. Proftpd works well if you watn to use an LDAP based authentication
+from. Proftpd works well if you want to use an LDAP based authentication
 scheme.
 
 1. Create a system user to handle the ftp service
@@ -148,6 +148,44 @@ scheme.
 
    fazer backup destes ficheiros que estão na máquina virtual <- segunda-feira
 
+#. Change the log rotation configuration for proftpd in order to produce log
+   files that can be world-readable. This is necessary for pyoseo to be able to
+   monitor FTP downloads. Add the following to
+   `/etc/logrotate.d/proftpd-basic`::
+
+       /var/log/proftpd/xferlog
+       {
+           daily
+           missingok
+           rotate 5
+           compress delaycompress
+           notifempty
+           create 644 root adm
+           sharedscripts
+           postrotate
+               # reload could be not sufficient for all logs, a restart is safer
+               invoke-rc.d proftpd restart 2>/dev/null >/dev/null || true
+           endscript
+       }
+
+   This configuration will cause proftpd's logs to be rotated every day.
+
+   .. note::
+
+      When does the log file rotate?
+      
+      This gets a little confusing.
+      The logrotate command is set to run as a cron job, as indicated in
+      `/etc/cron.daily/logrotate`. cron.daily entries can either run standalone
+      or run under `anacron`. If run standalone, they are configured in
+      `/etc/crontab`. If run by `anacron`, the file `/etc/anacrontab` should
+      hold a line with the execution of cron.daily and the correct time.
+      Now, anacron is itself run by cron, so there will be a file
+      `/etc/cron.d/anacron` that specifies when anacron is to be run.
+      By default, on Ubuntu, anacron *is* installed and setup to run at 7:30.
+      Cron.daily is setup to run once a day, with a delay of five minutes,
+      meaning it will run at about 7:35.
+
 #. Add the user that will execute pyoseo to the *ftpuser* group so that it can
    manage order item placements. For example:
 
@@ -166,6 +204,12 @@ scheme.
    .. code:: bash
 
       sudo chmod 775 /home/ftpuser
+
+#. restart the proftpd daemon
+
+   .. code:: bash
+
+      sudo service proftpd restart
 
 #. When creating a new virtual user for FTP, remember to remove execution 
    permissions of the *ftpuser* on the virtual user root dir. This way the
@@ -198,21 +242,38 @@ Celery installation and configuration requires the following:
 
       pip install celery redis
 
-#. Place a copy of the celeryd sysv init script in /etc/init.d and give it
-   executable permissions
+#. In order for pyoseo to work, we must use (at least one) celery worker and
+   also a celerybeat instance. Celery workers are the processes that manage the
+   execution queue. Celerybeat is a process that allows running tasks
+   periodically. Pyoseo needs both queued periodic tasks.
+   To allow the celery daemon processes to start at boot, we need to install
+   these processes enbaling them to run as services.
+
+   * Place a copy of the pyoseo-worker sysv init script in `/etc/init.d`,
+     and give it executable permissions.
+
+     .. code:: bash
+
+        sudo cp pyoseo/oseoserver/scripts/pyoseo-worker /etc/init.d
+        sudo chmod 755 /etc/init.d/pyoseo-worker
+
+   * Place a copy of the pyoseo-beat.conf sysv init script in `/etc/init.d`,
+     and give it executable permissions.
+
 
    .. code:: bash
 
-      sudo cp pyoseo/oseoserver/scripts/celeryd.init /etc/init.d/celeryd
-      sudo chmod 755 /etc/init.d/celeryd
+      sudo cp pyoseo/oseoserver/scripts/pyoseo-beat /etc/init.d
+      sudo chmod 755 /etc/init.d/pyoseo-beat
 
-#. Copy the init configuration file to the correct location
+#. Copy the init configuration files to the correct location
 
    .. code:: bash
 
-      sudo cp pyoseo/oseoserver/scripts/celeryd.conf /etc/default/celeryd
+      sudo cp pyoseo/oseoserver/scripts/pyoseo-worker.conf /etc/default/pyoseo-worker
+      sudo cp pyoseo/oseoserver/scripts/pyoseo-beat.conf /etc/default/pyoseo-beat
 
-#. Tweak the configuration file by pointing the `CELERY_BIN` and `CELERY_CHDIR`
+#. Tweak the configuration files by pointing the `CELERY_BIN` and `CELERY_CHDIR`
    variables to the correct paths and adjusting the `CELERY_USER` and
    `CELERY_GROUP` variables
 
