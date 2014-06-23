@@ -15,6 +15,15 @@ import models
 
 @csrf_exempt
 def oseo_endpoint(request):
+    '''
+    Django's endpoint to pyoseo.
+
+    This view receives the HTTP request from the webserver's WSGI handler.
+    It is responsible for validating that a POST request was received,
+    instantiating :class:`oseoserver.server.OseoServer` and handing the 
+    request to it. It then returns the response back to the web server.
+    '''
+
     if request.method == 'POST':
         s = server.OseoServer()
         resp, status_code, headers = s.process_request(request.body)

@@ -5,7 +5,7 @@ pyoseo is an ordering server. It processes requests for spatial data and makes
 the data available to the requesting user upon completion.
 
 It implements the OGC OSEO standard. OSEO stands for Ordering Services
-Framework for Earth Observation Products. The standard defines a interfaces,
+Framework for Earth Observation Products. The standard defines interfaces,
 bindings and requirements for establishing a workflow for ordering of Earth
 Observation data between a server and client.
 
@@ -15,7 +15,6 @@ its client.
 
 The server listens for order requests that arrive via HTTP POST messages,
 wrapped in a SOAP header.
-
 
 GetOptions operation
 --------------------
@@ -57,6 +56,25 @@ The following sequence diagram depicts an outline of pyoseo's implementation of
 the Submit operation.
 
 .. image:: images/seqdiag_submit.png
+
+In short, when a Submit request is made:
+
+* The web server sends the request to the 
+  :func:`oseoserver.views.oseo_endpoint` django view. This view validates
+  that the HTTP request is of type POST and then instantiates an
+  :class:`oseoserver.server.OseoServer` instance.
+* The instantiated server receives the request and authenticates the user 
+  by calling its own :func:`oseoserver.server.OseoServer.authenticate_request`
+  method.
+* Based on the type of OSEO request received, the server creates an 
+  appropriate processing class. For Submit requests, the server instantiates
+  a :class:`oseoserver.operations.submit.Submit` object to do the processing.
+* Processing of a Submit order breaks down to:
+
+  * Inserting a new record for the order in the database. Order records are of
+    type :class:`oseoserver.models.Order`
+  * Sending the order to the celery queue, where it will be processed as one of
+    the tasks defined in :mod:`oseoserver.tasks`
 
 For more info refer to section 12 of the OSEO specification.
 
