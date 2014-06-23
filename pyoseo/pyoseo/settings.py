@@ -8,6 +8,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+import datetime
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -35,6 +37,15 @@ CELERY_REDIRECT_STDOUTS = True
 CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_IGNORE_RESULT = False
 CELERY_DISABLE_RATE_LIMITS = True
+
+# celerybeat schedule tasks
+CELERYBEAT_SCHEDULE = {
+        'test_10_s' : {
+            'task': 'oseoserver.tasks.monitor_ftp_downloads',
+            'schedule': datetime.timedelta(seconds=10),
+        }
+}
+
 
 def find_or_create_secret_key():
     '''

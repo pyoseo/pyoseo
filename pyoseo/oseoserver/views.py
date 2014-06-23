@@ -62,6 +62,7 @@ def show_item(request, user_name, order_id, item_file_name):
             item_file_name
         order_item.downloads += 1
         order_item.status = models.CustomizableItem.DOWNLOADED
+        order_item.last_downloaded_on = dt.datetime.utcnow()
         order_item.save()
     else:
         raise Http404

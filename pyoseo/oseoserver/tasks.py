@@ -28,6 +28,7 @@ The celery worker can be started with the command:
 #   run somewhere else, instead of having it in the same machine
 
 import os
+import re
 import datetime as dt
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -207,6 +208,64 @@ def update_order_status(self, order_id):
                     order.completed_on = dt.datetime.utcnow()
                 order.save()
 
+
 @shared_task(bind=True)
 def monitor_ftp_downloads(self):
+    '''
+    Monitor FTP downloads
+
+    This function will parse an xferlog file from the FTP server.
+    Read more about xferlog file format by typing `man xferlog` at a
+    terminal.
+    '''
+
+    ftp_log_file = '/var/log/proftpd/xferlog'
+    ftp_root = getattr(
+        django_settings,
+        'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR',
+        None
+    )
+    with open(ftp_log_file) as fh:
+        for line in fh:
+            order_item, download_dt = parse_ftp_log_line(line)
+            if order_item is not None:
+                last_dl = order_item.last_downloaded_on
+                if download_dt > last_dl:
+                    order_item.downloads += 1
+                    order_item.status = models.CustomizableItem.DOWNLOADED
+                    order_item.last_downloaded_on = dt.datetime.utcnow()
+                    order_item.save()
+
+@shared_task(bind=True)
+def clean_file_system(self):
     raise NotImplementedError
+
+def parse_ftp_log_line(line):
+    '''
+    Parse a line of the FTP transfer log file
+
+    :arg line: One of the lines of the FTP's server transfer log
+    :type line: str
+    :returns: the order item being requested in the line and the time when 
+              the download was performed
+    :rtype: (oseoserver.models.OrderItem, datetime.datetime)
+    '''
+
+    info = line.rsplit(' ', 13)
+    file_name = info[4]
+    direction = info[7]
+    completion_status = info[13]
+    is_pyoseo_transfer = file_name.startswith(ftp_root)
+    is_outgoing = True if direction == 'o' else False
+    is_completed = True if completion_status.strip() == 'c' else False
+    result = None
+    if is_pyoseo_transfer and is_outgoing and is_completed:
+        print('this is a pyoseo transfer')
+        sub_path = file_name.partition(ftp_root)[-1]
+        ftp_user, order_id, file_name = sub_path.split('/')
+        order = int(re.search(r'order_(?P<id>\d?)', 
+                    order_id).groupdict()['id'])
+        current_time = dt.datetime.strptime(info[0],
+                                            '%a %b %d %H:%M:%S %Y')
+        order_item = models.OrderItem.objects.get()
+    return result
