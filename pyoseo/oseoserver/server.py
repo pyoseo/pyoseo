@@ -211,6 +211,7 @@ class OseoServer(object):
             logger.info('User {} authenticated successfully'.format(user_name))
         else:
             user_name = self.DEFAULT_USER_NAME
+            password = 'dummy_password'
             logger.warning('No authentication in use')
         try:
             oseo_user = models.OseoUser.objects.get(user__username=user_name)
