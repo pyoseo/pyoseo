@@ -186,8 +186,8 @@ class OrderItem(CustomizableItem):
     downloads = models.SmallIntegerField(default=0, help_text='Number of '
                                          'times this order item has been '
                                          'downloaded.')
-    last_downloaded_on = models.DateTimeField(editable=False, blank=True,
-                                              null=True)
+    #last_downloaded_on = models.DateTimeField(editable=False, blank=True,
+    #                                          null=True)
 
     def __unicode__(self):
         return str(self.item_id)
