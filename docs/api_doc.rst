@@ -4,6 +4,7 @@ oseoserver API
 .. toctree::
    :maxdepth: 1
 
+   djangosettings
    oseoserverapi
    djangoviews
    djangomodels

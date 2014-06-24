@@ -120,6 +120,8 @@ Installing other components
 PyOSEO glues together several software packages and makes them work together in
 order to receive and process ordering requests
 
+.. _proftpd-installation-label:
+
 proftpd
 .......
 
@@ -159,7 +161,6 @@ scheme.
            missingok
            rotate 5
            compress delaycompress
-           notifempty
            create 644 root adm
            sharedscripts
            postrotate
@@ -266,7 +267,7 @@ Celery installation and configuration requires the following:
       sudo cp pyoseo/oseoserver/scripts/pyoseo-beat /etc/init.d
       sudo chmod 755 /etc/init.d/pyoseo-beat
 
-#. Copy the init configuration files to the correct location
+#. Copy the init configuration files to the correct locations
 
    .. code:: bash
 
@@ -277,28 +278,31 @@ Celery installation and configuration requires the following:
    variables to the correct paths and adjusting the `CELERY_USER` and
    `CELERY_GROUP` variables
 
-#. Install the service
+#. Install the services
 
    .. code:: bash
 
-      sudo update-rc.d celeryd defaults
+      sudo update-rc.d pyoseo-worker defaults
+      sudo update-rc.d pyoseo-beat defaults
 
-#. Start the service with
-
-   .. code:: bash
-
-      sudo service celeryd start
-
-#. you can check the status of the service by running
+#. Start the services with
 
    .. code:: bash
 
-      sudo service celeryd status
+      sudo service pyoseo-worker start
+      sudo service pyoseo-beat start
 
-#.  From now on, celery will be auto started at boot
+#. you can check the status of the services by running
+
+   .. code:: bash
+
+      sudo service pyoseo-worker status
+      sudo service pyoseo-beat status
+
+#.  From now on, celery services will be auto started at boot
 
 #. You can inspect the celery daemon's log file at
-   `/var/log/celery/worker1.log`
+   `/var/log/celery/worker1.log` and `/var/log/celery/celeryd.log`.
 
 #. There is also a graphical tool for inspecting celery. It is called
    *flower*. You can install it by running:

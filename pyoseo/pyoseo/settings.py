@@ -8,17 +8,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
-import datetime
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+from celery.schedules import crontab
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # OSEOSERVER OPTIONS
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
+OSEOSERVER_ORDER_DELETION_THRESHOLD = 5 #: in days
 OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 
@@ -26,24 +27,26 @@ OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 GIOSYSTEM_SETTINGS_URL = '' # redefined in settings_local
 
 # CELERY OPTIONS
-#CELERY_RESULT_BACKEND = 'amqp'
 CELERY_RESULT_BACKEND = 'redis://'
-CELERY_TASK_RESULT_EXPIRES = 18000 # 5 hours
+CELERY_TASK_RESULT_EXPIRES = 18000 #: 5 hours
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_REDIRECT_STDOUTS = True
-#CELERY_REDIRECT_STDOUTS_LEVEL = 'DEBUG'
 CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_IGNORE_RESULT = False
 CELERY_DISABLE_RATE_LIMITS = True
 
-# celerybeat schedule tasks
+#: pyoseo-beat schedule for executing periodic tasks
 CELERYBEAT_SCHEDULE = {
-        'test_10_s' : {
+        'monitor_ftp' : {
             'task': 'oseoserver.tasks.monitor_ftp_downloads',
-            'schedule': datetime.timedelta(seconds=10),
-        }
+            'schedule': crontab(hour=9, minute=30), # execute daily at 09:30
+        },
+        'clean_old_orders' : {
+            'task': 'oseoserver.tasks.delete_old_orders',
+            'schedule': crontab(hour=10, minute=30), # execute daily at 10:30
+        },
 }
 
 

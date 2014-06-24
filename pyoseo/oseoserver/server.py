@@ -170,8 +170,8 @@ class OseoServer(object):
         trying to load an external authentication class.
 
         The python path to the authentication class must be defined in
-        the django settings module, and use the name 
-        'OSEOSERVER_AUTHENTICATION_CLASS'.
+        the :data:`~pyoseo.settings.OSEOSERVER_AUTHENTICATION_CLASS`
+        setting.
 
         Authentication classes must provide the method:
 
