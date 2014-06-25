@@ -181,7 +181,7 @@ class GetStatus(OseoOperation):
                             sit = oseo.CommonOrderStatusItemType()
                             # TODO
                             # add the other optional elements
-                            sit.itemId = str(oi.id)
+                            sit.itemId = str(oi.item_id)
                             # oi.identifier is guaranteed to be non empty for
                             # normal product orders
                             sit.productId = oi.identifier
