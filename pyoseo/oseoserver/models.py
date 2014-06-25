@@ -42,6 +42,9 @@ class OseoUser(models.Model):
                   'period.'
     )
 
+    def __unicode__(self):
+        return self.user.username
+
 class OptionGroup(models.Model):
     name = models.CharField(max_length=40, help_text='Id for the group of '
                             'options')

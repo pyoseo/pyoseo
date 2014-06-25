@@ -160,7 +160,8 @@ scheme.
            daily
            missingok
            rotate 5
-           compress delaycompress
+           compress
+           delaycompress
            create 644 root adm
            sharedscripts
            postrotate
