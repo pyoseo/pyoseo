@@ -22,6 +22,10 @@ Contents:
 
    introduction
    installation
+   roadmap
+   customauth
+   customprocessing
+   customdelivery
    api_doc
 
 
