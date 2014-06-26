@@ -32,6 +32,8 @@ import oseoserver.errors
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
+# THIS CLASS IS DEPRECATED
+# USE THE ONE IN giosystemcore.orders.authentication INSTEAD
 class VitoAuthentication(object):
 
     _ns = {

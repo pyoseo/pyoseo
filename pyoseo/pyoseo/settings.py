@@ -17,7 +17,7 @@ from celery.schedules import crontab
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
-# OSEOSERVER OPTIONS
+# PYOSEO OSEOSERVER OPTIONS
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
 OSEOSERVER_ORDER_DELETION_THRESHOLD = 5 #: in days
 OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
@@ -25,10 +25,7 @@ OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in settings_local
 OSEOSERVER_PROCESSING_CLASS = None # redefined in settings_local
 
-# GIOSYSTEM SPECIFIC
-#GIOSYSTEM_SETTINGS_URL = '' # redefined in settings_local
-
-# CELERY OPTIONS
+# PYOSEO CELERY OPTIONS
 CELERY_RESULT_BACKEND = 'redis://'
 CELERY_TASK_RESULT_EXPIRES = 18000 #: 5 hours
 CELERY_ACCEPT_CONTENT = ['json']

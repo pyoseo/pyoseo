@@ -9,6 +9,8 @@ import giosystemcore.files
 import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
 
+# THIS CLASS IS DEPRECATED
+# USE THE ONE IN giosystemcore.orders.orderpreparator INSTEAD
 class IpmaGioProcessor(object):
     '''
     A custom order item processor that uses the giosystemcore library.
