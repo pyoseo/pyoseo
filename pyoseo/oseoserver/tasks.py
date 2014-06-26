@@ -45,6 +45,7 @@ import giosystemcore.catalogue.cswinterface
 import giosystemcore.orders.orderpreparator as op
 
 from oseoserver import models
+from oseoserver import utilities
 
 logger = get_task_logger(__name__)
 
@@ -117,6 +118,50 @@ def process_batch(self, batch_id):
 
 @shared_task(bind=True)
 def process_online_data_access_item(self, order_item_id, delivery_option_id):
+    '''
+    Process an order item that specifies online data access as delivery
+    '''
+
+    order_item = models.OrderItem.objects.get(pk=order_item_id)
+    order_item.status = models.CustomizableItem.IN_PRODUCTION
+    order_item.save()
+    try:
+        delivery_option = models.DeliveryOption.objects.get(
+                pk=delivery_option_id)
+        protocol = delivery_option.onlinedataaccess.protocol
+        protocol_path_map = {
+            models.OnlineDataAccess.HTTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
+                                          'HTTP_PROTOCOL_ROOT_DIR',
+            models.OnlineDataAccess.FTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
+                                         'FTP_PROTOCOL_ROOT_DIR',
+        }
+        protocol_root_dir = getattr(
+            django_settings,
+            protocol_path_map.get(protocol, ''),
+        )
+        item_identifier = order_item.identifier
+        order_id = order_item.batch.order.id
+        user_name = order_item.batch.order.user.user.username
+        processing_class = getattr(django_settings,
+                                   'OSEOSERVER_PROCESSING_CLASS')
+        p = utilities.import_class(processing_class)
+        result = p.process_order_item_online_access(item_identifier, order_id,
+                                                    user_name,
+                                                    protocol_root_dir)
+        if result is not None:
+            order_item.status = models.CustomizableItem.COMPLETED
+            order_item.completed_on = dt.datetime.utcnow()
+            order_item.file_name = os.path.basename(result)
+        else:
+            order_item.status = models.CustomizableItem.FAILED
+    except Exception as err:
+        print(err)
+        order_item.status = models.CustomizableItem.FAILED
+    order_item.save()
+
+@shared_task(bind=True)
+def process_online_data_access_item_old(self, order_item_id, 
+                                        delivery_option_id):
     '''
     Process an order item that specifies online data access as delivery
     '''

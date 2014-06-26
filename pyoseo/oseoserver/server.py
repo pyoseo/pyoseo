@@ -54,6 +54,7 @@ import pyxb.bundles.opengis.ows as ows_bindings
 
 import models
 import errors
+import utilities
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -194,7 +195,8 @@ class OseoServer(object):
             django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
         if auth_class is not None:
             try:
-                instance = self._import_class(auth_class)
+                #instance = self._import_class(auth_class)
+                instance = utilities.import_class(auth_class)
                 user_name, password = instance.authenticate_request(
                     request_element,
                     soap_version
@@ -286,11 +288,12 @@ class OseoServer(object):
 
     def _get_operation(self, class_name):
         op = self._OPERATION_CLASSES[class_name]
-        module_path, sep, class_name = op.rpartition('.')
-        the_module = importlib.import_module(module_path)
-        operation_class = getattr(the_module, class_name)
-        operation = operation_class()
-        return operation
+        return utilities.import_class(op)
+        #module_path, sep, class_name = op.rpartition('.')
+        #the_module = importlib.import_module(module_path)
+        #operation_class = getattr(the_module, class_name)
+        #operation = operation_class()
+        #return operation
 
     def _get_soap_data(self, element, soap_version):
         '''
@@ -392,12 +395,12 @@ class OseoServer(object):
         return etree.tostring(soap_env, encoding=self._encoding,
                               pretty_print=True)
 
-    def _import_class(self, python_path):
-        '''
-        '''
+    #def _import_class(self, python_path):
+    #    '''
+    #    '''
 
-        module_path, sep, class_name = python_path.rpartition('.')
-        the_module = importlib.import_module(module_path)
-        the_class = getattr(the_module, class_name)
-        instance = the_class()
-        return instance
+    #    module_path, sep, class_name = python_path.rpartition('.')
+    #    the_module = importlib.import_module(module_path)
+    #    the_class = getattr(the_module, class_name)
+    #    instance = the_class()
+    #    return instance
