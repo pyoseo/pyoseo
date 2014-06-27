@@ -39,11 +39,6 @@ from celery import shared_task
 from celery import group, chord
 from celery.utils.log import get_task_logger
 
-import giosystemcore.settings
-import giosystemcore.files
-import giosystemcore.catalogue.cswinterface
-import giosystemcore.orders.orderpreparator as op
-
 from oseoserver import models
 from oseoserver import utilities
 
@@ -158,63 +153,6 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         print(err)
         order_item.status = models.CustomizableItem.FAILED
     order_item.save()
-
-@shared_task(bind=True)
-def process_online_data_access_item_old(self, order_item_id, 
-                                        delivery_option_id):
-    '''
-    Process an order item that specifies online data access as delivery
-    '''
-
-    giosystemcore.settings.get_settings(django_settings.GIOSYSTEM_SETTINGS_URL,
-                                        initialize_logging=False)
-    csw_interface = giosystemcore.catalogue.cswinterface.CswInterface()
-    order_item = models.OrderItem.objects.get(pk=order_item_id)
-    try:
-        id, title = csw_interface.get_records([order_item.identifier])[0]
-    except IndexError:
-        logger.error('could not find order item %s in the catalogue' % \
-                     order_item_id)
-        raise 
-    user_name = order_item.batch.order.user.user.username
-    delivery_option = models.DeliveryOption.objects.get(pk=delivery_option_id)
-    chosen_protocol = delivery_option.onlinedataaccess.protocol
-    protocol_path_map = {
-        models.OnlineDataAccess.HTTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
-                                      'HTTP_PROTOCOL_ROOT_DIR',
-        models.OnlineDataAccess.FTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
-                                     'FTP_PROTOCOL_ROOT_DIR',
-    }
-    try:
-        output_root = getattr(
-            django_settings,
-            protocol_path_map.get(chosen_protocol, ''),
-            None
-        )
-    except AttributeError:
-        raise errors.InvalidSettingsError('Protocol %s is not available' %
-                                          chosen_protocol)
-    if output_root is not None:
-        output_directory = os.path.join(output_root, user_name,
-                                        'order_{:02d}'.format(
-                                        order_item.batch.order.id))
-    else:
-        raise
-    preparator = op.OrderPreparator(output_directory)
-    order_item.status = models.CustomizableItem.IN_PRODUCTION
-    order_item.save()
-    gio_file = giosystemcore.files.GioFile.from_file_name(title)
-    fetched = preparator.fetch(gio_file)
-    # customization is not supported yet
-    customized = preparator.customize(gio_file, fetched, options=None)
-    moved = preparator.move(customized)
-    if moved is not None:
-        order_item.file_name = os.path.basename(moved)
-        order_item.completed_on = dt.datetime.utcnow()
-        order_item.status = models.CustomizableItem.COMPLETED
-        order_item.save()
-    else:
-        pass
 
 @shared_task(bind=True)
 def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
