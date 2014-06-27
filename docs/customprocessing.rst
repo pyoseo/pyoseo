@@ -23,5 +23,18 @@ following signature:
 
       Some stuff here
 
+The order processing class has three main responsabilities:
+
+1. Converting between an order item id and the real file(s) that have been
+   requested. This may involve querying an OGC CSW server or some other
+   procedure
+
+#. Fetching the ordered files from your organization's storage facilities. This
+   may be as simple as a local filesystem copy command, or a bit more
+   complicated, like searching a remote long term archive system and retrieving
+   the files via some specialized protocol.
+
+#. Handling the delivery of the files to the user. PyOSEO
+
 Example
 -------
