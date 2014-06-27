@@ -22,10 +22,10 @@ Contents:
 
    introduction
    installation
+   oseoops
    roadmap
    customauth
    customprocessing
-   customdelivery
    api_doc
 
 

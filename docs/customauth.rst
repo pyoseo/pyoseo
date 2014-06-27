@@ -1,5 +1,5 @@
-Hooking up your authentication framework
-========================================
+Hooking up your authentication module
+=====================================
 
 Each organization has their preferred authentication and authorization
 solution. Instead of trying to support them all, pyoseo requires you to 

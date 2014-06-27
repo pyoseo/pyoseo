@@ -22,14 +22,25 @@ Installing pyoseo requires following these instructions:
       virtualenv venv
       source venv/bin/activate
 
-#. Install the giosystemcore library. For now pyoseo depends on this library,
-   but in the future it will be independent. Follow the installation
-   instructions available at `giosystemcore's readthedocs page`_.
+#. Install the Pyxb python package. Pyoseo requires that the OGC schemas be
+   compiled with pyxb. This requires editing some pyxb scripts before
+   installation:
 
-.. _giosystemcore's readthedocs page: http://giosystemcore.readthedocs.org
+   .. code:: bash
 
-#. Be sure to install pyxb with the OGC schemas. It is part of giosystemcore's
-   install procedure.
+      pip install --no-install pyxb
+      cd venv/build/pyxb
+      vim pyxb/bundles/opengis/scripts/genbind
+
+      # add the following line, after line #93
+      ${SCHEMA_DIR}/oseo/1.0/oseo.xsd oseo
+
+      chmod 755 scripts/pyxbgen
+      chmod 755 pyxb/bundles/opengis/scripts/genbind
+      export PYXB_ROOT=$(pwd)
+      pyxb/bundles/opengis/scripts/genbind
+      pip install --no-download pyxb
+      cd -
 
 #. install pyoseo itself, using pip:
 
@@ -45,12 +56,15 @@ Installing pyoseo requires following these instructions:
       cd venv/src/pyoseo/pyoseo/pyoseo
       touch settings_local.py
 
-   The contents of this file should be, for example::
+   The contents of this file should be, for example:
 
-       STATIC_URL = '/giosystem/ordering/static/'
-       DEBUG = False
-       ALLOWED_HOSTS = ['.geo2.meteo.pt',]
-       GIOSYSTEM_SETTINGS_URL = 'http://gio-gl.meteo.pt/giosystem/settings/api/v1/'
+   .. code:: python
+
+      STATIC_URL = '/giosystem/ordering/static/'
+      DEBUG = False
+      ALLOWED_HOSTS = ['.<yourdomainname>',]
+      OSEOSERVER_AUTHENTICATION_CLASS = 'python.path.to.auth.class'
+      OSEOSERVER_PROCESSING_CLASS = 'python.path.to.order.processing.class'
 
    Add any other settings that you may need, for example, for the
    authentication module

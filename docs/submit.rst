@@ -1,6 +1,9 @@
 Submit operation
 ================
 
+Overview
+--------
+
 The Submit operation is the method that the client can call in order to place
 an order on the server.
 
@@ -16,11 +19,8 @@ Submit requests can take the form of:
 * normal order specification
 * order via quotation identifier (Not implemented yet)
 
-Upon receiving such a request, the server will store the order request in the
-database with an initial status of ???. The order is then sent to a processing
-queue, where it will be processed in due time. This means that Submit is an
-asynchronous operation.
-Depending on the request, the server can reply back in one of three ways:
+Depending on the requested notification type, the server can reply back in 
+one of three ways:
 
 * the server ankowledges the ordering request but will not try to contact the
   client to notify it of further status changes regarding the order
@@ -29,31 +29,40 @@ Depending on the request, the server can reply back in one of three ways:
 * the server notifies the client when the order has been processed and is
   ready. This method is not currently implemented in pyoseo.
 
-The following sequence diagram depicts an outline of pyoseo's implementation of
-the Submit operation.
+For more info refer to section 12 of the `OSEO specification`_.
 
-.. image:: images/seqdiag_submit.png
+.. _OSEO specification: http://www.opengeospatial.org/standards/oseo
 
-In short, when a Submit request is made:
+Implementation
+--------------
 
-* The web server sends the request to the 
-  :func:`oseoserver.views.oseo_endpoint` django view. This view validates
-  that the HTTP request is of type POST and then instantiates an
-  :class:`oseoserver.server.OseoServer` instance.
-* The instantiated server receives the request and authenticates the user 
-  by calling its own :func:`oseoserver.server.OseoServer.authenticate_request`
-  method.
-* Based on the type of OSEO request received, the server creates an 
-  appropriate processing class. For Submit requests, the server instantiates
-  a :class:`oseoserver.operations.submit.Submit` object to do the processing.
-* Processing of a Submit order breaks down to:
+Upon receiving an OSEO Submit request, the following workflow is set in motion:
 
-  * Inserting a new record for the order in the database. Order records are of
-    type :class:`oseoserver.models.Order`
-  * Sending the order to the celery queue, where it will be processed as one of
-    the tasks defined in :mod:`oseoserver.tasks`
+1. The web server sends the request to the 
+   :func:`~oseoserver.views.oseo_endpoint` django view. This view validates
+   that the HTTP request is of type POST and then instantiates an
+   :class:`~oseoserver.server.OseoServer` instance.
 
-For more info refer to section 12 of the OSEO specification.
+#. The instantiated server receives the request and authenticates the user 
+   by calling the external authentication class. See :doc:`customauth` for
+   more information. If authentication is successfull, the server then parses
+   the request, validating that it complies with the OSEO schema
+#. Based on the type of OSEO request received, the server creates an 
+   appropriate processing class. For Submit requests, the server instantiates
+   a :class:`~oseoserver.operations.submit.Submit` object to process the
+   request
+#. Processing of a Submit request breaks down to:
+
+  * Inserting a new record for the order in the database
+  * Determining the order's initial state. Normal orders are
+    :attr:`~oseoserver.models.CustomizableItem.ACCEPTED` by default. Other
+    types of order may require a process of approval by the server's admin team
+    (although currently this behaviour is not implemented)
+  * Sending the accepted order to the celery queue, where it will be processed
+    as one of the tasks defined in :mod:`~oseoserver.tasks`
+
+Example
+-------
 
 An example Submit request could be
 
