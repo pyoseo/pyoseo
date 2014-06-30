@@ -6,7 +6,7 @@ OSEO operations
 The following operations are currently implemented:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    getcapabilities
    getoptions

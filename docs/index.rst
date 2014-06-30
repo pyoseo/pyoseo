@@ -22,6 +22,7 @@ Contents:
 
    introduction
    installation
+   database
    oseoops
    roadmap
    customauth
