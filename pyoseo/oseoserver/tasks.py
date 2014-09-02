@@ -145,7 +145,7 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
                                                     protocol_root_dir)
         if result is not None:
             order_item.status = models.CustomizableItem.COMPLETED
-            order_item.completed_on = dt.datetime.utcnow()
+            order_item.completed_on = dt.datetime.now(pytz.utc)
             order_item.file_name = os.path.basename(result)
         else:
             order_item.status = models.CustomizableItem.FAILED
@@ -189,7 +189,7 @@ def update_order_status(self, order_id):
             if old_order_status != new_order_status:
                 order.status = new_order_status
                 if new_order_status == models.CustomizableItem.COMPLETED:
-                    order.completed_on = dt.datetime.utcnow()
+                    order.completed_on = dt.datetime.now(pytz.utc)
                 order.save()
 
 @shared_task(bind=True)
@@ -289,7 +289,9 @@ def parse_ftp_log_line(line):
     :rtype: (oseoserver.models.OrderItem, datetime.datetime)
     '''
 
-    logger.info('line: {}'.format(line))
+    # Do not uncomment this line except for debugging purposes, as it
+    # produces a lot of output
+    #logger.debug('line: {}'.format(line))
     ftp_root = getattr(
         django_settings,
         'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR',
@@ -314,6 +316,7 @@ def parse_ftp_log_line(line):
             order = None
         current_time = dt.datetime.strptime(info[0],
                                             '%a %b %d %H:%M:%S %Y')
+        current_time = pytz.timezone('UTC').localize(current_time)
         try:
             oi = models.OrderItem.objects.get(batch__order__pk=order,
                                               file_name=file_name)

@@ -26,6 +26,7 @@ from subprocess import Popen, PIPE
 from django.db import transaction
 from django.conf import settings as django_settings
 import pyxb.bundles.opengis.oseo as oseo
+import pytz
 
 from oseoserver import models
 from oseoserver import tasks
@@ -59,7 +60,7 @@ class Submit(OseoOperation):
         if request.orderSpecification is not None:
             # order specification type of Submit
             ord_spec = request.orderSpecification
-            creation_date = dt.datetime.utcnow()
+            creation_date = dt.datetime.now(pytz.utc)
             order = models.Order(
                 created_on=creation_date,
                 status_changed_on=creation_date,
@@ -284,7 +285,7 @@ class Submit(OseoOperation):
         '''
         Create a new FTP user.
 
-        These FTP users are virtual and their creation relies on the vsftpd
+        These FTP users are virtual and their creation relies on the ftp
         server being already correctly set up.
 
         :arg user: the name of the user that is to be added

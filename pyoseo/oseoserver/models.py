@@ -22,6 +22,7 @@ from django.db import models
 from django.db.models import signals
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
+import pytz
 
 class OseoUser(models.Model):
     user = models.OneToOneField(User)
@@ -451,7 +452,7 @@ def update_status_changed_on_callback(sender, **kwargs):
     instance = kwargs['instance']
     if instance.status_changed_on is None or \
             instance.status != instance.old_status:
-        instance.status_changed_on = dt.datetime.utcnow()
+        instance.status_changed_on = dt.datetime.now(pytz.utc)
 
 signals.post_save.connect(
     add_user_profile_callback,
