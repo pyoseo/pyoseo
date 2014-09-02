@@ -134,6 +134,13 @@ Installing other components
 PyOSEO glues together several software packages and makes them work together in
 order to receive and process ordering requests
 
+.. note::
+
+   These extra components need to be properly configured. This is specially
+   important in regard to log file configuration. The log files are usually
+   rotated using `logrotated`, the standard daemon for rotating and saving
+   logfiles on linux.
+
 .. _proftpd-installation-label:
 
 proftpd
@@ -261,7 +268,7 @@ Celery installation and configuration requires the following:
 #. In order for pyoseo to work, we must use (at least one) celery worker and
    also a celerybeat instance. Celery workers are the processes that manage the
    execution queue. Celerybeat is a process that allows running tasks
-   periodically. Pyoseo needs both queued periodic tasks.
+   periodically. Pyoseo needs both queued and periodic tasks.
    To allow the celery daemon processes to start at boot, we need to install
    these processes enbaling them to run as services.
 
@@ -292,6 +299,22 @@ Celery installation and configuration requires the following:
 #. Tweak the configuration files by pointing the `CELERY_BIN` and `CELERY_CHDIR`
    variables to the correct paths and adjusting the `CELERY_USER` and
    `CELERY_GROUP` variables
+
+#. Add configuration for enabling the rotation of celery log files, to ensure
+   that they don't grow forever. Add the following to
+   `/etc/logrotate.d/pyoseo-celery`::
+
+      /var/log/celery/*.log
+      {
+          weekly
+          missingok
+          rotate 7
+          compress
+          delaycompress
+          notifempty
+          copytruncate
+          create 640 root adm
+      }
 
 #. Install the services
 
