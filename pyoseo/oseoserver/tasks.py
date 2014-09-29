@@ -118,8 +118,12 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
     '''
 
     order_item = models.OrderItem.objects.get(pk=order_item_id)
+    logger.debug('Retrieved order item from the database: {}'.format(
+                 order_item))
     order_item.status = models.CustomizableItem.IN_PRODUCTION
     order_item.save()
+    logger.debug('Changed the order_item status to {}'.format(
+                 models.CustomizableItem.IN_PRODUCTION))
     try:
         delivery_option = models.DeliveryOption.objects.get(
                 pk=delivery_option_id)
@@ -139,7 +143,9 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         user_name = order_item.batch.order.user.user.username
         processing_class = getattr(django_settings,
                                    'OSEOSERVER_PROCESSING_CLASS')
-        p = utilities.import_class(processing_class)
+        logger.debug('processing_class: {}'.format(processing_class))
+        p = utilities.import_class(processing_class, under_celery=True)
+        logger.debug('p: {}'.format(p))
         result = p.process_order_item_online_access(item_identifier, order_id,
                                                     user_name,
                                                     protocol_root_dir)
@@ -150,8 +156,8 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         else:
             order_item.status = models.CustomizableItem.FAILED
     except Exception as err:
-        print(err)
         order_item.status = models.CustomizableItem.FAILED
+        logger.error(err)
     order_item.save()
 
 @shared_task(bind=True)
