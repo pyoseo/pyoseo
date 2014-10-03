@@ -155,10 +155,14 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
             order_item.file_name = os.path.basename(result)
         else:
             order_item.status = models.CustomizableItem.FAILED
+            logger.error('THERE HAS BEEN AN ERROR: order item {} has '
+                         'failed'.format(order_item_id))
     except Exception as err:
         order_item.status = models.CustomizableItem.FAILED
-        logger.error(err)
-    order_item.save()
+        logger.error('THERE HAS BEEN AN ERROR: order item {} has failed '
+                     'with the error: {}'.format(order_item_id, err))
+    finally:
+        order_item.save()
 
 @shared_task(bind=True)
 def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
@@ -196,6 +200,9 @@ def update_order_status(self, order_id):
                 order.status = new_order_status
                 if new_order_status == models.CustomizableItem.COMPLETED:
                     order.completed_on = dt.datetime.now(pytz.utc)
+                elif new_order_status == models.CustomizableItem.FAILED:
+                    message = 'Order {} has failed.'.format(order_id) 
+                    utilities.send_mail_to_admins(message)
                 order.save()
 
 @shared_task(bind=True)
@@ -331,3 +338,23 @@ def parse_ftp_log_line(line):
             oi = None
         result = oi, current_time
     return result
+
+@shared_task(bind=True)
+def test_task(self):
+    print('printing something from within a task')
+    logger.debug('logging something from within a task with level: debug')
+    logger.info('logging something from within a task with level: info')
+    logger.warning('logging something from within a task with level: warning')
+    logger.error('logging something from within a task with level: error')
+    processing_class = getattr(django_settings,
+                               'OSEOSERVER_PROCESSING_CLASS')
+    logger.debug('processing_class: {}'.format(processing_class))
+    p = utilities.import_class(processing_class, under_celery=True)
+    logger.debug('p: {}'.format(p))
+    try:
+        raise ValueError('Error raised on purpose')
+    except ValueError as err:
+        logger.error(err)
+        utilities.send_mail_to_admins(str(err))
+
+
