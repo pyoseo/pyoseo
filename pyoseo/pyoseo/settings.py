@@ -24,6 +24,11 @@ OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in settings_local
 OSEOSERVER_PROCESSING_CLASS = None # redefined in settings_local
+OSEOSERVER_MAIL_ACCOUNT = None # redefined in settings_local
+OSEOSERVER_MAIL_ACCOUNT_PASSWORD = None # redefined in settings_local
+OSEOSERVER_MAIL_SERVER = None # redefined in settings_local
+OSEOSERVER_MAIL_SERVER_PORT = None # redefined in settings_local
+OSEOSERVER_ADMIN_MAILS = None # redefined in settings_local
 
 # PYOSEO CELERY OPTIONS
 CELERY_RESULT_BACKEND = 'redis://'
