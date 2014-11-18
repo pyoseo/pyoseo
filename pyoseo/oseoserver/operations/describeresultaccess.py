@@ -12,9 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Implements the OSEO DescribeResultAccess operation
-'''
+"""
 
 import logging
 import datetime as dt
@@ -23,7 +23,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.conf import settings as django_settings
 import pyxb
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 
 from oseoserver import models
 from oseoserver import errors
@@ -39,7 +39,7 @@ class DescribeResultAccess(OseoOperation):
     NEXT_READY = 'nextReady'
 
     def __call__(self, request, user, user_password=None, **kwargs):
-        '''
+        """
         Implements the OSEO DescribeResultAccess operation.
 
         This operation returns the location of the order items that are 
@@ -58,7 +58,7 @@ class DescribeResultAccess(OseoOperation):
                  code
         :rtype: tuple(pyxb.bundles.opengis.oseo.DescribeResultAccessResponse,
                 int)
-        '''
+        """
 
         status_code = 200
         try:
@@ -84,7 +84,7 @@ class DescribeResultAccess(OseoOperation):
                 try:
                     gdo = order.selected_delivery_option.group_delivery_option
                 except ObjectDoesNotExist:
-                    pass # this object does not specify onlineDataAccess
+                    pass  # this object does not specify onlineDataAccess
             try:
                 protocol = gdo.delivery_option.onlinedataaccess.protocol
                 iut = oseo.ItemURLType()
@@ -108,14 +108,14 @@ class DescribeResultAccess(OseoOperation):
         return response, status_code
 
     def _get_completed_items(self, order, behaviour):
-        '''
+        """
         :arg order:
         :type order: oseoserver.models.Order
         :arg behaviour: Either 'allReady' or 'nextReady', as defined in the 
                         OSEO specification
         :type behaviour: str
         :return: a list with the completed order items for this order
-        '''
+        """
 
         now = dt.datetime.utcnow()
         last_time = order.last_describe_result_access_request
@@ -131,7 +131,7 @@ class DescribeResultAccess(OseoOperation):
         return completed_items
 
     def get_url(self, protocol, order_item, user_name, user_password):
-        '''
+        """
         Return the URL where the order item is available for online access.
 
         :arg protocol:
@@ -142,7 +142,7 @@ class DescribeResultAccess(OseoOperation):
         :type user: oseoserver.models.OseoUser
         :arg user_name:
         :type user_name: str
-        '''
+        """
 
         host_name = django_settings.ALLOWED_HOSTS[0][1:]
         if protocol == models.OnlineDataAccess.HTTP:

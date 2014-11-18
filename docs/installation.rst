@@ -68,7 +68,8 @@ Installing pyoseo requires following these instructions:
    .. code:: bash
 
       cd ..
-      python manage.py syncdb
+      #python manage.py syncdb
+      python manage.py migrate
 
 #. Populate the django database with some initial fixture data
 

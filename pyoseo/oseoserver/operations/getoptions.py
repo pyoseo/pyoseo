@@ -12,14 +12,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Implements the OSEO GetOptions operation
-'''
+"""
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 import pyxb
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pyxb.bundles.opengis.swe_2_0 as swe
 
 from oseoserver import models
@@ -29,7 +29,7 @@ from oseoserver.operations.base import OseoOperation
 class GetOptions(OseoOperation):
 
     def __call__(self, request, user, **kwargs):
-        '''
+        """
         Implements the OSEO GetOptions operation.
 
 
@@ -60,12 +60,12 @@ class GetOptions(OseoOperation):
         dr.field[0].name = 'ProductType'
         dr.field[0].append(c)
         print(etree.tostring(etree.fromstring(dr.toxml()), encoding='utf-8', pretty_print=True))
-        '''
+        """
 
         status_code = 200
-        if any(request.identifier): # product identifier query
+        if any(request.identifier):  # product identifier query
             raise NotImplementedError
-        elif request.collectionId is not None: # product or collection query
+        elif request.collectionId is not None:  # product or collection query
             try:
                 p = models.Product.objects.get(
                         collection_id=request.collectionId)
@@ -101,7 +101,7 @@ class GetOptions(OseoOperation):
 
     def _get_order_options(self, option_group, options, delivery_options,
                            order_type, order_item=None):
-        '''
+        """
         :arg option_group:
         :type option_group:
         :arg options:
@@ -114,7 +114,7 @@ class GetOptions(OseoOperation):
         :arg order_item:
         :type order_item:
         :return: The pyxb oseo.CommonOrderOptionsType
-        '''
+        """
 
         c = oseo.CommonOrderOptionsType()
         c.productOrderOptionsId = option_group.name

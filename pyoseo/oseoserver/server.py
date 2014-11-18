@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 This module defines the OseoServer class, which implements general request 
 processing operations and then delegates to specialized operation classes
 that preform each OSEO operation.
@@ -21,7 +21,7 @@ that preform each OSEO operation.
 
    s = oseoserver.OseoServer()
    result, status_code, response_headers = s.process_request(request)
-'''
+"""
 
 #Creating the ParameterData element:
 #
@@ -44,12 +44,11 @@ that preform each OSEO operation.
 #  pd.toxml()
 
 import logging
-import importlib
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
 import models
@@ -58,8 +57,9 @@ import utilities
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
+
 class OseoServer(object):
-    '''
+    """
     Handle requests that come from Django and process them.
 
     This class performs some pre-procesing of requests, such as schema
@@ -69,42 +69,41 @@ class OseoServer(object):
     the result with the correct SOAP headers.
 
     Clients of this class should use only the process_request method.
-    '''
+    """
 
     MASSIVE_ORDER_REFERENCE = 'Massive order'
-    '''Identifies an order as being a "massive order"'''
+    """Identifies an order as being a 'massive order'"""
 
     DEFAULT_USER_NAME = 'oseoserver_user'
-    '''Used for anonymous servers'''
+    """Used for anonymous servers"""
 
-    _oseo_version = '1.0.0'
-    _encoding = 'utf-8'
+    _oseo_version = "1.0.0"
+    _encoding = "utf-8"
     _namespaces = {
-        'soap': 'http://www.w3.org/2003/05/soap-envelope',
-        'soap1.1': 'http://schemas.xmlsoap.org/soap/envelope/',
-        'wsse': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-' \
-                'wssecurity-secext-1.0.xsd',
-        'ows': 'http://www.opengis.net/ows/2.0',
+        "soap": "http://www.w3.org/2003/05/soap-envelope",
+        "soap1.1": "http://schemas.xmlsoap.org/soap/envelope/",
+        "wsse": "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-"
+                "wssecurity-secext-1.0.xsd",
+        "ows": "http://www.opengis.net/ows/2.0",
     }
     _exception_codes = {
-            'AuthorizationFailed': 'client',
-            'AuthenticationFailed': 'client',
-            'InvalidOrderIdentifier': 'client',
-            'UnsupportedCollection': 'client',
+        "AuthorizationFailed": "client",
+        "AuthenticationFailed": "client",
+        "InvalidOrderIdentifier": "client",
+        "UnsupportedCollection": "client",
     }
     _OPERATION_CLASSES = {
-        'GetStatusRequestType': 'oseoserver.operations.getstatus.' \
-                                'GetStatus',
-        'SubmitOrderRequestType': 'oseoserver.operations.submit.Submit',
-        'DescribeResultAccessRequestType': 'oseoserver.operations.' \
-                                           'describeresultaccess.' \
-                                           'DescribeResultAccess',
-        'OrderOptionsRequestType': 'oseoserver.operations.getoptions.' \
-                                   'GetOptions',
+        "GetStatusRequestType": "oseoserver.operations.getstatus.GetStatus",
+        "SubmitOrderRequestType": "oseoserver.operations.submit.Submit",
+        "DescribeResultAccessRequestType": "oseoserver.operations."
+                                           "describeresultaccess."
+                                           "DescribeResultAccess",
+        "OrderOptionsRequestType": "oseoserver.operations.getoptions."
+                                   "GetOptions",
     }
 
     def process_request(self, request_data):
-        '''
+        """
         Entry point for the ordering service.
 
         This method receives the raw request data as a string and then parses
@@ -117,7 +116,7 @@ class OseoServer(object):
                  code and a dictionary with HTTP headers to be set by the 
                  wsgi server
         :rtype: tuple(str, int, dict)
-        '''
+        """
 
         element = etree.fromstring(request_data)
         response_headers = dict()
@@ -163,7 +162,7 @@ class OseoServer(object):
         return result, status_code, response_headers
 
     def authenticate_request(self, request_element, soap_version):
-        '''
+        """
         Authenticate an OSEO request.
 
         Request authentication can be customized according to the 
@@ -180,7 +179,7 @@ class OseoServer(object):
 
         This method must return a two-value tuple with the username and 
         password of the successfully authenticated user. If the authentication
-        is not successfull, the method must raise an exception.
+        is not successful, the method must raise an exception.
 
         :arg request_element: The full request object
         :type request_element: lxml.etree.Element
@@ -189,24 +188,24 @@ class OseoServer(object):
         :return: The end user that is responsible for this request and the
                  user's password
         :rtype: (oseoserver.models.OseoUser, str)
-        '''
+        """
 
         auth_class = getattr(
             django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
         if auth_class is not None:
             try:
-                #instance = self._import_class(auth_class)
                 instance = utilities.import_class(auth_class)
                 user_name, password = instance.authenticate_request(
                     request_element,
                     soap_version
                 )
             except errors.OseoError as err:
-                 # this error is handled by the calling process_request() method
+                 # this error is handled by the calling method
                 raise
             except Exception as err:
                 # other errors are re-raised as InvalidSettings
-                logger.error('exception class: {}'.format(err.__class__.__name__))
+                logger.error('exception class: {}'.format(
+                             err.__class__.__name__))
                 logger.error('exception args: {}'.format(err.args))
                 raise errors.InvalidSettingsError('Invalid authentication '
                                                   'class')
@@ -224,7 +223,7 @@ class OseoServer(object):
         return oseo_user, password
 
     def create_exception_report(self, code, text, soap_version, locator=None):
-        '''
+        """
         :arg code: OSEO exception code. Can be any of the defined
                    exceptionCode values in the OSEO and OWS Common 
                    specifications.
@@ -236,7 +235,7 @@ class OseoServer(object):
         :arg locator: value to display in the 'locator' field
         :type locator: str
         :return: A string with the XML exception report
-        '''
+        """
 
         exception = ows_bindings.Exception(exceptionCode=code)
         if locator is not None:
@@ -254,15 +253,15 @@ class OseoServer(object):
         return result
 
     def _is_soap(self, request_element):
-        '''
+        """
         Look for SOAP requests.
 
         Although the OSEO spec states that SOAP v1.2 is to be used, pyoseo
         accepts both SOAP v1.1 and SOAP v1.2
 
         :arg request_element: the raw input request
-        :type request_data: lxml.etree.Element instance
-        '''
+        :type request_element: lxml.etree.Element instance
+        """
 
         ns, tag = request_element.tag.split('}')
         ns = ns[1:]
@@ -275,13 +274,13 @@ class OseoServer(object):
         return result
 
     def parse_xml(self, xml):
-        '''
+        """
         Parse the input XML request and return a valid PyXB object
 
         :arg xml: the XML element with the request
         :xml type: lxml.etree.Element
         :return: The instance generated by pyxb
-        '''
+        """
 
         document = etree.tostring(xml, encoding=self._encoding,
                                   pretty_print=True)
@@ -293,14 +292,14 @@ class OseoServer(object):
         return utilities.import_class(op)
 
     def _get_soap_data(self, element, soap_version):
-        '''
+        """
         :arg element: The full request object
         :type element: lxml.etree.Element
         :arg soap_version: The SOAP version in use
         :type soap_version: str
         :return: The contents of the soap:Body element.
         :rtype: lxml.etree.Element
-        '''
+        """
 
         if soap_version == '1.2':
             path = '/soap:Envelope/soap:Body/*[1]'
@@ -310,13 +309,13 @@ class OseoServer(object):
         return xml_element[0]
 
     def _wrap_soap(self, response, soap_version):
-        '''
+        """
         :arg response: the pyxb instance with the previously generated response
         :type response: pyxb.bundles.opengis.oseo
         :arg soap_version: The SOAP version in use
         :type soap_version: str
         :return: A string with the XML response
-        '''
+        """
 
         soap_env_ns = {
             'ows': self._namespaces['ows'],
@@ -338,7 +337,7 @@ class OseoServer(object):
                               pretty_print=True)
 
     def _wrap_soap_fault(self, exception_report, soap_code, soap_version):
-        '''
+        """
         :arg exception_report: The pyxb instance with the previously generated
                                exception report
         :type exception_report: pyxb.bundles.opengis.ows.ExceptionReport
@@ -346,10 +345,11 @@ class OseoServer(object):
         :type soap_code: str
         :arg soap_version: The SOAP version in use
         :type soap_version: str
-        '''
+        """
 
-        code_msg = 'soap:%s' % soap_code.capitalize()
-        reason_msg = '%s exception was encountered' % soap_code.capitalize()
+        code_msg = 'soap:{}'.format(soap_code.capitalize())
+        reason_msg = '{} exception was encountered'.format(
+            soap_code.capitalize())
         exception_string = exception_report.toxml(encoding=self._encoding)
         exception_string = exception_string.encode(self._encoding)
         exception_element = etree.fromstring(exception_string)
@@ -360,25 +360,25 @@ class OseoServer(object):
             soap_env_ns['soap'] = self._namespaces['soap']
         else:
             soap_env_ns['soap'] = self._namespaces['soap1.1']
-        soap_env = etree.Element('{%s}Envelope' % soap_env_ns['soap'],
+        soap_env = etree.Element('{{{}}}Envelope'.format(soap_env_ns['soap']),
                                  nsmap=soap_env_ns)
-        soap_body = etree.SubElement(soap_env, '{%s}Body' % \
-                                     soap_env_ns['soap'])
-        soap_fault = etree.SubElement(soap_body, '{%s}Fault' % \
-                                      soap_env_ns['soap'])
+        soap_body = etree.SubElement(soap_env, '{{{}}}Body'.format(
+                                     soap_env_ns['soap']))
+        soap_fault = etree.SubElement(soap_body, '{{{}}}Fault'.format(
+                                      soap_env_ns['soap']))
         if soap_version == '1.2':
-            fault_code = etree.SubElement(soap_fault, '{%s}Code' % \
-                                          soap_env_ns['soap'])
-            code_value = etree.SubElement(fault_code, '{%s}Value' % \
-                                          soap_env_ns['soap'])
+            fault_code = etree.SubElement(soap_fault, '{{{}}}Code'.format(
+                                          soap_env_ns['soap']))
+            code_value = etree.SubElement(fault_code, '{{{}}}Value'.format(
+                                          soap_env_ns['soap']))
             code_value.text = code_msg
-            fault_reason = etree.SubElement(soap_fault, '{%s}Reason' % \
-                                            soap_env_ns['soap'])
-            reason_text = etree.SubElement(fault_reason, '{%s}Text' % \
-                                           soap_env_ns['soap'])
+            fault_reason = etree.SubElement(soap_fault, '{{{}}}Reason'.format(
+                                            soap_env_ns['soap']))
+            reason_text = etree.SubElement(fault_reason, '{{{}}}Text'.format(
+                                           soap_env_ns['soap']))
             reason_text.text = reason_msg
-            fault_detail = etree.SubElement(soap_fault, '{%s}Detail' % \
-                                            soap_env_ns['soap'])
+            fault_detail = etree.SubElement(soap_fault, '{{{}}}Detail'.format(
+                                            soap_env_ns['soap']))
             fault_detail.append(exception_element)
         else:
             fault_code = etree.SubElement(soap_fault, 'faultcode')

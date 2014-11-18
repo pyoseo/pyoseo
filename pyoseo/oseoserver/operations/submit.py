@@ -12,24 +12,24 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Implements the OSEO Submit operation
-'''
+"""
 
 import os
 import stat
-import shutil
 import datetime as dt
 import logging
-from subprocess import Popen, PIPE
 
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pytz
 
 from oseoserver import models
 from oseoserver import tasks
+from oseoserver import errors
 from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -38,7 +38,7 @@ class Submit(OseoOperation):
 
     @transaction.atomic
     def __call__(self, request, user, user_password=None, **kwargs):
-        '''
+        """
         Implements the OSEO Submit operation.
 
         * save order details in the database
@@ -54,7 +54,7 @@ class Submit(OseoOperation):
         :type user_password: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
-        '''
+        """
 
         status_code = 200
         if request.orderSpecification is not None:
@@ -130,7 +130,7 @@ class Submit(OseoOperation):
         return response, status_code
 
     def create_normal_order_batch(self, order_specification, order):
-        '''
+        """
         Create the order item batch for a normal order.
 
         Normal orders are composed of a single batch with all of the ordered
@@ -140,7 +140,7 @@ class Submit(OseoOperation):
         :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
         :arg order: the order record that is being created in the database
         :type order: oseoserver.models.Order
-        '''
+        """
 
         batch = models.Batch(order=order)
         batch.save()
@@ -169,15 +169,15 @@ class Submit(OseoOperation):
         order.save()
 
     def create_massive_order_batches(self):
-        '''
+        """
         break the order down into multiple batches
-        '''
+        """
 
         raise errors.SubmitMassiveOrderError('Submission of massive orders is '
                                              'not implemented')
 
     def parse_order_delivery_method(self, order_specification, order):
-        '''
+        """
         Validate and parse the requested delivery method for an order.
 
         One order can have one of three types of delivery:
@@ -212,7 +212,7 @@ class Submit(OseoOperation):
         :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
         :arg order: the order record that is being created in the database
         :type order: oseoserver.models.Order
-        '''
+        """
 
         a = [d.delivery_option for d in \
                 order.order_type.deliveryoptionordertype_set.all()]
@@ -220,14 +220,14 @@ class Submit(OseoOperation):
                 order.option_group.groupdeliveryoption_set.all()]
         available_delivery_options = [d.child_instance() for d in a if d in b]
         dop = order_specification.deliveryOptions
-        if dop is not None: # we can have any of the three options
+        if dop is not None:  # we can have any of the three options
             if dop.onlineDataAccess is not None:
                 requested_type = models.OnlineDataAccess
             elif dop.onlineDataDelivery is not None:
                 requested_type = models.OnlineDataDelivery
             else:
                 requested_type = models.MediaDelivery
-        else: # we can have either online delivery or mail delivery
+        else:  # we can have either online delivery or mail delivery
             delivery_information = order_specification.deliveryInformation
             if delivery_information is not None:
                 if any(list(delivery_information.onlineAddress)):
@@ -258,14 +258,14 @@ class Submit(OseoOperation):
             )
 
     def configure_delivery(self, order, user):
-        '''
+        """
         Perform delivery related operations.
 
         This method will determine the requested delivery protocol and
         perform the needed operations. For example, when an order defines
         online data access through the FTP protocol, this method ensures that
         the FTP account for the user is created.
-        '''
+        """
 
         create_ftp_account = False
         try:
@@ -282,7 +282,7 @@ class Submit(OseoOperation):
             self._add_ftp_user(user_name)
 
     def _add_ftp_user(self, user):
-        '''
+        """
         Create a new FTP user.
 
         These FTP users are virtual and their creation relies on the ftp
@@ -290,7 +290,7 @@ class Submit(OseoOperation):
 
         :arg user: the name of the user that is to be added
         :type user: str
-        '''
+        """
 
         ftp_service_root = getattr(
             django_settings,
@@ -311,7 +311,7 @@ class Submit(OseoOperation):
 
     def _add_online_data_access_data(self, order, order_specification,
                                      available_options):
-        '''
+        """
         Validate the requested protocol and add the requested online access
         definition to the order being processed.
 
@@ -321,7 +321,7 @@ class Submit(OseoOperation):
         :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
         :arg available_options:
         :type available_options: list
-        '''
+        """
 
         delivery_options = order_specification.deliveryOptions
         protocols = [i.protocol for i in available_options if isinstance(i,
@@ -352,14 +352,14 @@ class Submit(OseoOperation):
 
     def _add_online_data_delivery_data(self, order, order_specification,
                                        available_options):
-        '''
+        """
         :arg order:
         :type order: oseoserver.models.Order
         :arg order_specification:
         :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
         :arg available_options:
         :type available_options: list
-        '''
+        """
 
         delivery_options = order_specification.deliveryOptions
         if delivery_options is not None:
@@ -413,12 +413,12 @@ class Submit(OseoOperation):
                                                          'protocol is invalid')
 
     def _add_media_delivery_data(self, order, order_specification):
-        '''
+        """
         :arg order:
         :type order: oseoserver.models.Order
         :arg order_specification:
         :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        '''
+        """
 
         ordered_delivery_info = order_specification.deliveryInformation
         if ordered_delivery_info is not None:
@@ -476,7 +476,7 @@ class Submit(OseoOperation):
         return sdo
 
     def _set_delivery_options(self, options, order_type):
-        '''
+        """
         Create a database record with the input delivery options.
 
         :arg options: The oseo deliveryOptions
@@ -484,7 +484,7 @@ class Submit(OseoOperation):
         :arg order_type: The type of order being requested
         :type order_type: str
         :return: pyoseo.models.SelectedDeliveryOption
-        '''
+        """
 
         possibly_null = [
             options.onlineDataAccess,
@@ -530,7 +530,7 @@ class Submit(OseoOperation):
                             options.mediaDelivery.shippingInstructions)
                     del_option.mediadelivery = md
                 else:
-                    pass # raise some sort of error
+                    pass  # raise some sort of error
         else:
             del_option = None
         return del_option

@@ -8,22 +8,20 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.servers.basehttp import FileWrapper
 from django.core.exceptions import ObjectDoesNotExist
 
-#from oseoserver import server
-#from oseoserver import models
-
 import server
 import models
 
+
 @csrf_exempt
 def oseo_endpoint(request):
-    '''
+    """
     Django's endpoint to pyoseo.
 
     This view receives the HTTP request from the webserver's WSGI handler.
     It is responsible for validating that a POST request was received,
-    instantiating :class:`oseoserver.server.OseoServer` and handing the 
-    request to it. It then returns the response back to the web server.
-    '''
+    instantiating :class:`oseoserver.server.OseoServer` and handing it
+    the request. It then returns the response back to the web server.
+    """
 
     if request.method == 'POST':
         s = server.OseoServer()
@@ -35,17 +33,17 @@ def oseo_endpoint(request):
         response = HttpResponseForbidden()
     return response
 
+
 def show_item(request, user_name, order_id, item_file_name):
-    '''
+    """
     Return the already available order item
 
     The order item download count will be incremented and its status
     set to DOWNLOADED.
-    '''
+    """
 
     order_id = int(order_id)
     try:
-        #order_item = models.OrderItem.objects.get(file_name=item_file_name)
         order_item = models.OrderItem.objects.get(batch__order__id=order_id,
                                                   file_name=item_file_name)
     except ObjectDoesNotExist:
@@ -56,7 +54,7 @@ def show_item(request, user_name, order_id, item_file_name):
         None
     )
     if orders_root_dir is None:
-        raise
+        raise Exception
     item_path = os.path.join(orders_root_dir, user_name,
                              'order_{:02d}'.format(order_id),
                              item_file_name)
