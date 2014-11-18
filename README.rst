@@ -1,5 +1,5 @@
 PyOSEO - a Python OGC OSEO server
----------------------------------
+=================================
 
 This project aims to create a server implementing OGC Ordering Service for
 Earth Observation Products (OGC 06-141)
@@ -9,6 +9,6 @@ incorporated into existing Django projects.
 
 It is still in heavy development.
 
-Documentation is available at [readthedocs][]
+Documentation is available at `readthedocs`_
 
-[readthedocs]: http://pyoseo.readthedocs.org
+.. _readthedocs: http://pyoseo.readthedocs.org

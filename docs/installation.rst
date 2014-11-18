@@ -30,13 +30,6 @@ Installing pyoseo requires following these instructions:
 
       pip install --no-install pyxb
       cd venv/build/pyxb
-      vim pyxb/bundles/opengis/scripts/genbind
-
-      # add the following line, after line #93
-      ${SCHEMA_DIR}/oseo/1.0/oseo.xsd oseo
-
-      chmod 755 scripts/pyxbgen
-      chmod 755 pyxb/bundles/opengis/scripts/genbind
       export PYXB_ROOT=$(pwd)
       pyxb/bundles/opengis/scripts/genbind
       pip install --no-download pyxb
