@@ -14,3 +14,4 @@ settings_local.py
 docs/_build/*
 *.bak.*
 secret_key.py
+.idea/*
