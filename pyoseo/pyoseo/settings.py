@@ -17,20 +17,22 @@ from celery.schedules import crontab
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
-# PYOSEO OSEOSERVER OPTIONS
+# pyoseo oseoserver options
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
 OSEOSERVER_ORDER_DELETION_THRESHOLD = 5 #: in days
 OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
-OSEOSERVER_AUTHENTICATION_CLASS = None # redefined in settings_local
-OSEOSERVER_PROCESSING_CLASS = None # redefined in settings_local
-OSEOSERVER_MAIL_ACCOUNT = None # redefined in settings_local
-OSEOSERVER_MAIL_ACCOUNT_PASSWORD = None # redefined in settings_local
-OSEOSERVER_MAIL_SERVER = None # redefined in settings_local
-OSEOSERVER_MAIL_SERVER_PORT = None # redefined in settings_local
-OSEOSERVER_ADMIN_MAILS = None # redefined in settings_local
 
-# PYOSEO CELERY OPTIONS
+# these settings should be redefined in a settings_local file
+OSEOSERVER_AUTHENTICATION_CLASS = None
+OSEOSERVER_PROCESSING_CLASS = None
+OSEOSERVER_MAIL_ACCOUNT = None
+OSEOSERVER_MAIL_ACCOUNT_PASSWORD = None
+OSEOSERVER_MAIL_SERVER = None
+OSEOSERVER_MAIL_SERVER_PORT = None
+OSEOSERVER_ADMIN_MAILS = None
+
+# pyoseo celery options
 CELERY_RESULT_BACKEND = 'redis://'
 CELERY_TASK_RESULT_EXPIRES = 18000 #: 5 hours
 CELERY_ACCEPT_CONTENT = ['json']
@@ -41,16 +43,16 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_IGNORE_RESULT = False
 CELERY_DISABLE_RATE_LIMITS = True
 
-#: pyoseo-beat schedule for executing periodic tasks
+# pyoseo-beat schedule for executing periodic tasks
 CELERYBEAT_SCHEDULE = {
-        'monitor_ftp' : {
-            'task': 'oseoserver.tasks.monitor_ftp_downloads',
-            'schedule': crontab(hour=9, minute=30), # execute daily at 09:30
-        },
-        'clean_old_orders' : {
-            'task': 'oseoserver.tasks.delete_old_orders',
-            'schedule': crontab(hour=10, minute=30), # execute daily at 10:30
-        },
+    'monitor_ftp' : {
+        'task': 'oseoserver.tasks.monitor_ftp_downloads',
+        'schedule': crontab(hour=9, minute=30),  # execute daily at 09:30
+    },
+    'clean_old_orders' : {
+        'task': 'oseoserver.tasks.delete_old_orders',
+        'schedule': crontab(hour=10, minute=30),  # execute daily at 10:30
+    },
 }
 
 
@@ -64,7 +66,8 @@ def find_or_create_secret_key():
     http://blog.milessteele.com/posts/2013-07-07-hiding-djangos-secret-key.html
     '''
 
-    secret_key_filepath = os.path.join(os.path.dirname(__file__), 'secret_key.py')
+    secret_key_filepath = os.path.join(os.path.dirname(__file__),
+                                       'secret_key.py')
     if not os.path.isfile(secret_key_filepath):
         from django.utils.crypto import get_random_string
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&amp;*(-_=+)'
@@ -81,14 +84,11 @@ def find_or_create_secret_key():
 SECRET_KEY = find_or_create_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # redefined in settings_local
+DEBUG = False  # redefined in settings_local
 
 TEMPLATE_DEBUG = True
 
 ALLOWED_HOSTS = []
-
-
-# Application definition
 
 INSTALLED_APPS = (
     'django.contrib.admin',
@@ -116,7 +116,6 @@ WSGI_APPLICATION = 'pyoseo.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -126,7 +125,6 @@ DATABASES = {
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -145,7 +143,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'sitestatic')
 STATIC_URL = '/static/'
 
 # Logging
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

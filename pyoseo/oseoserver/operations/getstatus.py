@@ -12,24 +12,26 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Implements the OSEO GetStatus operation
-'''
+"""
 
 import re
 import datetime as dt
 
 from django.core.exceptions import ObjectDoesNotExist
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 
 from oseoserver import models
 from oseoserver import errors
 from oseoserver.operations.base import OseoOperation
 
+
 class GetStatus(OseoOperation):
 
     def __call__(self, request, user, **kwargs):
-        '''
+        """
         Implements the OSEO Getstatus operation.
 
         See section 14 of the OSEO specification for details on the
@@ -41,11 +43,11 @@ class GetStatus(OseoOperation):
         :type user: oseoserver.models.OseoUser
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
-        '''
+        """
 
         status_code = 200
         records = []
-        if request.orderId is not None: # 'order retrieve' type of request
+        if request.orderId is not None: #  'order retrieve' type of request
             try:
                 order = models.Order.objects.get(id=int(request.orderId))
                 if self._is_user_authorized(user, order):
@@ -66,14 +68,14 @@ class GetStatus(OseoOperation):
         return response, status_code
 
     def _generate_get_status_response(self, records, presentation):
-        '''
+        """
         :arg records:
         :type records: either a one element list with a pyoseo.models.Order
                        or a django queryset, that will be evaluated to an
                        list of pyoseo.models.Order while iterating.
         :arg presentation:
         :type presentation: str
-        '''
+        """
 
         response = oseo.GetStatusResponse()
         response.status='success'
@@ -206,9 +208,9 @@ class GetStatus(OseoOperation):
         return response
 
     def _is_user_authorized(self, user, order):
-        '''
+        """
         Test if a user is allowed to check on the status of an order
-        '''
+        """
 
         result = False
         if order.user == user:
@@ -216,9 +218,9 @@ class GetStatus(OseoOperation):
         return result
 
     def _find_orders(self, request, user):
-        '''
+        """
         Find orders that match the request's filtering criteria
-        '''
+        """
 
         records = models.Order.objects.filter(user=user)
         if request.filteringCriteria.lastUpdate is not None:

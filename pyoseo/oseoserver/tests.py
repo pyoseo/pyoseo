@@ -11,9 +11,9 @@ from oseoserver import models
 from oseoserver.operations import getstatus
 
 class GetstatusOperationTestCase(TestCaseDjango):
-    '''
+    """
     This class provides tests for the GetStatus operation class.
-    '''
+    """
 
     fixtures = ['test_get_status.json']
 
@@ -42,10 +42,10 @@ class GetstatusOperationTestCase(TestCaseDjango):
         self.assertIsInstance(response, oseo.GetStatusResponseType)
 
 class GetStatusServerTestCase(TestCaseDjango):
-    '''
+    """
     This class provides tests for the Getstatus operation when ran through the
     server.
-    '''
+    """
 
     fixtures = ['test_get_status.json']
     urls = 'oseoserver.urls'

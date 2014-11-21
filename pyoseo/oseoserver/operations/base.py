@@ -12,31 +12,31 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Base classes for the OSEO operations
-'''
+"""
 
 from django.core.exceptions import ObjectDoesNotExist
 import pyxb
-import pyxb.bundles.opengis.oseo as oseo
+import pyxb.bundles.opengis.oseo_1_0 as oseo
 
 class OseoOperation(object):
-    '''
+    """
     This is the base class for OSEO operations.
 
     It should not be instantiated directly
-    '''
+    """
 
-    NAME = None # to be reimplemented in child classes
+    NAME = None  # to be reimplemented in child classes
 
     def _get_delivery_options(self, db_item):
-        '''
+        """
         Return the delivery options for an input database item.
 
         :arg db_item: the database record model that has the delivery options
         :type db_item: pyoseo.models.CustomizableItem
         :return: A pyxb object with the delivery options
-        '''
+        """
 
         try:
             do = db_item.selected_delivery_option
@@ -64,20 +64,21 @@ class OseoOperation(object):
         return dot
 
     def _c(self, value):
-        '''
+        """
         Convert between a None and an empty string.
 
         This function translates pyxb's empty elements, which are stored as
         None into django's empty values, which are stored as an empty string.
-        '''
+        """
+
         return '' if value is None else str(value)
 
     def _n(self, value):
-        '''
+        """
         Convert between an empty string and a None
 
         This function is translates django's empty elements, which are stored
         as empty strings into pyxb empty elements, which are stored as None.
-        '''
+        """
 
         return None if value == '' else value

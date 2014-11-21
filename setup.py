@@ -23,7 +23,6 @@ setup(
         'celery',
         'lxml',
         'wsgiref',
-        'giosystemcore',
         'librabbitmq',
     ],
     include_package_data=True,

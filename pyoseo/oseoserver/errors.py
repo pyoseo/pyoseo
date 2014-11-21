@@ -12,9 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Custom exception classes for oseoserver
-'''
+"""
 
 class NonSoapRequestError(Exception):
     pass

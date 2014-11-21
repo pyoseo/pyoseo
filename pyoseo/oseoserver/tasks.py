@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-'''
+"""
 Celery tasks for pyoseo
 
 The celery worker can be started with the command:
@@ -20,7 +20,7 @@ The celery worker can be started with the command:
 .. code:: bash
 
    pyoseo/pyoseo$ celery worker --app=pyoseo.celery_app --loglevel=info
-'''
+"""
 
 # TODO
 # * Instead of calling oseoserver.models directly, develop a RESTful API
@@ -46,7 +46,7 @@ logger = get_task_logger(__name__)
 
 @shared_task(bind=True)
 def process_normal_order(self, order_id):
-    '''
+    """
     Process a normal order.
 
     A normal order is one that does not come from a subscription and is also 
@@ -54,7 +54,7 @@ def process_normal_order(self, order_id):
 
     :arg order_id:
     :type order_id: int
-    '''
+    """
 
     try:
         order = models.Order.objects.get(pk=order_id)
@@ -72,12 +72,12 @@ def process_normal_order(self, order_id):
 
 @shared_task(bind=True)
 def process_batch(self, batch_id):
-    '''
+    """
     Process an order batch.
 
     :arg batch_id:
     :type batch_id: int
-    '''
+    """
 
     try:
         batch = models.Batch.objects.get(pk=batch_id)
@@ -113,9 +113,9 @@ def process_batch(self, batch_id):
 
 @shared_task(bind=True)
 def process_online_data_access_item(self, order_item_id, delivery_option_id):
-    '''
+    """
     Process an order item that specifies online data access as delivery
-    '''
+    """
 
     order_item = models.OrderItem.objects.get(pk=order_item_id)
     logger.debug('Retrieved order item from the database: {}'.format(
@@ -129,10 +129,10 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
                 pk=delivery_option_id)
         protocol = delivery_option.onlinedataaccess.protocol
         protocol_path_map = {
-            models.OnlineDataAccess.HTTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
-                                          'HTTP_PROTOCOL_ROOT_DIR',
-            models.OnlineDataAccess.FTP: 'OSEOSERVER_ONLINE_DATA_ACCESS_' \
-                                         'FTP_PROTOCOL_ROOT_DIR',
+            models.OnlineDataAccess.HTTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
+                "HTTP_PROTOCOL_ROOT_DIR",
+            models.OnlineDataAccess.FTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
+                "FTP_PROTOCOL_ROOT_DIR",
         }
         protocol_root_dir = getattr(
             django_settings,
@@ -166,29 +166,29 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
 
 @shared_task(bind=True)
 def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
-    '''
+    """
     Process an order item that specifies online data delivery
-    '''
+    """
 
     raise NotImplementedError
 
 @shared_task(bind=True)
 def process_media_delivery_item(self, order_item_id, delivery_option_id):
-    '''
+    """
     Process an order item that specifies media delivery
-    '''
+    """
 
     raise NotImplementedError
 
 @shared_task(bind=True)
 def update_order_status(self, order_id):
-    '''
+    """
     Update the status of a normal order whenever the status of its batch
     changes
 
-    :arg order:
-    :type order: oseoserver.models.Order
-    '''
+    :arg order_id:
+    :type order_id: oseoserver.models.Order
+    """
 
     order = models.Order.objects.get(pk=order_id)
     if order.order_type.name == models.OrderType.PRODUCT_ORDER:
@@ -207,7 +207,7 @@ def update_order_status(self, order_id):
 
 @shared_task(bind=True)
 def monitor_ftp_downloads(self):
-    '''
+    """
     Monitor FTP downloads
 
     This function will parse an xferlog file from the FTP server.
@@ -221,7 +221,7 @@ def monitor_ftp_downloads(self):
     server's logs are always rotated on a daily basis, even if they are empty.
     As such, the logrotate daemon should be properly configured, as indicated 
     in the :ref:`proftpd-installation-label` installation instructions.
-    '''
+    """
 
     ftp_log_file = '/var/log/proftpd/xferlog.1' # analyzing previous day log
     #ftp_log_file = '/var/log/proftpd/xferlog'
@@ -240,7 +240,7 @@ def monitor_ftp_downloads(self):
 # this task can be generalized and executed as smaller tasks
 @shared_task(bind=True)
 def delete_old_orders(self):
-    '''
+    """
     Find completed orders that are lying around past their time.
 
     This task should run once per day by being added to the 
@@ -250,7 +250,7 @@ def delete_old_orders(self):
     days specified by the 
     :data:`~pyoseo.settings.OSEOSERVER_ORDER_DELETION_THRESHOLD` setting.
     Once this threshold is passed, an order becomes elligible for deletion.
-    '''
+    """
 
     ftp_root = getattr(
         django_settings,
@@ -292,7 +292,7 @@ def delete_old_orders(self):
                 logger.warn(err)
 
 def parse_ftp_log_line(line):
-    '''
+    """
     Parse a line of the FTP transfer log file looking for downloaded items.
 
     :arg line: One of the lines of the FTP's server transfer log
@@ -300,7 +300,7 @@ def parse_ftp_log_line(line):
     :returns: the order item being requested in the line and the time when 
               the download was performed
     :rtype: (oseoserver.models.OrderItem, datetime.datetime)
-    '''
+    """
 
     # Do not uncomment this line except for debugging purposes, as it
     # produces a lot of output
