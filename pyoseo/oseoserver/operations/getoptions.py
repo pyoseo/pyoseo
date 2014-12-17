@@ -76,10 +76,10 @@ class GetOptions(OseoOperation):
                 # as well as options that are applicable to every collection
                 for ot in (models.OrderType.PRODUCT_ORDER,
                            models.OrderType.SUBSCRIPTION_ORDER):
-                    available_options = models.Option.objects.filter(
-                        Q(product__collection_id=request.collectionId) | \
-                        Q(product=None)
-                    ).filter(optionordertype__order_type__name=ot)
+                    available_options = self.get_applicable_options(
+                        request.collectionId,
+                        ot
+                    )
                     av_delivery_opts = models.DeliveryOption.objects.filter(
                         deliveryoptionordertype__order_type__name=ot
                     )
@@ -98,6 +98,14 @@ class GetOptions(OseoOperation):
         elif request.taskingRequestId is not None:
             raise NotImplementedError
         return response, status_code
+
+    def get_applicable_options(self, collection_id, request_type):
+
+        options = models.Option.objects.filter(
+            Q(product__collection_id=collection_id) |
+            Q(product=None)
+        ).filter(optionordertype__order_type__name=request_type)
+        return options
 
     def _get_order_options(self, option_group, options, delivery_options,
                            order_type, order_item=None):

@@ -380,6 +380,7 @@ class Product(models.Model):
     def __unicode__(self):
         return self.short_name
 
+#TODO: add a description attribute for this model
 class Option(models.Model):
     name = models.CharField(max_length=100)
     product = models.ForeignKey('Product', null=True, blank=True)
