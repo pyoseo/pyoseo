@@ -19,26 +19,30 @@ Custom exception classes for oseoserver
 class NonSoapRequestError(Exception):
     pass
 
+
+class InvalidOrderError(Exception):
+    pass
+
+
 class InvalidOrderDeliveryMethodError(Exception):
     pass
+
 
 class OnlineDataAccessInvalidProtocol(Exception):
     pass
 
+
 class OnlineDataDeliveryInvalidProtocol(Exception):
     pass
+
 
 class OperationNotImplementedError(Exception):
     pass
 
+
 class SubmitWithQuotationError(Exception):
     pass
 
-class SubmitSubscriptionError(Exception):
-    pass
-
-class SubmitMassiveOrderError(Exception):
-    pass
 
 class OseoError(Exception):
 
@@ -47,8 +51,11 @@ class OseoError(Exception):
         self.text = text
         self.locator = locator
 
+
 class InvalidSettingsError(Exception):
     pass
 
+
 class AuthenticationError(Exception):
     pass
+

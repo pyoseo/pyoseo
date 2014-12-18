@@ -58,76 +58,103 @@ class Submit(OseoOperation):
 
         status_code = 200
         if request.orderSpecification is not None:
-            # order specification type of Submit
-            ord_spec = request.orderSpecification
-            creation_date = dt.datetime.now(pytz.utc)
-            order = models.Order(
-                created_on=creation_date,
-                status_changed_on=creation_date,
-                remark=self._c(ord_spec.orderRemark),
-                reference=self._c(ord_spec.orderReference),
-                packaging=self._c(ord_spec.packaging),
-                priority=self._c(ord_spec.priority)
-            )
-            if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
-                ref = self._c(ord_spec.orderReference)
-                massive_order_reference = getattr(
-                    django_settings,
-                    'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
-                    None
-                )
-
-                if massive_order_reference is not None and \
-                        ref == massive_order_reference:
-                    order.order_type = models.OrderType.objects.get(
-                            name=models.OrderType.MASSIVE_ORDER)
-                    order.status = models.CustomizableItem.SUBMITTED
-                else:
-                    order.order_type = models.OrderType.objects.get(
-                            name=models.OrderType.PRODUCT_ORDER)
-                    order.status = models.CustomizableItem.ACCEPTED
-            order.user = user
-            #  not very nice but we will deal with option groups some other day
-            order.option_group = models.OptionGroup.objects.get(id=1)
-            order.save()
-            self.parse_order_delivery_method(ord_spec, order)
-            self.configure_delivery(order, user)
-            # add options
-            if ord_spec.invoiceAddress is not None:
-                ia = ord_spec.invoiceAddress
-                order.invoice_address = models.InvoiceAddress(
-                    first_name=self._c(ia.mailAddress.firstName),
-                    last_name=self._c(ia.mailAddress.lastName),
-                    company_ref=self._c(ia.mailAddress.companyRef),
-                    street_address=self._c(
-                        ia.mailAddress.postalAddress.streetAddress),
-                    city=self._c(ia.mailAddress.postalAddress.city),
-                    state=self._c(ia.mailAddress.postalAddress.state),
-                    postal_code=self._c(
-                        ia.mailAddress.postalAddress.postalCode),
-                    country=self._c(ia.mailAddress.postalAddress.country),
-                    post_box=self._c(ia.mailAddress.postalAddress.postBox),
-                    telephone=self._c(ia.mailAddress.telephoneNumer),
-                    fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
-                )
-            if order.order_type.name == models.OrderType.PRODUCT_ORDER:
-                self.create_normal_order_batch(ord_spec, order)
-                tasks.process_normal_order.apply_async((order.id,))
-            elif order.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
-                # do not create any batch yet
-                # batches will be created on demand, whenever new products
-                # come out of the processing lines
-                raise errors.SubmitSubscriptionError('Submission of '
-                                                     'subscription orders is '
-                                                     'not implemented')
-            elif order.order_type.name == models.OrderType.MASSIVE_ORDER:
-                self.create_massive_order_batches()
+            order = self.process_order_specification(
+                request.orderSpecification, user)
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         return response, status_code
+
+    def process_order_specification(self, order_specification, user):
+        """
+        Handle submit requests that provide an order specification.
+
+        :arg order_specification:
+        :type order_specification:
+        :arg user:
+        :type user:
+
+        :return:
+        """
+
+        creation_date = dt.datetime.now(pytz.utc)
+        order = models.Order(
+            created_on=creation_date,
+            status_changed_on=creation_date,
+            remark=self._c(order_specification.orderRemark),
+            reference=self._c(order_specification.orderReference),
+            packaging=self._c(order_specification.packaging),
+            priority=self._c(order_specification.priority)
+        )
+        order.user = user
+        order.order_type = self._get_order_type(order_specification)
+        order.status = self._validate_order_type(order.order_type)
+        order.save()
+        if order.status == models.CustomizableItem.FAILED:
+            raise errors.InvalidOrderTypeError("Order of type {} is not "
+                                               "supported".format(
+                                               order.order_type))
+        # not very nice but we will deal with option groups some other day
+        order.option_group = models.OptionGroup.objects.get(id=1)
+        order.save()
+        self.parse_order_delivery_method(order_specification, order)
+        self.configure_delivery(order, user)
+        # add options
+        order_options = self.configure_order_options(order_specification)
+        if order_specification.invoiceAddress is not None:
+            ia = order_specification.invoiceAddress
+            order.invoice_address = models.InvoiceAddress(
+                first_name=self._c(ia.mailAddress.firstName),
+                last_name=self._c(ia.mailAddress.lastName),
+                company_ref=self._c(ia.mailAddress.companyRef),
+                street_address=self._c(
+                    ia.mailAddress.postalAddress.streetAddress),
+                city=self._c(ia.mailAddress.postalAddress.city),
+                state=self._c(ia.mailAddress.postalAddress.state),
+                postal_code=self._c(
+                    ia.mailAddress.postalAddress.postalCode),
+                country=self._c(ia.mailAddress.postalAddress.country),
+                post_box=self._c(ia.mailAddress.postalAddress.postBox),
+                telephone=self._c(ia.mailAddress.telephoneNumer),
+                fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
+                )
+        if order.order_type.name == models.OrderType.PRODUCT_ORDER:
+            self.create_normal_order_batch(order_specification, order)
+            tasks.process_normal_order.apply_async((order.id,))
+        else:
+            raise NotImplementedError
+        return order
+
+    def configure_options(self, options):
+        """
+        Configure the options for the order and also for the order items
+
+        It may be necessary to define a custom xsd file for pyoseo. This xsd
+        is currently in the oseoserver/xml_schemas directory. PyXB can
+        generate bindings for it by running the command:
+
+        .. code:: bash
+
+           pyxbgen pyoseo.xsd -m pyoseo_schema
+
+        It can then be imported into python and used just like the rest of
+        the OGC schemas.
+
+        Alternatively we may not need to define custom xsd files and can
+        probably get by just by creating the relevant swe base types. See the
+        getoptions.py module for an example on how to create such an element
+        with pyxb
+
+        :param parent:
+        :return:
+        """
+
+        model_options = []
+        for option in options:
+            encoding = option.parameterData.encoding
+        return model_options
 
     def create_normal_order_batch(self, order_specification, order):
         """
@@ -168,14 +195,6 @@ class Submit(OseoOperation):
             order_item.save()
         order.save()
 
-    def create_massive_order_batches(self):
-        """
-        break the order down into multiple batches
-        """
-
-        raise errors.SubmitMassiveOrderError('Submission of massive orders is '
-                                             'not implemented')
-
     def parse_order_delivery_method(self, order_specification, order):
         """
         Validate and parse the requested delivery method for an order.
@@ -191,7 +210,7 @@ class Submit(OseoOperation):
           The available implementations are stored as records of the
           oseoserver.models.OnlineDataAccess model, but they can be restricted
           to certain OptionGroups and further restricted to certain Order
-          types. This means that altough the server may support online data 
+          types. This means that although the server may support online data
           access with the FTP protocol, it is possible to restrict it so that
           it is only available for orders of type 'SUBSCRIPTION_ORDER' and
           only if the orders belong to the 'pyoseo options' option group.
@@ -257,6 +276,7 @@ class Submit(OseoOperation):
                 'The chosen delivery method is not allowed'
             )
 
+    # TODO - This method should be external to pyoseo
     def configure_delivery(self, order, user):
         """
         Perform delivery related operations.
@@ -281,6 +301,48 @@ class Submit(OseoOperation):
             user_name = user.user.username
             self._add_ftp_user(user_name)
 
+    def _acknowledge_normal_product_order(self):
+        """
+        Whenever there is a normal product order it is accepted automatically.
+
+        :return:
+        """
+        product_enabled = self._order_type_enabled(
+            models.OrderType.PRODUCT_ORDER)
+        if product_enabled:
+            status = models.CustomizableItem.ACCEPTED
+        else:
+            status = models.CustomizableItem.FAILED
+        return status
+
+    def _acknowledge_massive_order(self):
+        massive_enabled = self._order_type_enabled(
+            models.OrderType.MASSIVE_ORDER)
+        if massive_enabled:
+            status = models.CustomizableItem.SUBMITTED
+        else:
+            status = models.CustomizableItem.FAILED
+        return status
+
+    def _acknowledge_subscription_order(self):
+        subscription_enabled = self._order_type_enabled(
+            models.OrderType.SUBSCRIPTION_ORDER)
+        if subscription_enabled:
+            status = models.CustomizableItem.SUBMITTED
+        else:
+            status = models.CustomizableItem.FAILED
+        return status
+
+    def _acknowledge_tasking_order(self):
+        subscription_enabled = self._order_type_enabled(
+            models.OrderType.TASKING_ORDER)
+        if subscription_enabled:
+            status = models.CustomizableItem.SUBMITTED
+        else:
+            status = models.CustomizableItem.FAILED
+        return status
+
+    # TODO - This method should be external to pyoseo
     def _add_ftp_user(self, user):
         """
         Create a new FTP user.
@@ -475,6 +537,25 @@ class Submit(OseoOperation):
         )
         return sdo
 
+    def _get_order_type(self, order_specification):
+        order_type = order_specification.orderType
+        if order_type == models.OrderType.PRODUCT_ORDER:
+            ref = self._c(order_specification.orderReference)
+            massive_reference = getattr(
+                django_settings,
+                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
+                None
+            )
+            if massive_reference is not None and ref == massive_reference:
+                result = models.OrderType.MASSIVE_ORDER
+        else:
+            result = order_type
+        return result
+
+    def _order_type_enabled(self, order_type):
+        order_type_enabled = models.OrderType.objects.filter(name=order_type)
+        return True if len(order_type_enabled) > 0 else False
+
     def _set_delivery_options(self, options, order_type):
         """
         Create a database record with the input delivery options.
@@ -559,6 +640,17 @@ class Submit(OseoOperation):
             result = True
         return result
 
+    def _validate_order_type(self, requested_order_type):
+        if requested_order_type == models.OrderType.PRODUCT_ORDER:
+            status = self._acknowledge_normal_product_order()
+        elif requested_order_type == models.OrderType.MASSIVE_ORDER:
+            status = self._acknowledge_massive_order()
+        elif requested_order_type == models.OrderType.SUBSCRIPTION_ORDER:
+            status = self._acknowledge_subscription_order()
+        elif requested_order_type == models.OrderType.TASKING_ORDER:
+            status = self._acknowledge_tasking_order()
+        return status
+
     def _validate_media_delivery(self, package_medium, order_type):
         available_media = []
         for dot in models.DeliveryOptionOrderType.objects.all():
@@ -570,3 +662,4 @@ class Submit(OseoOperation):
         if package_medium in available_media:
             result = True
         return result
+
