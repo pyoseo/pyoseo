@@ -26,10 +26,13 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pytz
+from lxml import etree
 
 from oseoserver import models
 from oseoserver import tasks
 from oseoserver import errors
+from oseoserver import utilities
+from oseoserver.server import OseoServer
 from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -89,6 +92,10 @@ class Submit(OseoOperation):
             priority=self._c(order_specification.priority)
         )
         order.user = user
+        ia = order_specification.invoiceAddress
+        if ia is not None:
+            address = self.extract_invoice_address(ia)
+            order.invoice_address = address
         order.order_type = self._get_order_type(order_specification)
         order.status = self._validate_order_type(order.order_type)
         order.save()
@@ -101,33 +108,19 @@ class Submit(OseoOperation):
         order.save()
         self.parse_order_delivery_method(order_specification, order)
         self.configure_delivery(order, user)
-        # add options
-        order_options = self.configure_order_options(order_specification)
-        if order_specification.invoiceAddress is not None:
-            ia = order_specification.invoiceAddress
-            order.invoice_address = models.InvoiceAddress(
-                first_name=self._c(ia.mailAddress.firstName),
-                last_name=self._c(ia.mailAddress.lastName),
-                company_ref=self._c(ia.mailAddress.companyRef),
-                street_address=self._c(
-                    ia.mailAddress.postalAddress.streetAddress),
-                city=self._c(ia.mailAddress.postalAddress.city),
-                state=self._c(ia.mailAddress.postalAddress.state),
-                postal_code=self._c(
-                    ia.mailAddress.postalAddress.postalCode),
-                country=self._c(ia.mailAddress.postalAddress.country),
-                post_box=self._c(ia.mailAddress.postalAddress.postBox),
-                telephone=self._c(ia.mailAddress.telephoneNumer),
-                fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
-                )
+        order_options = self.extract_options(order_specification.option,
+                                             order.customizableitem_ptr)
+        if len(order_options) > 0:
+            order.selected_options.add(*order_options)
+            order.save()
         if order.order_type.name == models.OrderType.PRODUCT_ORDER:
             self.create_normal_order_batch(order_specification, order)
             tasks.process_normal_order.apply_async((order.id,))
-        else:
+        else:  # only normal PRODUCT_ORDERs are implemented
             raise NotImplementedError
         return order
 
-    def configure_options(self, options):
+    def extract_options(self, options, customizable_item):
         """
         Configure the options for the order and also for the order items
 
@@ -147,14 +140,61 @@ class Submit(OseoOperation):
         getoptions.py module for an example on how to create such an element
         with pyxb
 
-        :param parent:
+        :param options: An iterable with the ParameterData pyxb objects
+        :type options: pyxb.binding.content._PluralBinding
         :return:
         """
 
         model_options = []
+        path = getattr(django_settings, "OSEOSERVER_OPTIONS_CLASS")
         for option in options:
-            encoding = option.parameterData.encoding
+            values = option.ParameterData.values
+            # since values is an xsd:anyType, we will not do schema
+            # validation on it
+            values_tree = etree.fromstring(values.toxml(OseoServer._encoding))
+            for value in values_tree:
+                option_name = etree.QName(value).localname
+                if self._option_enabled(option_name, customizable_item):
+                    handler = utilities.import_class(path)
+                    option_value = handler.parse_option(value)
+                    if self._validate_option(option_name, option_value):
+                        group_option = models.GroupOption.objects.get(
+                            option__name=option_name,
+                            group=customizable_item.option_group
+                        )
+                        sel_opt = models.SelectedOption(
+                            group_option=group_option,
+                            customizable_item=customizable_item,
+                            value=option_value
+                        )
+                        model_options.append(sel_opt)
+                    else:
+                        msg = ("The value '{}' is not valid for option "
+                               "'{}'".format(option_value, option_name))
+                        raise errors.InvalidOptionError(msg)
+                else:
+                    raise errors.InvalidOptionError("Option '{}' is not valid "
+                                                    "on this server".format(
+                                                    option_name))
         return model_options
+
+    def extract_invoice_address(self, invoice_address):
+        address = models.InvoiceAddress(
+            first_name=self._c(invoice_address.mailAddress.firstName),
+            last_name=self._c(invoice_address.mailAddress.lastName),
+            company_ref=self._c(invoice_address.mailAddress.companyRef),
+            street_address=self._c(
+                invoice_address.mailAddress.postalAddress.streetAddress),
+            city=self._c(invoice_address.mailAddress.postalAddress.city),
+            state=self._c(invoice_address.mailAddress.postalAddress.state),
+            postal_code=self._c(
+                invoice_address.mailAddress.postalAddress.postalCode),
+            country=self._c(invoice_address.mailAddress.postalAddress.country),
+            post_box=self._c(invoice_address.mailAddress.postalAddress.postBox),
+            telephone=self._c(invoice_address.mailAddress.telephoneNumer),
+            fax=self._c(invoice_address.mailAddress.facsimileTelephoneNumbe),
+            )
+        return address
 
     def create_normal_order_batch(self, order_specification, order):
         """
@@ -537,25 +577,6 @@ class Submit(OseoOperation):
         )
         return sdo
 
-    def _get_order_type(self, order_specification):
-        order_type = order_specification.orderType
-        if order_type == models.OrderType.PRODUCT_ORDER:
-            ref = self._c(order_specification.orderReference)
-            massive_reference = getattr(
-                django_settings,
-                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
-                None
-            )
-            if massive_reference is not None and ref == massive_reference:
-                result = models.OrderType.MASSIVE_ORDER
-        else:
-            result = order_type
-        return result
-
-    def _order_type_enabled(self, order_type):
-        order_type_enabled = models.OrderType.objects.filter(name=order_type)
-        return True if len(order_type_enabled) > 0 else False
-
     def _set_delivery_options(self, options, order_type):
         """
         Create a database record with the input delivery options.
@@ -663,3 +684,8 @@ class Submit(OseoOperation):
             result = True
         return result
 
+    def _validate_option(self, name, value):
+        """Return a boolean indicating if the selected option is valid"""
+        choices = [c.value for c in models.OptionChoice.objects.filter(
+            option__name=name)]
+        return True if value in choices or len(choices) == 0 else False

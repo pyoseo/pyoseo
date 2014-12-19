@@ -24,6 +24,10 @@ class InvalidOrderError(Exception):
     pass
 
 
+class InvalidOptionError(Exception):
+    pass
+
+
 class InvalidOrderDeliveryMethodError(Exception):
     pass
 

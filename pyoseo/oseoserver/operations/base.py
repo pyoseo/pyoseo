@@ -17,8 +17,11 @@ Base classes for the OSEO operations
 """
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings as django_settings
 import pyxb
 import pyxb.bundles.opengis.oseo_1_0 as oseo
+
+from oseoserver import models
 
 class OseoOperation(object):
     """
@@ -62,6 +65,61 @@ class OseoOperation(object):
         except ObjectDoesNotExist:
             dot = None
         return dot
+
+    def _get_order_type(self, order_specification):
+        """
+        Return the order type for the input order specification.
+
+        Usually the order type can be extracted directly from the order
+        specification, as the OSEO standard defines only PRODUCT ORDER,
+        SUBSCRIPTION ORDER and TASKING ORDER. We are adding a fourth type,
+        MASSIVE ORDER, which is based on the existence of a special reference
+        on orders of type PRODUCT ORDER.
+
+        :param order_specification:
+        :return:
+        """
+
+        order_type = order_specification.orderType
+        if order_type == models.OrderType.PRODUCT_ORDER:
+            ref = self._c(order_specification.orderReference)
+            massive_reference = getattr(
+                django_settings,
+                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
+                None
+            )
+            if massive_reference is not None and ref == massive_reference:
+                result = models.OrderType.MASSIVE_ORDER
+        else:
+            result = order_type
+        return result
+
+    def _order_type_enabled(self, order_type):
+        """
+        Return a boolean indicating if the specified order type is enabled in
+        the settings.
+        """
+        order_type_enabled = models.OrderType.objects.filter(name=order_type)
+        return True if len(order_type_enabled) > 0 else False
+
+    def _option_enabled(self, option, customizable_item):
+        """
+        Return a boolean indicating if the specified option is enabled.
+        """
+
+        result = False
+        for group_option in customizable_item.option_group.groupoption_set.all():
+            op = group_option.option
+            if op.name == option:
+                for op_order_type in op.optionordertype_set.all():
+                    try:
+                        t = customizable_item.order.order_type
+                    except customizable_item.DoesNotExist:
+                        # the input customizable_item is probably an order item
+                        t = customizable_item.orderitem.batch.order.order_type
+                    if op_order_type.order_type == t:
+                        result = True
+        return result
 
     def _c(self, value):
         """

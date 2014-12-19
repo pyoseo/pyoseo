@@ -27,6 +27,7 @@ Contents:
    roadmap
    customauth
    customprocessing
+   customoptions
    api_doc
 
 
