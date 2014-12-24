@@ -1,6 +1,6 @@
 # Copyright 2014 Ricardo Garcia Silva
 #
-#   Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
 #
@@ -34,8 +34,10 @@ from oseoserver import errors
 from oseoserver import utilities
 from oseoserver.server import OseoServer
 from oseoserver.operations.base import OseoOperation
+import oseoserver.xml_schemas.pyoseo_schema as pyoseo_schema
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
+
 
 class Submit(OseoOperation):
 
@@ -66,6 +68,12 @@ class Submit(OseoOperation):
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
+        if order.status == models.CustomizableItem.SUBMITTED:
+            self.dispatch_order(order)
+        elif order.status == models.CustomizableItem.ACCEPTED:
+            # this is where we notify the admin that an order is awaiting
+            # moderation
+            print("The order {} is awaiting moderation".format(order.id))
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         return response, status_code
@@ -80,6 +88,7 @@ class Submit(OseoOperation):
         :type user:
 
         :return:
+        :rtype: models.Order
         """
 
         creation_date = dt.datetime.now(pytz.utc)
@@ -98,14 +107,13 @@ class Submit(OseoOperation):
             order.invoice_address = address
         order.order_type = self._get_order_type(order_specification)
         order.status = self._validate_order_type(order.order_type)
+        # not very nice but we will deal with option groups some other day
+        order.option_group = models.OptionGroup.objects.get(id=1)
         order.save()
         if order.status == models.CustomizableItem.FAILED:
             raise errors.InvalidOrderTypeError("Order of type {} is not "
                                                "supported".format(
-                                               order.order_type))
-        # not very nice but we will deal with option groups some other day
-        order.option_group = models.OptionGroup.objects.get(id=1)
-        order.save()
+                order.order_type))
         self.parse_order_delivery_method(order_specification, order)
         self.configure_delivery(order, user)
         order_options = self.extract_options(order_specification.option,
@@ -113,12 +121,16 @@ class Submit(OseoOperation):
         if len(order_options) > 0:
             order.selected_options.add(*order_options)
             order.save()
-        if order.order_type.name == models.OrderType.PRODUCT_ORDER:
+        if order.order_type == models.OrderType.PRODUCT_ORDER:
             self.create_normal_order_batch(order_specification, order)
+        return order
+
+    def dispatch_order(self, order):
+        """Dispatch an order for processing in the async queue."""
+        if order.order_type == models.OrderType.PRODUCT_ORDER:
             tasks.process_normal_order.apply_async((order.id,))
         else:  # only normal PRODUCT_ORDERs are implemented
             raise NotImplementedError
-        return order
 
     def extract_options(self, options, customizable_item):
         """
@@ -158,13 +170,14 @@ class Submit(OseoOperation):
                     handler = utilities.import_class(path)
                     option_value = handler.parse_option(value)
                     if self._validate_option(option_name, option_value):
-                        group_option = models.GroupOption.objects.get(
+                        # FIXME - This is just a hack to make the options work
+                        group_option = models.GroupOption.objects.filter(
                             option__name=option_name,
                             group=customizable_item.option_group
-                        )
+                        )[0]
                         sel_opt = models.SelectedOption(
                             group_option=group_option,
-                            customizable_item=customizable_item,
+                            #customizable_item=customizable_item,
                             value=option_value
                         )
                         model_options.append(sel_opt)
@@ -173,9 +186,9 @@ class Submit(OseoOperation):
                                "'{}'".format(option_value, option_name))
                         raise errors.InvalidOptionError(msg)
                 else:
-                    raise errors.InvalidOptionError("Option '{}' is not valid "
-                                                    "on this server".format(
-                                                    option_name))
+                    raise errors.InvalidOptionError(
+                        "Option '{}' is not valid on this server".format(
+                            option_name))
         return model_options
 
     def extract_invoice_address(self, invoice_address):
@@ -193,7 +206,7 @@ class Submit(OseoOperation):
             post_box=self._c(invoice_address.mailAddress.postalAddress.postBox),
             telephone=self._c(invoice_address.mailAddress.telephoneNumer),
             fax=self._c(invoice_address.mailAddress.facsimileTelephoneNumbe),
-            )
+        )
         return address
 
     def create_normal_order_batch(self, order_specification, order):
@@ -221,6 +234,11 @@ class Submit(OseoOperation):
                 option_group=order.option_group
             )
             # add order_item options
+            oi_options = self.extract_options(oi.option,
+                                              order.customizableitem_ptr)
+            if len(oi_options) > 0:
+                order_item.selected_options.add(*oi_options)
+                order_item.save()
             # add order_item scene selection
             if oi.deliveryOptions is not None:
                 d_opts = self._set_delivery_options(
@@ -273,10 +291,10 @@ class Submit(OseoOperation):
         :type order: oseoserver.models.Order
         """
 
-        a = [d.delivery_option for d in \
-                order.order_type.deliveryoptionordertype_set.all()]
-        b = [d.delivery_option for d in \
-                order.option_group.groupdeliveryoption_set.all()]
+        a = [d.delivery_option for d in
+             order.order_type.deliveryoptionordertype_set.all()]
+        b = [d.delivery_option for d in
+             order.option_group.groupdeliveryoption_set.all()]
         available_delivery_options = [d.child_instance() for d in a if d in b]
         dop = order_specification.deliveryOptions
         if dop is not None:  # we can have any of the three options
@@ -341,47 +359,6 @@ class Submit(OseoOperation):
             user_name = user.user.username
             self._add_ftp_user(user_name)
 
-    def _acknowledge_normal_product_order(self):
-        """
-        Whenever there is a normal product order it is accepted automatically.
-
-        :return:
-        """
-        product_enabled = self._order_type_enabled(
-            models.OrderType.PRODUCT_ORDER)
-        if product_enabled:
-            status = models.CustomizableItem.ACCEPTED
-        else:
-            status = models.CustomizableItem.FAILED
-        return status
-
-    def _acknowledge_massive_order(self):
-        massive_enabled = self._order_type_enabled(
-            models.OrderType.MASSIVE_ORDER)
-        if massive_enabled:
-            status = models.CustomizableItem.SUBMITTED
-        else:
-            status = models.CustomizableItem.FAILED
-        return status
-
-    def _acknowledge_subscription_order(self):
-        subscription_enabled = self._order_type_enabled(
-            models.OrderType.SUBSCRIPTION_ORDER)
-        if subscription_enabled:
-            status = models.CustomizableItem.SUBMITTED
-        else:
-            status = models.CustomizableItem.FAILED
-        return status
-
-    def _acknowledge_tasking_order(self):
-        subscription_enabled = self._order_type_enabled(
-            models.OrderType.TASKING_ORDER)
-        if subscription_enabled:
-            status = models.CustomizableItem.SUBMITTED
-        else:
-            status = models.CustomizableItem.FAILED
-        return status
-
     # TODO - This method should be external to pyoseo
     def _add_ftp_user(self, user):
         """
@@ -402,7 +379,7 @@ class Submit(OseoOperation):
         try:
             os.makedirs(user_home)
             # python's equivalent to chmod 755 user_home
-            os.chmod(user_home, stat.S_IRWXU | stat.S_IRGRP | 
+            os.chmod(user_home, stat.S_IRWXU | stat.S_IRGRP |
                      stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
         except OSError as err:
             if err.errno == 17:
@@ -427,13 +404,13 @@ class Submit(OseoOperation):
 
         delivery_options = order_specification.deliveryOptions
         protocols = [i.protocol for i in available_options if isinstance(i,
-                     models.OnlineDataAccess)]
+                                                                         models.OnlineDataAccess)]
         req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
         if req_protocol in protocols:
             sdo = self._create_selected_delivery_option(delivery_options)
             logger.debug('sdo: %s' % sdo)
             del_opt = models.OnlineDataAccess.objects.get(
-                                                protocol=req_protocol)
+                protocol=req_protocol)
             option_group = order.option_group
             logger.debug('del_opt: %s' % del_opt)
             logger.debug('type(del_opt): %s' % type(del_opt))
@@ -475,12 +452,12 @@ class Submit(OseoOperation):
                 d = order_specification.deliveryInformation
                 oa = d.onlineAddress[0]
                 req_protocol = self._c(oa.protocol)
-            except AttributeError, IndexError:
+            except (AttributeError, IndexError):
                 raise errors.InvalidOrderDeliveryMethodError(
                     'The requested order delivery method is not valid'
                 )
         protocols = [i.protocol for i in available_options if isinstance(i,
-                     models.OnlineDataDelivery)]
+                                                                         models.OnlineDataDelivery)]
         if req_protocol in protocols:
             ordered_delivery_info = order_specification.deliveryInformation
             if ordered_delivery_info is not None:
@@ -511,8 +488,8 @@ class Submit(OseoOperation):
             order.selected_delivery_option = sdo
             order.save()
         else:
-            raise errors.OnlineDataDeliveryInvalidProtocol('The requested '
-                                                         'protocol is invalid')
+            raise errors.OnlineDataDeliveryInvalidProtocol(
+                'The requested protocol is invalid')
 
     def _add_media_delivery_data(self, order, order_specification):
         """
@@ -545,9 +522,9 @@ class Submit(OseoOperation):
             if delivery_options is not None:
                 sdo = self._create_selected_delivery_option(delivery_options)
                 package_medium = self._c(
-                        delivery_options.mediaDelivery.packageMedium)
+                    delivery_options.mediaDelivery.packageMedium)
                 shipping_instructions = self._c(
-                        delivery_options.mediaDelivery.shippingInstructions)
+                    delivery_options.mediaDelivery.shippingInstructions)
             else:
                 sdo = models.SelectedDeliveryOption()
                 package_medium = ''
@@ -591,10 +568,10 @@ class Submit(OseoOperation):
         possibly_null = [
             options.onlineDataAccess,
             options.onlineDataDelivery,
-            options.mediaDelivery.packageMedium if \
-                    options.mediaDelivery is not None else None,
-            options.mediaDelivery.shippingInstructions if \
-                    options.mediaDelivery is not None else None,
+            options.mediaDelivery.packageMedium if
+                options.mediaDelivery is not None else None,
+            options.mediaDelivery.shippingInstructions if
+                options.mediaDelivery is not None else None,
             options.numberOfCopies,
             options.productAnnotation,
             options.specialInstructions]
@@ -611,25 +588,25 @@ class Submit(OseoOperation):
             if options.onlineDataAccess is not None:
                 protocol = options.onlineDataAccess.protocol
                 if self._validate_online_data_access_protocol(protocol,
-                        order_type):
+                                                              order_type):
                     oda = models.OnlineDataAccess(protocol=protocol)
                     del_option.onlinedataaccess = oda
                 else:
-                    pass # raise some sort of error
+                    pass  # raise some sort of error
             elif options.onlineDataDelivery is not None:
                 protocol = options.onlineDataDelivery.protocol
                 if self._validate_online_data_delivery_protocol(protocol,
-                        order_type):
+                                                                order_type):
                     odd = models.OnlineDataDelivery(protocol=protocol)
                     del_option.onlinedatadelivery = odd
                 else:
-                    pass # raise some sort of error
+                    pass  # raise some sort of error
             elif options.mediaDelivery is not None:
                 medium = options.mediaDelivery.packageMedium
                 if self._validate_media_delivery(medium, order_type):
                     md = models.MediaDelivery(package_medium=medium)
                     md.shipping_instructions = self._c(
-                            options.mediaDelivery.shippingInstructions)
+                        options.mediaDelivery.shippingInstructions)
                     del_option.mediadelivery = md
                 else:
                     pass  # raise some sort of error
@@ -641,7 +618,7 @@ class Submit(OseoOperation):
         available_protocols = []
         for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'onlinedataaccess') and \
-                    dot.order_type.name == order_type:
+                            dot.order_type.name == order_type:
                 p = dot.delivery_option.onlinedataaccess.protocol
                 available_protocols.append(p)
         result = False
@@ -653,7 +630,7 @@ class Submit(OseoOperation):
         available_protocols = []
         for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'onlinedatadelivery') and \
-                    dot.order_type.name == order_type:
+                            dot.order_type.name == order_type:
                 p = dot.delivery_option.onlinedatadelivery.protocol
                 available_protocols.append(p)
         result = False
@@ -662,21 +639,18 @@ class Submit(OseoOperation):
         return result
 
     def _validate_order_type(self, requested_order_type):
-        if requested_order_type == models.OrderType.PRODUCT_ORDER:
-            status = self._acknowledge_normal_product_order()
-        elif requested_order_type == models.OrderType.MASSIVE_ORDER:
-            status = self._acknowledge_massive_order()
-        elif requested_order_type == models.OrderType.SUBSCRIPTION_ORDER:
-            status = self._acknowledge_subscription_order()
-        elif requested_order_type == models.OrderType.TASKING_ORDER:
-            status = self._acknowledge_tasking_order()
+        status = models.CustomizableItem.FAILED
+        if self._order_type_enabled(requested_order_type):
+            status = models.CustomizableItem.ACCEPTED
+            if requested_order_type.automatic_approval:
+                status = models.CustomizableItem.SUBMITTED
         return status
 
     def _validate_media_delivery(self, package_medium, order_type):
         available_media = []
         for dot in models.DeliveryOptionOrderType.objects.all():
             if hasattr(dot.delivery_option, 'mediadelivery') and \
-                    dot.order_type.name == order_type:
+                            dot.order_type.name == order_type:
                 m = dot.delivery_option.mediadelivery.package_medium
                 available_media.append(m)
         result = False

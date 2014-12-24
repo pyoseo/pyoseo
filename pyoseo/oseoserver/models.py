@@ -120,6 +120,10 @@ class OrderType(models.Model):
 
     name = models.CharField(max_length=30, default=PRODUCT_ORDER,
                             choices=ORDER_TYPE_CHOICES, unique=True)
+    automatic_approval = models.BooleanField(
+        default=False,
+        help_text="Should this type of order be approved automatically?"
+    )
 
     def __unicode__(self):
         return self.name

@@ -19,6 +19,15 @@
       <orderType>PRODUCT_ORDER</orderType>
       <orderItem>
          <itemId>item_01</itemId>
+         <option>
+            <ParameterData>
+               <encoding>XMLEncoding</encoding>
+               <values>
+                  <Format>NetCDF</Format>
+                  <MapProjection>LAT_LONG</MapProjection>
+               </values>
+            </ParameterData>
+         </option>
          <productId>
             <identifier>01729024-8dba-11e3-b102-0019995d2a58</identifier>
          </productId>

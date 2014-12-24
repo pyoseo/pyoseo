@@ -17,6 +17,10 @@ class OseoUserAdmin(admin.ModelAdmin):
 class OptionGroupAdmin(admin.ModelAdmin):
     pass
 
+
+class OrderTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'automatic_approval',)
+
 class OrderAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
@@ -91,7 +95,7 @@ class GroupDeliveryOptionAdmin(admin.ModelAdmin):
     pass
 
 
-admin.site.register(models.OrderType)
+admin.site.register(models.OrderType, OrderTypeAdmin)
 admin.site.register(models.OseoUser, OseoUserAdmin)
 admin.site.register(models.GroupOption, GroupOptionAdmin)
 admin.site.register(models.GroupDeliveryOption, GroupDeliveryOptionAdmin)

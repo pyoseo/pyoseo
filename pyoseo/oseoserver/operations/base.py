@@ -78,9 +78,11 @@ class OseoOperation(object):
 
         :param order_specification:
         :return:
+        :rtype: models.OrderType
         """
 
         order_type = order_specification.orderType
+        result = models.OrderType.objects.get(name=order_type)
         if order_type == models.OrderType.PRODUCT_ORDER:
             ref = self._c(order_specification.orderReference)
             massive_reference = getattr(
@@ -89,9 +91,7 @@ class OseoOperation(object):
                 None
             )
             if massive_reference is not None and ref == massive_reference:
-                result = models.OrderType.MASSIVE_ORDER
-        else:
-            result = order_type
+                result = models.OrderType.objects.get(name=massive_reference)
         return result
 
     def _order_type_enabled(self, order_type):
