@@ -1,30 +1,33 @@
 from django.contrib import admin
 from django.core.urlresolvers import reverse
 from django.utils.html import format_html
+
 import models
 
 class OptionChoiceInline(admin.StackedInline):
     model = models.OptionChoice
     extra = 1
 
+
 class OseoUserAdmin(admin.ModelAdmin):
-    list_display = ('user', 'disk_quota', 'order_availability_time',
+    list_display = ('user', 'disk_quota', 'order_availability_days',
                     'delete_downloaded_order_files',)
-    fields = ('user', 'disk_quota', 'order_availability_time',
+    fields = ('user', 'disk_quota', 'order_availability_days',
               'delete_downloaded_order_files')
     readonly_fields = ('user',)
+
 
 class OptionGroupAdmin(admin.ModelAdmin):
     pass
 
 
 class OrderTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'automatic_approval',)
+    pass
 
 class OrderAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
-            'fields': ('order_type', 'status', 'option_group',
+            'fields': ('order_type', 'status',
                        'status_changed_on', 'completed_on', 'user',
                        'reference', 'priority', 'packaging',)
         }),
@@ -44,7 +47,7 @@ class OrderAdmin(admin.ModelAdmin):
 class OrderItemAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
-            'fields': ('item_id', 'batch', 'status', 'option_group',
+            'fields': ('item_id', 'batch', 'status',
                        'status_changed_on', 'completed_on', 'downloads',
                        'identifier', 'collection_id', 'file_name',)
         }),
@@ -60,12 +63,14 @@ class OrderItemAdmin(admin.ModelAdmin):
     readonly_fields = ('status_changed_on', 'completed_on', 'file_name',
                        'downloads',)
 
+
     def link_to_batch(self, obj):
         url = reverse('admin:oseoserver_batch_change', args=(obj.batch_id,))
         html = '<a href="{0}">{1}</a>'.format(url, obj.batch_id)
         return format_html(html)
     link_to_batch.short_description = 'Batch'
     link_to_batch.allow_tags = True
+
 
     def link_to_order(self, obj):
         url = reverse('admin:oseoserver_order_change',
@@ -75,21 +80,31 @@ class OrderItemAdmin(admin.ModelAdmin):
     link_to_order.short_description = 'Order'
     link_to_order.allow_tags = True
 
+
 class OptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'type', 'product', 'available_choices',)
+    list_display = ('id', 'name', 'available_choices',)
     inlines = [OptionChoiceInline,]
 
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'short_name', 'collection_id',)
+
+class CollectionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'short_name', 'product_price',)
+
+
+class CollectionConfigurationAdmin(admin.ModelAdmin):
+    pass
+
 
 class BatchAdmin(admin.ModelAdmin):
     list_display = ('id', 'status',)
 
+
 class GroupOptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'option', 'group',)
 
+
 class SelectedOptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'customizable_item', 'group_option', 'value',)
+    list_display = ('id', 'customizable_item', 'value',)
+
 
 class GroupDeliveryOptionAdmin(admin.ModelAdmin):
     pass
@@ -97,18 +112,16 @@ class GroupDeliveryOptionAdmin(admin.ModelAdmin):
 
 admin.site.register(models.OrderType, OrderTypeAdmin)
 admin.site.register(models.OseoUser, OseoUserAdmin)
-admin.site.register(models.GroupOption, GroupOptionAdmin)
-admin.site.register(models.GroupDeliveryOption, GroupDeliveryOptionAdmin)
 admin.site.register(models.OnlineDataAccess)
 admin.site.register(models.OnlineDataDelivery)
 admin.site.register(models.MediaDelivery)
 admin.site.register(models.Order, OrderAdmin)
 admin.site.register(models.Batch, BatchAdmin)
 admin.site.register(models.OrderItem, OrderItemAdmin)
-admin.site.register(models.Product, ProductAdmin)
+admin.site.register(models.Collection, CollectionAdmin)
+admin.site.register(models.CollectionConfiguration,
+                    CollectionConfigurationAdmin)
 admin.site.register(models.Option, OptionAdmin)
-admin.site.register(models.OptionOrderType)
-admin.site.register(models.DeliveryOptionOrderType)
 admin.site.register(models.OptionGroup, OptionGroupAdmin)
 admin.site.register(models.SelectedOption, SelectedOptionAdmin)
 admin.site.register(models.SelectedDeliveryOption)
