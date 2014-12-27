@@ -48,25 +48,6 @@ class AbstractOption(models.Model):
         abstract = True
 
 
-class AbstractOptionGroup(models.Model):
-    collection_configuration = models.ForeignKey(
-        "CollectionConfiguration",
-        related_name="%(app_label)s_%(class)s_related"
-    )
-    name = models.CharField(max_length=40,
-                            help_text="Id for the group of options")
-    description = models.CharField(max_length=255,
-                                   help_text="Description of the order "
-                                             "option group",
-                                   blank=True)
-
-    def __unicode__(self):
-        return self.name
-
-    class Meta:
-        abstract = True
-
-
 class AbstractOptionChoice(models.Model):
     value = models.CharField(max_length=255, help_text="Value for this option")
 
@@ -120,23 +101,6 @@ class Collection(models.Model):
 
     def __unicode__(self):
         return self.short_name
-
-
-class CollectionConfiguration(models.Model):
-
-    collection = models.ForeignKey('Collection')
-    order_type = models.ForeignKey('OrderType')
-    enabled = models.BooleanField(default=False)
-    automatic_approval = models.BooleanField(
-        default=False,
-        help_text="Should this type of order be approved automatically for "
-                  "the selected collection?"
-    )
-    name = models.CharField(max_length=100)
-    description = models.CharField(max_length=255, blank=True)
-    order_processing_fee = models.DecimalField(default=Decimal(0),
-                                               max_digits=5,
-                                               decimal_places=2)
 
 
 class CustomizableItem(models.Model):
@@ -234,42 +198,6 @@ class DeliveryOption(models.Model):
         return instance.__unicode__()
 
 
-class DeliveryOptionGroup(AbstractOptionGroup):
-    pass
-
-
-class GroupedDeliveryOption(models.Model):
-    option = models.ForeignKey("DeliveryOption")
-    group = models.ForeignKey("DeliveryOptionGroup")
-
-    def __unicode__(self):
-        return '%s:%s' % (self.group, self.option)
-
-
-class GroupedOption(models.Model):
-    option = models.ForeignKey("Option")
-    group = models.ForeignKey("OptionGroup")
-
-    def __unicode__(self):
-        return '%s:%s' % (self.group, self.option)
-
-
-class GroupedPaymentOption(models.Model):
-    option = models.ForeignKey("PaymentOption")
-    group = models.ForeignKey("PaymentOptionGroup")
-
-    def __unicode__(self):
-        return "{}:{}".format(self.group, self.option)
-
-
-class GroupedSceneSelectionOption(models.Model):
-    option = models.ForeignKey("SceneSelectionOption")
-    group = models.ForeignKey("SceneSelectionOptionGroup")
-
-    def __unicode__(self):
-        return "{}:{}".format(self.group, self.option)
-
-
 class InvoiceAddress(AbstractDeliveryAddress):
     order = models.OneToOneField("Order", related_name="invoice_address")
 
@@ -342,10 +270,6 @@ class OptionChoice(AbstractOptionChoice):
     option = models.ForeignKey('Option', related_name='choices')
 
 
-class OptionGroup(AbstractOptionGroup):
-    pass
-
-
 class OnlineDataAccess(DeliveryOption):
     protocol = models.CharField(max_length=20,
                                 choices=DeliveryOption.PROTOCOL_CHOICES,
@@ -395,6 +319,113 @@ class OnlineAddress(models.Model):
         verbose_name_plural = 'online addresses'
 
 
+class OrderConfiguration(models.Model):
+
+    collection = models.OneToOneField("Collection")
+    enabled = models.BooleanField(default=False)
+    automatic_approval = models.BooleanField(
+        default=False,
+        help_text="Should this type of order be approved automatically for "
+                  "the selected collection?"
+    )
+    order_processing_fee = models.DecimalField(default=Decimal(0),
+                                               max_digits=5,
+                                               decimal_places=2)
+    options = models.ManyToManyField("Option", null=True, blank=True)
+    delivery_options = models.ManyToManyField("DeliveryOption", null=True,
+                                              blank=True)
+    payment_options = models.ManyToManyField("PaymentOption", null=True,
+                                             blank=True)
+    scene_selection_options = models.ManyToManyField("SceneSelectionOption",
+                                                     null=True, blank=True)
+
+    def __unicode__(self):
+        return "{}:{}".format("Enabled" if self.enabled else "Disabled",
+                              "Auto" if self.automatic_approval else "Manual")
+
+
+class ProductOrderConfiguration(OrderConfiguration):
+    pass
+
+
+class MassiveOrderConfiguration(OrderConfiguration):
+    pass
+
+
+class SubscriptionOrderConfiguration(OrderConfiguration):
+    pass
+
+
+class TaskingOrderConfiguration(OrderConfiguration):
+    pass
+
+
+class Order(CustomizableItem):
+    BZIP2 = "bzip2"
+    PACKAGING_CHOICES = (
+        (BZIP2, BZIP2),
+    )
+    STANDARD = "STANDARD"
+    FAST_TRACK = "FAST_TRACK"
+    PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
+    PRODUCT_ORDER = 'PRODUCT_ORDER'
+    SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
+    MASSIVE_ORDER = 'MASSIVE_ORDER'
+    TASKING_ORDER = 'TASKING_ORDER'
+    ORDER_TYPE_CHOICES = (
+        (PRODUCT_ORDER, PRODUCT_ORDER),
+        (MASSIVE_ORDER, MASSIVE_ORDER),
+        (SUBSCRIPTION_ORDER, SUBSCRIPTION_ORDER),
+        (TASKING_ORDER, TASKING_ORDER),
+    )
+    user = models.ForeignKey("OseoUser", related_name="orders")
+    order_type = models.CharField(max_length=30, choices=ORDER_TYPE_CHOICES,
+                                  default=PRODUCT_ORDER)
+    last_describe_result_access_request = models.DateTimeField(null=True,
+                                                               blank=True)
+    reference = models.CharField(max_length=30,
+                                 help_text="Some specific reference about "
+                                           "this order",
+                                 blank=True)
+    packaging = models.CharField(max_length=30,
+                                 choices=PACKAGING_CHOICES,
+                                 blank=True)
+    priority = models.CharField(max_length=30,
+                                choices=PRIORITY_CHOICES,
+                                blank=True)
+
+    def show_batches(self):
+        return ', '.join([str(b.id) for b in self.batches.all()])
+    show_batches.short_description = 'available batches'
+
+    def __unicode__(self):
+        return '{}({})'.format(self.order_type, self.id)
+
+
+class OrderItem(CustomizableItem):
+    batch = models.ForeignKey("Batch", related_name="order_items")
+    collection = models.ForeignKey("Collection")
+    identifier = models.CharField(max_length=255, blank=True,
+                                  help_text="identifier for this order item. "
+                                            "It is the product Id in the "
+                                            "catalog")
+    item_id = models.CharField(max_length=30, help_text="Id for the item in "
+                                                        "the order request")
+    file_name = models.CharField(max_length=255,
+                                 help_text="name of the file that this order "
+                                           "item represents",
+                                 blank=True)
+    downloads = models.SmallIntegerField(default=0,
+                                         help_text="Number of times this "
+                                                   "order item has been "
+                                                   "downloaded.")
+    #    last_downloaded_on = models.DateTimeField(editable=False, blank=True,
+    #                                              null=True)
+
+    def __unicode__(self):
+        return str(self.item_id)
+
+
 class OseoUser(models.Model):
     user = models.OneToOneField(User)
     disk_quota = models.SmallIntegerField(default=50, help_text='Disk space '
@@ -418,89 +449,10 @@ class OseoUser(models.Model):
         return self.user.username
 
 
-class Order(CustomizableItem):
-    BZIP2 = "bzip2"
-    PACKAGING_CHOICES = (
-        (BZIP2, BZIP2),
-    )
-    STANDARD = "STANDARD"
-    FAST_TRACK = "FAST_TRACK"
-    PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
-    user = models.ForeignKey("OseoUser", related_name="orders")
-    order_type = models.ForeignKey("OrderType", related_name="orders")
-    last_describe_result_access_request = models.DateTimeField(null=True,
-                                                               blank=True)
-    reference = models.CharField(max_length=30,
-                                 help_text="Some specific reference about "
-                                           "this order",
-                                 blank=True)
-    packaging = models.CharField(max_length=30,
-                                 choices=PACKAGING_CHOICES,
-                                 blank=True)
-    priority = models.CharField(max_length=30,
-                                choices=PRIORITY_CHOICES,
-                                blank=True)
-
-    def show_batches(self):
-        return ', '.join([str(b.id) for b in self.batches.all()])
-    show_batches.short_description = 'available batches'
-
-    def __unicode__(self):
-        return '{}({})'.format(self.order_type.name, self.id)
-
-
-class OrderItem(CustomizableItem):
-    batch = models.ForeignKey("Batch", related_name="order_items")
-    collection = models.ForeignKey("Collection")
-    identifier = models.CharField(max_length=255, blank=True,
-                                  help_text="identifier for this order item. "
-                                            "It is the product Id in the "
-                                            "catalog")
-    item_id = models.CharField(max_length=30, help_text="Id for the item in "
-                                                        "the order request")
-    file_name = models.CharField(max_length=255,
-                                 help_text="name of the file that this order "
-                                           "item represents",
-                                 blank=True)
-    downloads = models.SmallIntegerField(default=0,
-                                         help_text="Number of times this "
-                                                   "order item has been "
-                                                   "downloaded.")
-#    last_downloaded_on = models.DateTimeField(editable=False, blank=True,
-#                                              null=True)
-
-    def __unicode__(self):
-        return str(self.item_id)
-
-
-class OrderType(models.Model):
-
-    PRODUCT_ORDER = 'PRODUCT_ORDER'
-    SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
-    MASSIVE_ORDER = 'MASSIVE_ORDER'
-    TASKING_ORDER = 'TASKING_ORDER'
-    ORDER_TYPE_CHOICES = (
-        (PRODUCT_ORDER, PRODUCT_ORDER),
-        (MASSIVE_ORDER, MASSIVE_ORDER),
-        (SUBSCRIPTION_ORDER, SUBSCRIPTION_ORDER),
-        (TASKING_ORDER, TASKING_ORDER),
-    )
-
-    name = models.CharField(max_length=30, default=PRODUCT_ORDER,
-                            choices=ORDER_TYPE_CHOICES, unique=True)
-
-    def __unicode__(self):
-        return self.name
-
-
 class PaymentOption(AbstractOption):
 
     def __unicode__(self):
         return self.name
-
-
-class PaymentOptionGroup(AbstractOptionGroup):
-    pass
 
 
 class SceneSelectionOption(AbstractOption):
@@ -517,10 +469,6 @@ class SceneSelectionOptionChoice(AbstractOptionChoice):
                                                related_name='choices')
 
 
-class SceneSelectionOptionGroup(AbstractOptionGroup):
-    pass
-
-
 class SelectedOption(models.Model):
     customizable_item = models.ForeignKey('CustomizableItem',
                                           related_name='selected_options')
@@ -532,11 +480,11 @@ class SelectedOption(models.Model):
 
 
 class SelectedPaymentOption(models.Model):
-    order_item = models.ForeignKey('OrderItem')
+    order_item = models.OneToOneField('OrderItem', null=True, blank=True)
     option = models.ForeignKey('PaymentOption')
 
     def __unicode__(self):
-        return self.value
+        return self.option.name
 
 
 class SelectedSceneSelectionOption(models.Model):

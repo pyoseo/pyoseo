@@ -5,4 +5,4 @@ class OseoServerConfig(AppConfig):
     verbose_name = "OSEO server"
 
     def ready(self):
-        from django.db.models import signals
+        import oseoserver.signals.handlers
