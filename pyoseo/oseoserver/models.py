@@ -60,6 +60,9 @@ class AbstractOptionChoice(models.Model):
 
 class Batch(models.Model):
     order = models.ForeignKey("Order", related_name="batches")
+    created_on = models.DateTimeField(auto_now_add=True)
+    completed_on = models.DateTimeField(null=True, blank=True)
+    updated_on = models.DateTimeField(editable=False, blank=True, null=True)
 
     def status(self):
         order = {
@@ -83,6 +86,18 @@ class Batch(models.Model):
             status = None
         return status
 
+    def price(self):
+        total = Decimal(0)
+        order_fee = None
+        for oi in self.order_items.all():
+            collection = oi.collection
+            product_price = collection.product_price
+            if order_fee is None:
+                order_fee = collection.orderconfiguration.order_processing_fee
+            total += product_price
+        total += order_fee
+        return total
+
     class Meta:
         verbose_name_plural = "batches"
 
@@ -91,12 +106,28 @@ class Batch(models.Model):
 
 
 class Collection(models.Model):
-    catalogue_id = models.CharField(max_length=255, unique=True)
     short_name = models.CharField(max_length=50, unique=True)
+    authorized_groups = models.ManyToManyField("OseoGroup", null=True,
+                                               blank=True)
+    catalogue_endpoint = models.CharField(
+        max_length=255,
+        help_text="URL of the CSW server where this collection is available"
+    )
+    collection_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Identifier of the dataset series for this collection in "
+                  "the catalogue"
+    )
     product_price = models.DecimalField(
         max_digits=5, decimal_places=2,
         help_text="The price of an individual product",
         default=Decimal(0)
+    )
+    item_preparation_class = models.CharField(
+        max_length=255,
+        help_text="Python path to a custom class used for preparing "
+                  "order items"
     )
 
     def __unicode__(self):
@@ -258,9 +289,6 @@ class MediaDelivery(DeliveryOption):
 
 
 class Option(AbstractOption):
-
-    def available_choices(self):
-        return ', '.join([c.value for c in self.choices.all()])
 
     def __unicode__(self):
         return self.name
@@ -426,8 +454,23 @@ class OrderItem(CustomizableItem):
         return str(self.item_id)
 
 
+class OseoGroup(models.Model):
+    name = models.CharField(max_length=50)
+    description = models.TextField(blank=True)
+    authentication_class = models.CharField(
+        max_length=255,
+        help_text="Python path to a custom authentication class to use when"
+                  "validating orders for users belonging to this group",
+        blank=True
+    )
+
+    def __unicode__(self):
+        return self.name
+
+
 class OseoUser(models.Model):
     user = models.OneToOneField(User)
+    oseo_group = models.ForeignKey("OseoGroup")
     disk_quota = models.SmallIntegerField(default=50, help_text='Disk space '
                                           'available to each user. Expressed '
                                           'in Gigabytes')
@@ -456,9 +499,6 @@ class PaymentOption(AbstractOption):
 
 
 class SceneSelectionOption(AbstractOption):
-
-    def available_choices(self):
-        return ', '.join([c.value for c in self.choices.all()])
 
     def __unicode__(self):
         return self.name

@@ -91,6 +91,16 @@ class Submit(OseoOperation):
         :rtype: models.Order
         """
 
+        # validation process:
+        # * user must have the proper authorisation for the requested
+        #   collection(s)
+        # * order_type must be enabled for the requested collection(s)
+        # * selected options must match the ones available in the relevant
+        #   order_configuration
+        # * selected option choices must match the defined choices
+        #
+        # most of these validation procedures require knowledge of the
+        # collection(s) being ordered. Since the collection
         creation_date = dt.datetime.now(pytz.utc)
         order = models.Order(
             created_on=creation_date,

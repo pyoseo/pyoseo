@@ -50,3 +50,20 @@ def update_status_changed_on_by_order_item(sender, **kwargs):
     if order_item.status_changed_on is None or \
                     order_item.status != order_item.old_status:
         order_item.status_changed_on = dt.datetime.now(pytz.utc)
+
+@receiver(pre_save, sender=models.OrderItem, weak=False,
+          dispatch_uid='id_for_update_batch')
+def update_batch(sender, **kwargs):
+    order_item = kwargs["instance"]
+    batch = order_item.batch
+    now = dt.datetime.now(pytz.utc)
+    batch.updated_on = now
+    status = batch.status()
+    if status in (models.CustomizableItem.COMPLETED,
+                          models.CustomizableItem.FAILED,
+                          models.CustomizableItem.TERMINATED):
+        batch.completed_on = now
+    elif status == models.CustomizableItem.DOWNLOADED:
+        pass
+    else:
+        batch.completed_on = None

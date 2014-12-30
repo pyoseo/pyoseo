@@ -37,27 +37,42 @@ class SelectedSceneSelectionOptionInline(admin.StackedInline):
 class ProductOrderConfigurationInline(admin.StackedInline):
     model = models.ProductOrderConfiguration
     extra = 1
+    filter_horizontal = ('options', 'delivery_options', 'payment_options',
+                         'scene_selection_options',)
 
 
 class MassiveOrderConfigurationInline(admin.StackedInline):
     model = models.MassiveOrderConfiguration
     extra = 1
+    filter_horizontal = ('options', 'delivery_options', 'payment_options',
+                         'scene_selection_options',)
 
 
 class SubscriptionOrderConfigurationInline(admin.StackedInline):
     model = models.SubscriptionOrderConfiguration
     extra = 1
+    filter_horizontal = ('options', 'delivery_options', 'payment_options',
+                         'scene_selection_options',)
 
 
 class TaskingOrderConfigurationInline(admin.StackedInline):
     model = models.TaskingOrderConfiguration
     extra = 1
+    filter_horizontal = ('options', 'delivery_options', 'payment_options',
+                         'scene_selection_options',)
+
+
+@admin.register(models.OseoGroup)
+class OseoGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "authentication_class",)
 
 
 @admin.register(models.OseoUser)
 class OseoUserAdmin(admin.ModelAdmin):
-    list_display = ('user', 'disk_quota', 'order_availability_days',
+    list_display = ('user', 'oseo_group', 'disk_quota',
+                    'order_availability_days',
                     'delete_downloaded_order_files',)
+    list_editable = ('oseo_group',)
     fields = ('user', 'disk_quota', 'order_availability_days',
               'delete_downloaded_order_files')
     readonly_fields = ('user',)
@@ -128,7 +143,7 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(models.Option)
 class OptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'available_choices',)
+    list_display = ('id', 'name', 'choices',)
     inlines = [OptionChoiceInline,]
 
 
@@ -153,16 +168,19 @@ class CollectionAdmin(admin.ModelAdmin):
                MassiveOrderConfigurationInline,
                SubscriptionOrderConfigurationInline,
                TaskingOrderConfigurationInline,)
-    list_display = ('id', 'short_name', 'product_price',)
+    list_display = ('short_name', 'collection_id',
+                    'item_preparation_class', 'product_price',)
+    filter_horizontal = ('authorized_groups',)
 
 
-class OrderConfigurationAdmin(admin.ModelAdmin):
-    list_display = ("name", "enabled", "automatic_approval",)
+#class OrderConfigurationAdmin(admin.ModelAdmin):
+#    list_display = ("name", "enabled", "automatic_approval",)
 
 
 @admin.register(models.Batch)
 class BatchAdmin(admin.ModelAdmin):
-    list_display = ('id', 'status',)
+    list_display = ('id', 'status', 'price', 'created_on',
+                    'completed_on', 'updated_on',)
 
 
 admin.site.register(models.OnlineDataAccess)
