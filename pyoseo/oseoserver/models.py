@@ -463,6 +463,11 @@ class OseoGroup(models.Model):
                   "validating orders for users belonging to this group",
         blank=True
     )
+    # these fields are probably not needed
+    #product_orders_enabled = models.BooleanField(default=False)
+    #massive_orders_enabled = models.BooleanField(default=False)
+    #subscription_orders_enabled = models.BooleanField(default=False)
+    #tasking_orders_enabled = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.name

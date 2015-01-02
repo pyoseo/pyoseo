@@ -54,6 +54,7 @@ import pyxb.bundles.opengis.ows as ows_bindings
 import models
 import errors
 import utilities
+from auth.usernametoken import UsernameTokenAuthentication
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -93,13 +94,13 @@ class OseoServer(object):
         "UnsupportedCollection": "client",
     }
     _OPERATION_CLASSES = {
-        "GetStatusRequestType": "oseoserver.operations.getstatus.GetStatus",
-        "SubmitOrderRequestType": "oseoserver.operations.submit.Submit",
-        "DescribeResultAccessRequestType": "oseoserver.operations."
-                                           "describeresultaccess."
-                                           "DescribeResultAccess",
-        "OrderOptionsRequestType": "oseoserver.operations.getoptions."
-                                   "GetOptions",
+        "GetCapabilities": "oseoserver.operations.getcapabilities."
+                           "GetCapabilities",
+        "Submit": "oseoserver.operations.submit.Submit",
+        "DescribeResultAccess": "oseoserver.operations.describeresultaccess."
+                                "DescribeResultAccess",
+        "GetOptions": "oseoserver.operations.getoptions.GetOptions",
+        "GetStatus": "oseoserver.operations.getstatus.GetStatus",
     }
 
     def process_request(self, request_data):
@@ -134,11 +135,10 @@ class OseoServer(object):
             data = element
             response_headers['Content-Type'] = 'application/xml'
         try:
-            schema_instance = self.parse_xml(data)
-            operation = self._get_operation(schema_instance.__class__.__name__)
             user, password = self.authenticate_request(element, soap_version)
-            response, status_code = operation(schema_instance, user,
-                                              user_password=password)
+            schema_instance = self.parse_xml(data)
+            operation = self._get_operation(schema_instance)
+            response, status_code = operation(schema_instance, user)
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
@@ -165,62 +165,73 @@ class OseoServer(object):
         """
         Authenticate an OSEO request.
 
-        Request authentication can be customized according to the 
+        Verify that the incoming request is made by a valid user.
+        PyOSEO uses SOAP-WSS UsernameToken Profile v1.0 authentication. The
+        specification is available at:
+
+        https://www.oasis-open.org/committees/download.php/16782/wss-v1.1-spec-os-UsernameTokenProfile.pdf
+
+        Request authentication can be customized according to the
         needs of each ordering server. This method plugs into that by
         trying to load an external authentication class.
 
-        The python path to the authentication class must be defined in
-        the :data:`~pyoseo.settings.OSEOSERVER_AUTHENTICATION_CLASS`
-        setting.
+        There are two auth scenarios:
 
-        Authentication classes must provide the method:
+        * A returning user
+        * A new user
 
-        authenticate_request(request_element, soap_version)
+        The actual authentication is done by a custom class. This class
+        is specified for each OseoGroup instance in its `authentication_class`
+        attribute.
 
-        This method must return a two-value tuple with the username and 
-        password of the successfully authenticated user. If the authentication
-        is not successful, the method must raise an exception.
+        The custom authentication class must provide the following API:
 
-        :arg request_element: The full request object
-        :type request_element: lxml.etree.Element
-        :arg soap_version: The SOAP version in use
-        :type soap_version: str or None
-        :return: The end user that is responsible for this request and the
-                 user's password
-        :rtype: (oseoserver.models.OseoUser, str)
+        .. py:function:: authenticate_request(user_name, password, **kwargs)
+
+        .. py:function:: is_user(user_name, password, **kwargs)
         """
 
-        auth_class = getattr(
-            django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
-        if auth_class is not None:
-            try:
-                instance = utilities.import_class(auth_class)
-                user_name, password = instance.authenticate_request(
-                    request_element,
-                    soap_version
-                )
-            except errors.OseoError as err:
-                 # this error is handled by the calling method
-                raise
-            except Exception as err:
-                # other errors are re-raised as InvalidSettings
-                logger.error('exception class: {}'.format(
-                             err.__class__.__name__))
-                logger.error('exception args: {}'.format(err.args))
-                raise errors.InvalidSettingsError('Invalid authentication '
-                                                  'class')
-            logger.info('User {} authenticated successfully'.format(user_name))
-        else:
-            user_name = self.DEFAULT_USER_NAME
-            password = 'dummy_password'
-            logger.warning('No authentication in use')
+        auth = UsernameTokenAuthentication()
+        user_name, password, extra = auth.get_details(request_element,
+                                                      soap_version)
         try:
-            oseo_user = models.OseoUser.objects.get(user__username=user_name)
-        except ObjectDoesNotExist:
-            # create a new user, but don't store the password in the database
-            user = models.User.objects.create_user(user_name, password=None)
-            oseo_user = user.oseouser
-        return oseo_user, password
+            user = models.OseoUser.objects.get(user__username=user_name)
+            auth_class = user.oseo_group.authentication_class
+        except models.OseoUser.DoesNotExist:
+            user, group = self.add_user(user_name, password, **extra)
+            auth_class = group.authentication_class
+        try:
+            instance = utilities.import_class(auth_class)
+            authenticated = instance.authenticate_request(user_name, password,
+                                                          **extra)
+            if not authenticated:
+                raise errors.AuthenticationError()
+        except errors.OseoError as err:
+             # this error is handled by the calling method
+            raise
+        except Exception as err:
+            # other errors are re-raised as InvalidSettings
+            logger.error('exception class: {}'.format(
+                         err.__class__.__name__))
+            logger.error('exception args: {}'.format(err.args))
+            raise errors.InvalidSettingsError('Invalid authentication '
+                                              'class')
+        logger.info('User {} authenticated successfully'.format(user_name))
+        return user
+
+    def add_user(self, user_name, password, **kwargs):
+        oseo_user = None,
+        oseo_group = None
+        for group in models.OseoGroup.objects.all():
+            custom_auth = utilities.import_class(group.authentication_class)
+            if custom_auth.is_user(user_name, password, **kwargs):
+                user = models.User.objects.create_user(user_name,
+                                                       password=None)
+                oseo_user = user.oseouser
+                oseo_user.oseo_group = group
+                oseo_user.save()
+                oseo_group = group
+        return oseo_user, oseo_group
 
     def create_exception_report(self, code, text, soap_version, locator=None):
         """
@@ -287,8 +298,9 @@ class OseoServer(object):
         oseo_request = oseo.CreateFromDocument(document)
         return oseo_request
 
-    def _get_operation(self, class_name):
-        op = self._OPERATION_CLASSES[class_name]
+    def _get_operation(self, pyxb_request):
+        oseo_op = pyxb_request.toDOM().firstChild.tagName.partition(":")[-1]
+        op = self._OPERATION_CLASSES[oseo_op]
         return utilities.import_class(op)
 
     def _get_soap_data(self, element, soap_version):

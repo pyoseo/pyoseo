@@ -16,6 +16,8 @@
 Implements the OSEO GetCapabilities operation
 """
 
+import logging
+
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 
 from oseoserver.operations.base import OseoOperation
@@ -25,7 +27,7 @@ logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 class GetCapabilities(OseoOperation):
 
-    def __call__(self, request, user, user_password=None, **kwargs):
+    def __call__(self, request, user, **kwargs):
         """
         Implements the OSEO GetCapabilities operation.
 
