@@ -78,7 +78,7 @@ class OseoServer(object):
     DEFAULT_USER_NAME = 'oseoserver_user'
     """Used for anonymous servers"""
 
-    _oseo_version = "1.0.0"
+    OSEO_VERSION = "1.0.0"
     _encoding = "utf-8"
     _namespaces = {
         "soap": "http://www.w3.org/2003/05/soap-envelope",
@@ -93,7 +93,7 @@ class OseoServer(object):
         "InvalidOrderIdentifier": "client",
         "UnsupportedCollection": "client",
     }
-    _OPERATION_CLASSES = {
+    OPERATION_CLASSES = {
         "GetCapabilities": "oseoserver.operations.getcapabilities."
                            "GetCapabilities",
         "Submit": "oseoserver.operations.submit.Submit",
@@ -253,7 +253,7 @@ class OseoServer(object):
             exception.locator = locator
         exception.append(text)
         exception_report = ows_bindings.ExceptionReport(
-                version=self._oseo_version)
+                version=self.OSEO_VERSION)
         exception_report.append(exception)
         if soap_version is not None:
             soap_code = self._exception_codes[code]
@@ -300,7 +300,7 @@ class OseoServer(object):
 
     def _get_operation(self, pyxb_request):
         oseo_op = pyxb_request.toDOM().firstChild.tagName.partition(":")[-1]
-        op = self._OPERATION_CLASSES[oseo_op]
+        op = self.OPERATION_CLASSES[oseo_op]
         return utilities.import_class(op)
 
     def _get_soap_data(self, element, soap_version):

@@ -18,9 +18,14 @@ Implements the OSEO GetCapabilities operation
 
 import logging
 
+from django.core.urlresolvers import reverse
+from pyxb import BIND
 import pyxb.bundles.opengis.oseo_1_0 as oseo
+import pyxb.bundles.opengis.ows_2_0 as ows
+import pyxb.bundles.opengis.swes_2_0 as swes
 
 from oseoserver.operations.base import OseoOperation
+import oseoserver.server as server
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -39,5 +44,46 @@ class GetCapabilities(OseoOperation):
         """
 
         status_code = 200
-        response = oseo.Capabilities()
-        return response, status_code
+        # parse the GetCapabilities request
+        # here we just provide a standard response
+        caps = oseo.Capabilities(version=server.OseoServer.OSEO_VERSION)
+        caps.ServiceIdentification = self._build_service_identification()
+        caps.ServiceProvider = self._build_service_provider()
+        caps.OperationsMetadata = self._build_operations_metadata()
+        caps.Contents = self._build_contents()
+        # caps.Notifications = swes.NotificationProducerMetadataPropertyType()
+        return caps, status_code
+
+    def _build_service_identification(self):
+        return None  # not implemented yet
+
+    def _build_service_provider(self):
+        return None  # not implemented yet
+
+    def _build_operations_metadata(self):
+        op_meta = ows.OperationsMetadata()
+        for op_name in server.OseoServer.OPERATION_CLASSES.keys():
+            op = ows.Operation(name=op_name)
+            op.DCP.append(BIND())
+            op.DCP[0].HTTP = BIND()
+            op.DCP[0].HTTP.Post.append(BIND())
+            op.DCP[0].HTTP.Post[0].href = "http://{}{}".format(
+                "localhost:8000",  # change this
+                reverse("oseo_endpoint")
+            )
+            op_meta.Operation.append(op)
+        return op_meta
+
+    def _build_contents(self):
+        contents = oseo.OrderingServiceContentsType(
+            ProductOrders=BIND(supported=True),
+            SubscriptionOrders=BIND(supported=True),
+            ProgrammingOrders=BIND(supported=False),
+            GetQuotationCapabilities=BIND(supported=False,
+                                          synchronous=False,
+                                          asynchronous=False,
+                                          monitoring=False,
+                                          off-line=False),
+        )
+        return contents
+
