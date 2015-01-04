@@ -74,7 +74,7 @@ class GetCapabilities(OseoOperation):
             op_meta.Operation.append(op)
         return op_meta
 
-    def _build_contents(self):
+    def _build_contents(self, user):
         contents = oseo.OrderingServiceContentsType(
             ProductOrders=BIND(supported=True),
             SubscriptionOrders=BIND(supported=True),
@@ -83,7 +83,27 @@ class GetCapabilities(OseoOperation):
                                           synchronous=False,
                                           asynchronous=False,
                                           monitoring=False,
-                                          off-line=False),
+                                          off_line=False),
+            SubmitCapabilities=BIND(
+                asynchronous=False,
+                maxNumberOfProducts=server.OseoServer.MAX_ORDER_ITEMS,
+                globalDeliveryOptions=True,
+                localDeliveryOptions=True,
+                globalOrderOptions=True,
+                localOrderOptions=True
+            ),
+            GetStatusCapabilities=BIND(supported=True,
+                                       orderSearch=True,
+                                       orderRetrieve=True,
+                                       full=True),
+            DescribeResultAccessCapabilities=BIND(supported=True),
+            CancelCapabilities=BIND(supported=False,
+                                    asynchronous=False),
         )
+        for collection in user.oseo_group.collection_set.all():
+            cc = oseo.CollectionCapability(
+                collectionId=collection.collection_id
+            )
+            contents.SupportedCollection.append(cc)
         return contents
 

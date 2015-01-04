@@ -79,6 +79,10 @@ class OseoServer(object):
     """Used for anonymous servers"""
 
     OSEO_VERSION = "1.0.0"
+
+    MAX_ORDER_ITEMS = 200  # this could be moved to the admin
+    """Maximum number of products that can be ordered at a time"""
+
     _encoding = "utf-8"
     _namespaces = {
         "soap": "http://www.w3.org/2003/05/soap-envelope",
