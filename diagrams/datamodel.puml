@@ -2,26 +2,26 @@
 
 title PyOseo data model
 
-enum Packaging {
+enum PACKAGING {
     BZIP2
     +ZIP
     +TAR
     +TAR_GZ
 }
 
-enum Priority {
+enum PRIORITY {
     STANDARD
     FAST_TRACK
 }
 
-enum OrderType {
+enum ORDER_TYPE {
     PRODUCT_ORDER
     MASSIVE_ORDER
     SUBSCRIPTION_ORDER
     TASKING_ORDER
 }
 
-enum Status {
+enum STATUS {
     SUBMITTED
     ACCEPTED
     IN_PRODUCTION
@@ -33,7 +33,7 @@ enum Status {
     DOWNLOADED
 }
 
-enum DeliveryProtocol {
+enum DELIVERY_PROTOCOL {
     FTP
     SFTP
     FTPS
@@ -46,7 +46,7 @@ enum DeliveryProtocol {
     HTTPS
 }
 
-enum PackageMedium {
+enum PACKAGE_MEDIUM {
     NTP
     DAT
     EXABYTE
@@ -60,145 +60,146 @@ enum PackageMedium {
     LTO4
 }
 
-enum ShippingChoice {
+enum SHIPPING_CHOICE {
     EACH_READY
     ALL_READY
     OTHER
 }
 
 class AbstractDeliveryAddress {
-    first_name: String
-    last_name: String
-    company_ref: String
-    street_address: String
-    city: String
-    state: String
-    postal_code: String
-    country: String
-    post_box: String
-    telephone: String
-    fax: String
+    +first_name: String
+    +last_name: String
+    +company_ref: String
+    +street_address: String
+    +city: String
+    +state: String
+    +postal_code: String
+    +country: String
+    +post_box: String
+    +telephone: String
+    +fax: String
 }
 
 class AbstractOption {
-    name: String
-    description: String
+    +name: String
+    +description: String
 }
 
 class AbstractOptionChoice {
-    value: String
+    +value: String
 }
 
 class Batch {
-    order: Order
-    created_on: DateTime
-    updated_on: DateTime
-    completed_on: DateTime
-    status()
-    price()
+    +order: Order
+    +created_on: DateTime
+    +updated_on: DateTime
+    +completed_on: DateTime
+    +status()
+    +price()
 }
 
 class Collection {
-    collection_id: String
-    short_name: String
-    product_price: Decimal
-    catalogue_endpoint: String
-    item_preparation_class: String
+    +collection_id: String
+    +short_name: String
+    +product_price: Decimal
+    +catalogue_endpoint: String
+    +item_preparation_class: String
 }
 
 class CustomizableItem {
-    status: Status
-    additional_status_info: String
-    mission_specific_status_info: String
-    created_on: Datetime
-    completed_on: Datetime
-    status_changed_on: Datetime
-    remark: String
+    +status: STATUS
+    +additional_status_info: String
+    +mission_specific_status_info: String
+    +created_on: Datetime
+    +completed_on: Datetime
+    +status_changed_on: Datetime
+    +remark: String
 }
 
 class DeliveryInformation {
-    order: Order
+    +order: Order
 }
 
 class DeliveryOption {
-    delivery_fee: Decimal
-    child_instance()
+    +delivery_fee: Decimal
+    +child_instance()
 }
 
 class InvoiceAddress {
-    order: Order
+    +order: Order
 }
 
 class MassiveOrderConfiguration {
 }
 
 class MediaDelivery {
-    package_medium: PackageMedium
-    shipping_instructions: ShippingChoice
+    +package_medium: PACKAGE_MEDIUM
+    +shipping_instructions: SHIPPING_CHOICE
 }
 
 class Option {
 }
 
 class OptionChoice {
-    option: Option
+    +option: Option
 }
 
 class OnlineDataAccess {
-    protocol: DeliveryProtocol
+    +protocol: DELIVERY_PROTOCOL
 }
 
 class OnlineDataDelivery {
-    protocol: DeliveryProtocol
+    +protocol: DELIVERY_PROTOCOL
 }
 
 class OnlineAddress {
-    delivery_information: DeliveryInformation
-    protocol: String
-    server_address: String
-    user_name: String
-    user_password: String
-    path: String
+    +delivery_information: DeliveryInformation
+    +protocol: String
+    +server_address: String
+    +user_name: String
+    +user_password: String
+    +path: String
 }
 
 class OrderConfiguration {
-    collection: Collection
-    enabled: Boolean
-    automatic_approval: Boolean
-    order_processing_fee: Decimal
+    +collection: Collection
+    +enabled: Boolean
+    +automatic_approval: Boolean
+    +order_processing_fee: Decimal
 }
 
 class Order {
-    user: OseoUser
-    order_type: OrderType
-    last_describe_result_access_request: DateTime
-    reference: String
-    packaging: Packaging
-    priority: Priority
+    +user: OseoUser
+    +order_type: ORDER_TYPE
+    +last_describe_result_access_request: DateTime
+    +reference: String
+    +packaging: PACKAGING
+    +priority: PRIORITY
+    +status_notification: String
 
-    show_batches()
+    +show_batches()
 }
 
 class OrderItem {
-    batch: Batch
-    collection: Collection
-    identifier: String
-    item_id: String
-    file_name: String
-    downloads: Integer
+    +batch: Batch
+    +collection: Collection
+    +identifier: String
+    +item_id: String
+    +file_name: String
+    +downloads: Integer
 }
 
 class OseoUser {
-    user: User
-    oseo_group: OseoGroup
-    disk_quota: Integer
-    order_availability_days: String
-    delete_downloaded_order_files: Boolean
+    +user: User
+    +oseo_group: OseoGroup
+    +disk_quota: Integer
+    +order_availability_days: String
+    +delete_downloaded_order_files: Boolean
 }
 
 class OseoGroup {
-    name: String
-    authentication_class: String
+    +name: String
+    +authentication_class: String
 }
 
 class PaymentOption {
@@ -211,32 +212,32 @@ class SceneSelectionOption {
 }
 
 class SceneSelectionOptionChoice {
-    scene_selection_option: SceneSelectionOption
+    +scene_selection_option: SceneSelectionOption
 }
 
 class SelectedOption {
-    customizable_item: CustomizableItem
-    option: Option
-    value: String
+    +customizable_item: CustomizableItem
+    +option: Option
+    +value: String
 }
 
 class SelectedPaymentOption {
-    order_item: OrderItem
-    option: PaymentOption
+    +order_item: OrderItem
+    +option: PaymentOption
 }
 
 class SelectedSceneSelectionOption {
-    order_item: OrderItem
-    option: SceneSelectionOption
-    value: String
+    +order_item: OrderItem
+    +option: SceneSelectionOption
+    +value: String
 }
 
 class SelectedDeliveryOption {
-    customizable_item: CustomizableItem
-    option: DeliveryOption
-    copies: Integer
-    annotation: String
-    special_instructions: String
+    +customizable_item: CustomizableItem
+    +option: DeliveryOption
+    +copies: Integer
+    +annotation: String
+    +special_instructions: String
 }
 
 class SubscriptionOrderConfiguration {
@@ -271,7 +272,7 @@ DeliveryInformation "0..1" --* "1" Order
 InvoiceAddress "0..1" --* "1" Order
 OseoUser "1" o-- "*" Order : places >
 OseoUser "*" --o "1" OseoGroup : belongs >
-OrderItem "1..*" -* Batch
+OrderItem "1..*" -* "1" Batch
 Batch "1..*" -* "1" Order
 Collection "1" -o "*" OrderItem
 Collection "*" -- "*" OseoGroup : authorized <

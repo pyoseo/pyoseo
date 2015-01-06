@@ -406,6 +406,14 @@ class Order(CustomizableItem):
         (SUBSCRIPTION_ORDER, SUBSCRIPTION_ORDER),
         (TASKING_ORDER, TASKING_ORDER),
     )
+    NONE = 'None'
+    FINAL = 'Final'
+    ALL = 'All'
+    STATUS_NOTIFICATION_CHOICES = (
+        (NONE, NONE),
+        (FINAL, FINAL),
+        (ALL, ALL),
+    )
     user = models.ForeignKey("OseoUser", related_name="orders")
     order_type = models.CharField(max_length=30, choices=ORDER_TYPE_CHOICES,
                                   default=PRODUCT_ORDER)
@@ -421,6 +429,8 @@ class Order(CustomizableItem):
     priority = models.CharField(max_length=30,
                                 choices=PRIORITY_CHOICES,
                                 blank=True)
+    status_notification = models.CharField(max_length=10, default=NONE,
+                                           choices=STATUS_NOTIFICATION_CHOICES)
 
     def show_batches(self):
         return ', '.join([str(b.id) for b in self.batches.all()])

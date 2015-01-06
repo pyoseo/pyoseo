@@ -62,6 +62,7 @@ class Submit(OseoOperation):
         """
 
         status_code = 200
+        self.validate_status_notification(request)
         if request.orderSpecification is not None:
             order = self.process_order_specification(
                 request.orderSpecification, user)
@@ -92,6 +93,14 @@ class Submit(OseoOperation):
         """
 
         # validation process:
+        #
+        # start by validating the mandatory elements:
+        #
+        # * order_type
+        # * order_items
+        #
+        # then validate the optional elements
+
         # * user must have the proper authorisation for the requested
         #   collection(s)
         # * order_type must be enabled for the requested collection(s)
@@ -101,6 +110,22 @@ class Submit(OseoOperation):
         #
         # most of these validation procedures require knowledge of the
         # collection(s) being ordered. Since the collection
+
+
+        order_type = self._get_order_type(order_specification)
+        order_items = []
+        for oi in order_specification.orderItem:
+            item = self.validate_order_item(oi, order_type)
+            order_items.append(item)
+
+        # WIP
+
+
+
+
+
+
+
         creation_date = dt.datetime.now(pytz.utc)
         order = models.Order(
             created_on=creation_date,
@@ -262,6 +287,35 @@ class Submit(OseoOperation):
             batch.order_items.add(order_item)
             order_item.save()
         order.save()
+
+    def validate_order_item(self, requested_item, order_type):
+        """
+
+        :param requested_item:
+        :type requested_item: oseo.CommonOrderItemType
+        :param order_type:
+        :type requested_item: string
+        :return:
+        """
+
+        # * confirm that the productId or subscriptionId or taskingRequestId
+        #   are valid
+        # * confirm that the options are valid
+        # * confirm that the sceneSelection options are valid
+        # * confirm that the deliveryOptions options are valid
+        # * confirm that the payment option is valid
+
+        item = dict()
+        if order_type in (models.Order.PRODUCT_ORDER,
+                          models.Order.MASSIVE_ORDER,
+                          models.Order.SUBSCRIPTION_ORDER):
+            item['collection_id'] = self._c(
+                requested_item.productId.collectionId)
+            if order_type == models.Order.PRODUCT_ORDER:
+                item['identifier'] = self._c(
+                    requested_item.productId.identifier)
+
+
 
     def parse_order_delivery_method(self, order_specification, order):
         """
@@ -564,6 +618,34 @@ class Submit(OseoOperation):
         )
         return sdo
 
+    def _get_order_type(self, order_specification):
+        """
+        Return the order type for the input order specification.
+
+        Usually the order type can be extracted directly from the order
+        specification, as the OSEO standard defines only PRODUCT ORDER,
+        SUBSCRIPTION ORDER and TASKING ORDER. We are adding a fourth type,
+        MASSIVE ORDER, which is based on the existence of a special reference
+        on orders of type PRODUCT ORDER.
+
+        :param order_specification:
+        :type order_specification: oseo.Submit
+        :return:
+        :rtype: models.OrderType
+        """
+
+        result = order_specification.orderType
+        if result == models.Order.PRODUCT_ORDER:
+            ref = self._c(order_specification.orderReference)
+            massive_reference = getattr(
+                django_settings,
+                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
+                None
+            )
+            if massive_reference is not None and ref == massive_reference:
+                result = models.Order.MASSIVE_ORDER
+        return result
+
     def _set_delivery_options(self, options, order_type):
         """
         Create a database record with the input delivery options.
@@ -673,3 +755,15 @@ class Submit(OseoOperation):
         choices = [c.value for c in models.OptionChoice.objects.filter(
             option__name=name)]
         return True if value in choices or len(choices) == 0 else False
+
+    def validate_status_notification(self, request):
+        """
+        Check that the requested status notification is supported.
+
+        :param request:
+        :return:
+        """
+
+        if request.statusNotification != models.Order.NONE:
+            raise NotImplementedError('Status notifications are '
+                                      'not supported')

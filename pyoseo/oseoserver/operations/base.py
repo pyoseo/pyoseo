@@ -66,34 +66,6 @@ class OseoOperation(object):
             dot = None
         return dot
 
-    def _get_order_type(self, order_specification):
-        """
-        Return the order type for the input order specification.
-
-        Usually the order type can be extracted directly from the order
-        specification, as the OSEO standard defines only PRODUCT ORDER,
-        SUBSCRIPTION ORDER and TASKING ORDER. We are adding a fourth type,
-        MASSIVE ORDER, which is based on the existence of a special reference
-        on orders of type PRODUCT ORDER.
-
-        :param order_specification:
-        :return:
-        :rtype: models.OrderType
-        """
-
-        order_type = order_specification.orderType
-        result = models.OrderType.objects.get(name=order_type)
-        if order_type == models.OrderType.PRODUCT_ORDER:
-            ref = self._c(order_specification.orderReference)
-            massive_reference = getattr(
-                django_settings,
-                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
-                None
-            )
-            if massive_reference is not None and ref == massive_reference:
-                result = models.OrderType.objects.get(name=massive_reference)
-        return result
-
     def _order_type_enabled(self, order_type):
         """
         Return a boolean indicating if the specified order type is enabled in
