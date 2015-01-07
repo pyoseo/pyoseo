@@ -168,13 +168,20 @@ class CollectionAdmin(admin.ModelAdmin):
                MassiveOrderConfigurationInline,
                SubscriptionOrderConfigurationInline,
                TaskingOrderConfigurationInline,)
-    list_display = ('short_name', 'collection_id',
-                    'item_preparation_class', 'product_price',)
+    list_display = ('name',
+                    'collection_id',
+                    'item_preparation_class',
+                    'product_price',
+                    'product_orders',
+                    'massive_orders',
+                    'subscription_orders',
+                    'tasking_orders',)
     filter_horizontal = ('authorized_groups',)
 
 
+#@admin.register(models.OrderConfiguration)
 #class OrderConfigurationAdmin(admin.ModelAdmin):
-#    list_display = ("name", "enabled", "automatic_approval",)
+#    pass
 
 
 @admin.register(models.Batch)

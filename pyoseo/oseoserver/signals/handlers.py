@@ -67,3 +67,12 @@ def update_batch(sender, **kwargs):
         pass
     else:
         batch.completed_on = None
+
+@receiver(post_save, sender=models.Collection, weak=False,
+          dispatch_uid='id_for_create_order_configurations')
+def create_order_configurations(sender, **kwargs):
+    c = kwargs["instance"]
+    models.ProductOrderConfiguration.objects.get_or_create(collection=c)
+    models.MassiveOrderConfiguration.objects.get_or_create(collection=c)
+    models.SubscriptionOrderConfiguration.objects.get_or_create(collection=c)
+    models.TaskingOrderConfiguration.objects.get_or_create(collection=c)

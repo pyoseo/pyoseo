@@ -92,6 +92,8 @@ TEMPLATE_DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
+    #'grappelli.dashboard',
+    'grappelli',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -108,6 +110,11 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+)
+
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.contrib.auth.context_processors.auth',
+    'django.core.context_processors.request',
 )
 
 ROOT_URLCONF = 'pyoseo.urls'

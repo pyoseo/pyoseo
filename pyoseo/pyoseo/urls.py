@@ -5,5 +5,6 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     url(r'^oseo/', include('oseoserver.urls')),
+    url(r'^grappelli/', include('grappelli.urls')),
     url(r'^admin/', include(admin.site.urls)),
 )

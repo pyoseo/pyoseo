@@ -106,7 +106,7 @@ class Batch(models.Model):
 
 
 class Collection(models.Model):
-    short_name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50, unique=True)
     authorized_groups = models.ManyToManyField("OseoGroup", null=True,
                                                blank=True)
     catalogue_endpoint = models.CharField(
@@ -130,8 +130,28 @@ class Collection(models.Model):
                   "order items"
     )
 
+    def _product_orders_enabled(self):
+        return "enabled" if self.productorderconfiguration.enabled \
+            else "disabled"
+    product_orders = property(_product_orders_enabled)
+
+    def _massive_orders_enabled(self):
+        return "enabled" if self.massiveorderconfiguration.enabled \
+            else "disabled"
+    massive_orders = property(_massive_orders_enabled)
+
+    def _subscription_orders_enabled(self):
+        return "enabled" if self.subscriptionorderconfiguration.enabled \
+            else "disabled"
+    subscription_orders = property(_subscription_orders_enabled)
+
+    def _tasking_orders_enabled(self):
+        return "enabled" if self.taskingorderconfiguration.enabled \
+            else "disabled"
+    tasking_orders = property(_tasking_orders_enabled)
+
     def __unicode__(self):
-        return self.short_name
+        return self.name
 
 
 class CustomizableItem(models.Model):
@@ -349,7 +369,6 @@ class OnlineAddress(models.Model):
 
 class OrderConfiguration(models.Model):
 
-    collection = models.OneToOneField("Collection")
     enabled = models.BooleanField(default=False)
     automatic_approval = models.BooleanField(
         default=False,
@@ -373,19 +392,19 @@ class OrderConfiguration(models.Model):
 
 
 class ProductOrderConfiguration(OrderConfiguration):
-    pass
+    collection = models.OneToOneField("Collection", null=False)
 
 
 class MassiveOrderConfiguration(OrderConfiguration):
-    pass
+    collection = models.OneToOneField("Collection", null=False)
 
 
 class SubscriptionOrderConfiguration(OrderConfiguration):
-    pass
+    collection = models.OneToOneField("Collection", null=False)
 
 
 class TaskingOrderConfiguration(OrderConfiguration):
-    pass
+    collection = models.OneToOneField("Collection", null=False)
 
 
 class Order(CustomizableItem):
