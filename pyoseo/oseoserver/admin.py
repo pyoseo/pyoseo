@@ -143,7 +143,7 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(models.Option)
 class OptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'choices',)
+    list_display = ('id', 'name', 'available_choices',)
     inlines = [OptionChoiceInline,]
 
 
@@ -162,6 +162,7 @@ class DeliveryOptionAdmin(admin.ModelAdmin):
     pass
 
 
+
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
     inlines = (ProductOrderConfigurationInline,
@@ -171,7 +172,6 @@ class CollectionAdmin(admin.ModelAdmin):
     list_display = ('name',
                     'collection_id',
                     'item_preparation_class',
-                    'product_price',
                     'product_orders',
                     'massive_orders',
                     'subscription_orders',

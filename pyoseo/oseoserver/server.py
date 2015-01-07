@@ -96,6 +96,7 @@ class OseoServer(object):
         "wsse": "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-"
                 "wssecurity-secext-1.0.xsd",
         "ows": "http://www.opengis.net/ows/2.0",
+        "gmd": "http://www.isotc211.org/2005/gmd"
     }
     _exception_codes = {
         "AuthorizationFailed": "client",

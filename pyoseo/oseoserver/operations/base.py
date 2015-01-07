@@ -20,8 +20,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
 import pyxb
 import pyxb.bundles.opengis.oseo_1_0 as oseo
+import pyxb.bundles.opengis.csw_2_0_2 as csw
 
 from oseoserver import models
+from oseoserver import server
 
 class OseoOperation(object):
     """
@@ -31,6 +33,32 @@ class OseoOperation(object):
     """
 
     NAME = None  # to be reimplemented in child classes
+
+    def _get_collection_id(self, item_id, user_group):
+        """
+        Search all of the defined catalogue endpoints and determine
+        the collection for the specified item.
+
+        :param item_id:
+        :type item_id: string
+        :param user_group:
+        :type user_group: models.OseoGroup
+        :return:
+        """
+
+        endpoints = set([c.catalogue_endpoint for c in
+                        models.Collection.objects.filter(
+                        authorized_groups=user_group)])
+        get_records_by_id_request = csw.GetRecordById(
+            service="CSW",
+            version="2.0.2",
+            ElementSetName="summary",
+            outputSchema=server.OseoServer._namespaces["gmd"]
+        )
+        get_records_by_id_request.Id.append(pyxb.BIND(item_id))
+        for url in endpoints:
+            pass
+
 
     def _get_delivery_options(self, db_item):
         """

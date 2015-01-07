@@ -305,7 +305,15 @@ class Submit(OseoOperation):
         # * confirm that the deliveryOptions options are valid
         # * confirm that the payment option is valid
 
+        if order_type == models.Order.PRODUCT_ORDER:
+            identifier = self._c(requested_item.productId.identifier)
+            col_id = requested_item.productId.collectionId
+            if col_id is None:
+                col_id = self._get_collection_id(identifier)
+            collection = models.Collection.objects.get()
         item = dict()
+        if order_type != models.Order.TASKING_ORDER:
+            collection = models.Collection.objects.get(collection_id=)
         if order_type in (models.Order.PRODUCT_ORDER,
                           models.Order.MASSIVE_ORDER,
                           models.Order.SUBSCRIPTION_ORDER):

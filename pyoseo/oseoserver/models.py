@@ -310,6 +310,10 @@ class MediaDelivery(DeliveryOption):
 
 class Option(AbstractOption):
 
+    def _get_choices(self):
+        return ", ".join([c.value for c in self.choices.all()])
+    available_choices = property(_get_choices)
+
     def __unicode__(self):
         return self.name
 
