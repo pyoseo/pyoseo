@@ -24,9 +24,14 @@ import logging
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
+from pyxb import BIND
 import pyxb.bundles.opengis.oseo_1_0 as oseo
+import pyxb.bundles.opengis.csw_2_0_2 as csw
+import pyxb.bundles.opengis.iso19139.v20070417.gmd as gmd
+import pyxb.bundles.opengis.iso19139.v20070417.gco as gco
 import pytz
 from lxml import etree
+import requests
 
 from oseoserver import models
 from oseoserver import tasks
@@ -115,7 +120,7 @@ class Submit(OseoOperation):
         order_type = self._get_order_type(order_specification)
         order_items = []
         for oi in order_specification.orderItem:
-            item = self.validate_order_item(oi, order_type)
+            item = self.validate_order_item(oi, order_type, user)
             order_items.append(item)
 
         # WIP
@@ -160,6 +165,57 @@ class Submit(OseoOperation):
             self.create_normal_order_batch(order_specification, order)
         return order
 
+
+    def get_collection_id(self, item_id, user_group):
+        """
+        Search all of the defined catalogue endpoints and determine
+        the collection for the specified item.
+
+        This method is used when the requested order item does not provide the
+        optional 'collectionId' element.
+
+        :param item_id: The identifier of the requested item in the CSW
+            catalogue
+        :type item_id: string
+        :param user_group: The group to which the user making the request
+            belongs
+        :type user_group: models.OseoGroup
+        :return:
+        """
+
+        request_headers = {
+            "Content-Type": "application/xml"
+        }
+        ns = {
+            "gmd": gmd.Namespace.uri(),
+            "gco": gco.Namespace.uri(),
+            }
+        req = csw.GetRecordById(
+            service="CSW",
+            version="2.0.2",
+            ElementSetName="summary",
+            outputSchema=ns["gmd"],
+            Id=[BIND(item_id)]
+        )
+        query_path = ("gmd:MD_Metadata/gmd:parentIdentifier/"
+                      "gco:CharacterString/text()")
+        collections = models.Collection.objects.filter(
+            authorized_groups=user_group)
+        endpoints = list(set([c.catalogue_endpoint for c in collections]))
+        collection_id = None
+        current = 0
+        while collection_id is None and current < len(endpoints):
+            url = endpoints[current]
+            response = requests.post(url, data=req.toxml(),
+                                     headers=request_headers)
+            if response.status_code != 200:
+                continue
+            r = etree.fromstring(response.text.encode(OseoServer.ENCODING))
+            id_container = r.xpath(query_path, namespaces=ns)
+            collection_id = id_container[0] if len(id_container) == 1 else None
+            current += 1
+        return collection_id
+
     def dispatch_order(self, order):
         """Dispatch an order for processing in the async queue."""
         if order.order_type == models.OrderType.PRODUCT_ORDER:
@@ -198,7 +254,7 @@ class Submit(OseoOperation):
             values = option.ParameterData.values
             # since values is an xsd:anyType, we will not do schema
             # validation on it
-            values_tree = etree.fromstring(values.toxml(OseoServer._encoding))
+            values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
             for value in values_tree:
                 option_name = etree.QName(value).localname
                 if self._option_enabled(option_name, customizable_item):
@@ -288,13 +344,15 @@ class Submit(OseoOperation):
             order_item.save()
         order.save()
 
-    def validate_order_item(self, requested_item, order_type):
+    def validate_order_item(self, requested_item, order_type, user):
         """
 
         :param requested_item:
         :type requested_item: oseo.CommonOrderItemType
         :param order_type:
-        :type requested_item: string
+        :type order_type: string
+        :param user:
+        :type user: models.OseoUser
         :return:
         """
 
@@ -306,24 +364,87 @@ class Submit(OseoOperation):
         # * confirm that the payment option is valid
 
         if order_type == models.Order.PRODUCT_ORDER:
-            identifier = self._c(requested_item.productId.identifier)
+            self._validate_product_order_item(requested_item, user)
+        elif order_type != models.Order.SUBSCRIPTION_ORDER:
             col_id = requested_item.productId.collectionId
-            if col_id is None:
-                col_id = self._get_collection_id(identifier)
-            collection = models.Collection.objects.get()
-        item = dict()
-        if order_type != models.Order.TASKING_ORDER:
-            collection = models.Collection.objects.get(collection_id=)
-        if order_type in (models.Order.PRODUCT_ORDER,
-                          models.Order.MASSIVE_ORDER,
-                          models.Order.SUBSCRIPTION_ORDER):
-            item['collection_id'] = self._c(
-                requested_item.productId.collectionId)
-            if order_type == models.Order.PRODUCT_ORDER:
-                item['identifier'] = self._c(
-                    requested_item.productId.identifier)
+            collection = models.Collection.objects.get(collection_id=col_id)
+        elif order_type == models.Order.TASKING_ORDER:
+            raise NotImplementedError
+
+    def _validate_product_order_item(self, requested_item, user):
+        identifier = self._c(requested_item.productId.identifier)
+        col_id = requested_item.productId.collectionId
+        if col_id is None:
+            col_id = self.get_collection_id(identifier, user.oseo_group)
+        collection = self._validate_requested_collection(col_id,
+                                                         user.oseo_group)
+        options = self._validate_requested_options(requested_item, collection,
+                                                   order_type)
+        # scene selection is not implemented yet
+        scene_selection_options = dict()
+        #delivery_options = self._validate_delivery_options()
+
+    def _validate_requested_collection(self, collection_id, group):
+        try:
+            collection = models.Collection.objects.get(
+                collection_id=collection_id)
+            if not collection.allows_group(group):
+                raise errors.UnAuthorizedOrder(
+                    "user's group is not authorized to order {} "
+                    "products".format(collection.name)
+                )
+        except models.Collection.DoesNotExist:
+            raise errors.InvalidCollectionError(
+                "Collection {} does not exist".format(collection_id))
+        return collection
+
+    def _validate_requested_options(self, requested_item, collection,
+                                    order_type):
+        valid_options = dict()
+        for option in requested_item.option:
+            values = option.ParameterData.values
+            encoding = option.ParameterData.encoding
+            # since values is an xsd:anyType, we will not do schema
+            # validation on it
+            values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
+            handler_class_path = collection.item_preparation_class
+            for value in values_tree:
+                option_name = etree.QName(value).localname
+                handler = utilities.import_class(handler_class_path)
+                option_value = handler.parse_option(value)
+                self._validate_selected_option(option_name, option_value,
+                                               collection, order_type)
+                valid_options[option_name] = option_value
+        return valid_options
 
 
+    def _validate_selected_option(self, name, value, collection, order_type):
+        """
+        Get the value for the option.
+
+        raises errors in case the option is not valid or the chosen value
+        is not allowed
+        """
+
+        if order_type == models.Order.PRODUCT_ORDER:
+            order_config = collection.productorderconfiguration
+        elif order_type == models.Order.MASSIVE_ORDER:
+            order_config = collection.massiveorderconfiguration
+        elif order_type == models.Order.SUBSCRIPTION_ORDER:
+            order_config = collection.subscriptionorderconfiguration
+        else:  # tasking order
+            order_config = collection.taskingorderconfiguration
+        try:
+            option = order_config.options.get(name=name)
+            choices = [c.value for c in option.choices.all()]
+            if value not in choices and len(choices) >  0:
+                raise errors.InvalidOptionError(
+                    "Value {} is not allowed for option {}".format(value,
+                                                                   name))
+        except models.Option.DoesNotExist:
+            raise errors.InvalidOptionError(
+                "Option {} is not available for orders of type {} of the {} "
+                "collection".format(name, order_type, collection.name))
 
     def parse_order_delivery_method(self, order_specification, order):
         """
@@ -758,10 +879,9 @@ class Submit(OseoOperation):
             result = True
         return result
 
-    def _validate_option(self, name, value):
+    def _validate_option(self, option, value):
         """Return a boolean indicating if the selected option is valid"""
-        choices = [c.value for c in models.OptionChoice.objects.filter(
-            option__name=name)]
+        choices = [c.value for c in option.choices.all()]
         return True if value in choices or len(choices) == 0 else False
 
     def validate_status_notification(self, request):

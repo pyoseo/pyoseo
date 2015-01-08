@@ -150,6 +150,18 @@ class Collection(models.Model):
             else "disabled"
     tasking_orders = property(_tasking_orders_enabled)
 
+    def allows_group(self, oseo_group):
+        """
+        Specify whether the input oseo_group can order from this collection
+        """
+
+        result = True
+        try:
+            self.authorized_groups.get(name=oseo_group.name)
+        except self.DoesNotExist:
+            result = False
+        return result
+
     def __unicode__(self):
         return self.name
 

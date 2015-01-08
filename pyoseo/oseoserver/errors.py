@@ -16,6 +16,18 @@
 Custom exception classes for oseoserver
 """
 
+class ServerError(Exception):
+    """
+    Used for errors which are related to server-side operations
+    """
+
+    pass
+
+
+class UnAuthorizedOrder(Exception):
+    pass
+
+
 class NonSoapRequestError(Exception):
     pass
 
@@ -29,6 +41,10 @@ class InvalidOptionError(Exception):
 
 
 class InvalidOrderDeliveryMethodError(Exception):
+    pass
+
+
+class InvalidCollectionError(Exception):
     pass
 
 
