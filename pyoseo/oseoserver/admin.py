@@ -190,9 +190,13 @@ class BatchAdmin(admin.ModelAdmin):
                     'completed_on', 'updated_on',)
 
 
+@admin.register(models.MediaDelivery)
+class MediaDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("package_medium", "shipping_instructions", "delivery_fee")
+
+
 admin.site.register(models.OnlineDataAccess)
 admin.site.register(models.OnlineDataDelivery)
-admin.site.register(models.MediaDelivery)
 admin.site.register(models.DeliveryInformation)
 admin.site.register(models.OnlineAddress)
 admin.site.register(models.InvoiceAddress)

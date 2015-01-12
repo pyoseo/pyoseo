@@ -357,32 +357,73 @@ class Submit(OseoOperation):
         """
 
         # * confirm that the productId or subscriptionId or taskingRequestId
-        #   are valid
+        #   is valid
         # * confirm that the options are valid
         # * confirm that the sceneSelection options are valid
         # * confirm that the deliveryOptions options are valid
         # * confirm that the payment option is valid
 
+        item = {
+            "item_id": requested_item.itemId,
+            "product_order_options_id": self._c(
+                requested_item.productOrderOptionsId),
+            "order_item_remark": self._c(requested_item.orderItemRemark)
+        }
         if order_type == models.Order.PRODUCT_ORDER:
-            self._validate_product_order_item(requested_item, user)
-        elif order_type != models.Order.SUBSCRIPTION_ORDER:
+            validation_details = self._validate_product_order_item(
+                requested_item, user)
+            item["identifier"] = validation_details["identifier"]
+            item["collection"] = validation_details["collection"]
+            item["options"] = validation_details["options"]
+            item["scene_selection"] = validation_details["scene_selection"]
+            item["delivery_options"] = validation_details["delivery_options"]
+            item["payment"] = validation_details["payment"]
+            # extensions to the CommonOrderItemType are not implemented yet
+        elif order_type == models.Order.MASSIVE_ORDER:
+            raise NotImplementedError
+        elif order_type == models.Order.SUBSCRIPTION_ORDER:
             col_id = requested_item.productId.collectionId
             collection = models.Collection.objects.get(collection_id=col_id)
+            raise NotImplementedError
         elif order_type == models.Order.TASKING_ORDER:
             raise NotImplementedError
+        return item
 
     def _validate_product_order_item(self, requested_item, user):
-        identifier = self._c(requested_item.productId.identifier)
+        details = {
+            "identifier": self._c(requested_item.productId.identifier)
+        }
         col_id = requested_item.productId.collectionId
         if col_id is None:
-            col_id = self.get_collection_id(identifier, user.oseo_group)
+            col_id = self.get_collection_id(details["identifier"],
+                                            user.oseo_group)
         collection = self._validate_requested_collection(col_id,
                                                          user.oseo_group)
-        options = self._validate_requested_options(requested_item, collection,
-                                                   order_type)
-        # scene selection is not implemented yet
-        scene_selection_options = dict()
-        #delivery_options = self._validate_delivery_options()
+        details["collection"] = collection
+        order_config = self._get_order_configuration(
+            collection,
+            models.Order.PRODUCT_ORDER
+        )
+        details["options"] = self._validate_requested_options(
+            requested_item,
+            order_config
+        )
+        details["delivery_options"] = self._validate_delivery_options(
+            requested_item, order_config)
+        details["scene_selection"] = dict()  # not implemented yet
+        details["payment"] = dict()  # not implemented yet
+        return details
+
+    def _get_order_configuration(self, collection, order_type):
+        if order_type == models.Order.PRODUCT_ORDER:
+            config = collection.productorderconfiguration
+        elif order_type == models.Order.MASSIVE_ORDER:
+            config = collection.massiveorderconfiguration
+        elif order_type == models.Order.SUBSCRIPTION_ORDER:
+            config = collection.subscriptionorderconfiguration
+        else:  # tasking order
+            config = collection.taskingorderconfiguration
+        return config
 
     def _validate_requested_collection(self, collection_id, group):
         try:
@@ -398,8 +439,7 @@ class Submit(OseoOperation):
                 "Collection {} does not exist".format(collection_id))
         return collection
 
-    def _validate_requested_options(self, requested_item, collection,
-                                    order_type):
+    def _validate_requested_options(self, requested_item, order_config):
         valid_options = dict()
         for option in requested_item.option:
             values = option.ParameterData.values
@@ -407,18 +447,18 @@ class Submit(OseoOperation):
             # since values is an xsd:anyType, we will not do schema
             # validation on it
             values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
-            handler_class_path = collection.item_preparation_class
+            handler_path = order_config.collection.item_preparation_class
+            handler = utilities.import_class(handler_path)
             for value in values_tree:
                 option_name = etree.QName(value).localname
-                handler = utilities.import_class(handler_class_path)
-                option_value = handler.parse_option(value)
+                option_value = handler.parse_option(option_name, value)
                 self._validate_selected_option(option_name, option_value,
-                                               collection, order_type)
+                                               order_config)
                 valid_options[option_name] = option_value
         return valid_options
 
 
-    def _validate_selected_option(self, name, value, collection, order_type):
+    def _validate_selected_option(self, name, value, order_config):
         """
         Get the value for the option.
 
@@ -426,14 +466,6 @@ class Submit(OseoOperation):
         is not allowed
         """
 
-        if order_type == models.Order.PRODUCT_ORDER:
-            order_config = collection.productorderconfiguration
-        elif order_type == models.Order.MASSIVE_ORDER:
-            order_config = collection.massiveorderconfiguration
-        elif order_type == models.Order.SUBSCRIPTION_ORDER:
-            order_config = collection.subscriptionorderconfiguration
-        else:  # tasking order
-            order_config = collection.taskingorderconfiguration
         try:
             option = order_config.options.get(name=name)
             choices = [c.value for c in option.choices.all()]
@@ -442,9 +474,53 @@ class Submit(OseoOperation):
                     "Value {} is not allowed for option {}".format(value,
                                                                    name))
         except models.Option.DoesNotExist:
-            raise errors.InvalidOptionError(
-                "Option {} is not available for orders of type {} of the {} "
-                "collection".format(name, order_type, collection.name))
+            msg = ("Option {} is not available for orders of type {} of"
+                   "the {} collection".format(
+                        name,
+                        order_config.__class__.__name__,
+                        order_config.collection
+                   )
+            )
+            raise errors.InvalidOptionError(msg)
+
+    def _validate_delivery_options(self, requested_item, order_config):
+        """
+        Validate the requested delivery options for an item.
+
+        The input requested_item can be an order or an order item
+
+        :param requested_item: oseo.Order or oseo.OrderItem
+        :param order_config: models.rderConfiguration
+        :return: The requested delivery options
+        :rtype: dict()
+        """
+
+        delivery = None
+        dop = requested_item.deliveryOptions
+        if dop is not None:
+            delivery = dict()
+            try:
+                if dop.onlineDataAccess is not None:
+                    p = dop.onlineDataAccess.protocol
+                    delivery["type"] = order_config.delivery_options.get(
+                        onlinedataaccess__protocol=p)
+                elif dop.onlineDataDelivery is not None:
+                    p = dop.onlineDataAccess.protocol
+                    delivery["type"] = order_config.delivery_options.get(
+                        onlinedatadelivery__protocol=p)
+                else:
+                    p = dop.mediaDelivery.packageMedium,
+                    s = dop.mediaDelivery.shippingInstructions,
+                    delivery["type"] = order_config.delivery_options.get(
+                        mediadelivery__package_medium=p,
+                        mediadelivery__shipping_instructions=s)
+            except models.DeliveryOption.DoesNotExist:
+                raise errors.InvalidDeliveryOptionError()
+            copies = dop.numberOfCopies
+            delivery["copies"] = int(copies) if copies is not None else copies
+            delivery["annotation"] = self._c(dop.productAnnotation)
+            delivery["special_instructions"] = self._c(dop.specialInstructions)
+        return delivery
 
     def parse_order_delivery_method(self, order_specification, order):
         """

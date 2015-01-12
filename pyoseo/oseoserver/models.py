@@ -315,9 +315,11 @@ class MediaDelivery(DeliveryOption):
 
     class Meta:
         verbose_name_plural = "media deliveries"
+        unique_together = ("package_medium", "shipping_instructions")
 
     def __unicode__(self):
-        return "{}:{}".format(self.__class__.__name__, self.package_medium)
+        return "{}:{}:{}".format(self.__class__.__name__, self.package_medium,
+                                 self.shipping_instructions)
 
 
 class Option(AbstractOption):
