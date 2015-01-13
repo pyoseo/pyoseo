@@ -39,7 +39,7 @@ from oseoserver import errors
 from oseoserver import utilities
 from oseoserver.server import OseoServer
 from oseoserver.operations.base import OseoOperation
-import oseoserver.xml_schemas.pyoseo_schema as pyoseo_schema
+#import oseoserver.xml_schemas.pyoseo_schema as pyoseo_schema
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -97,74 +97,131 @@ class Submit(OseoOperation):
         :rtype: models.Order
         """
 
-        # validation process:
-        #
-        # start by validating the mandatory elements:
-        #
-        # * order_type
-        # * order_items
-        #
-        # then validate the optional elements
-
-        # * user must have the proper authorisation for the requested
-        #   collection(s)
-        # * order_type must be enabled for the requested collection(s)
-        # * selected options must match the ones available in the relevant
-        #   order_configuration
-        # * selected option choices must match the defined choices
-        #
-        # most of these validation procedures require knowledge of the
-        # collection(s) being ordered. Since the collection
-
-
-        order_type = self._get_order_type(order_specification)
-        order_items = []
+        order = {
+            "order_type": self._get_order_type(order_specification),
+            "order_item": [],
+        }
         for oi in order_specification.orderItem:
-            item = self.validate_order_item(oi, order_type, user)
-            order_items.append(item)
+            item = self.validate_order_item(oi, order["order_type"], user)
+            order["order_item"].append(item)
+        requested_order_configurations = []
+        for col in set([i["collection"] for i in order["order_item"]]):
+            order_config = self._get_order_configuration(col,
+                                                         order["order_type"])
+            requested_order_configurations.append(order_config)
+        order["order_reference"] = self._c(order_specification.orderReference)
+        order["order_remark"] = self._c(order_specification.orderRemark)
+        order["packaging"] = self._c(order_specification.packaging)
+        order["priority"] = self._c(order_specification.priority)
+        order["delivery_information"] = self.get_delivery_information(
+            order_specification.deliveryInformation)
+        order["invoice_address"] = self.get_invoice_address(
+            order_specification.invoiceAddress)
+        try:
+            order["option"] = self._validate_global_options(
+                order_specification, requested_order_configurations)
+            order["delivery_options"] = self._validate_global_delivery_options(
+                order_specification, requested_order_configurations)
+        except errors.InvalidOptionError as e:
+            raise errors.InvalidGlobalOptionError(e.option, e.order_config)
+        except errors.InvalidOptionValueError as e:
+            raise errors.InvalidGlobalOptionValueError(e.option, e.value,
+                                                       e.order_config)
+        except errors.InvalidDeliveryOptionError as e:
+            logger.debug(e)
+            raise errors.InvalidGlobalDeliveryOptionError()
+        return order
+        # extension is not implemented yet
 
         # WIP
+        # now we need to create the actual models.Order object
 
+        #creation_date = dt.datetime.now(pytz.utc)
+        #order = models.Order(
+        #    created_on=creation_date,
+        #    status_changed_on=creation_date,
+        #    remark=self._c(order_specification.orderRemark),
+        #    reference=self._c(order_specification.orderReference),
+        #    packaging=self._c(order_specification.packaging),
+        #    priority=self._c(order_specification.priority)
+        #)
+        #order.user = user
+        #ia = order_specification.invoiceAddress
+        #if ia is not None:
+        #    address = self.extract_invoice_address(ia)
+        #    order.invoice_address = address
+        #order.order_type = self._get_order_type(order_specification)
+        #order.status = self._validate_order_type(order.order_type)
+        ## not very nice but we will deal with option groups some other day
+        #order.option_group = models.OptionGroup.objects.get(id=1)
+        #order.save()
+        #if order.status == models.CustomizableItem.FAILED:
+        #    raise errors.InvalidOrderTypeError("Order of type {} is not "
+        #                                       "supported".format(
+        #        order.order_type))
+        #self.parse_order_delivery_method(order_specification, order)
+        #self.configure_delivery(order, user)
+        #order_options = self.extract_options(order_specification.option,
+        #                                     order.customizableitem_ptr)
+        #if len(order_options) > 0:
+        #    order.selected_options.add(*order_options)
+        #    order.save()
+        #if order.order_type == models.OrderType.PRODUCT_ORDER:
+        #    self.create_normal_order_batch(order_specification, order)
+        #return order
 
+    def get_delivery_information(self, requested_delivery_info):
+        if requested_delivery_info is not None:
+            info = dict()
+            requested_mail_info = requested_delivery_info.mailAddress
+            requested_online_info = requested_delivery_info.onlineAddress
+            if requested_mail_info is not None:
+                info["mail_address"] = self._get_delivery_address(
+                    requested_mail_info)
+            if len(requested_online_info) > 0:
+                info["online_address"] = []
+                for online_address in requested_online_info:
+                    info["online_address"].append({
+                        "protocol": self._c(online_address.protocol),
+                        "server_address": self._c(
+                            online_address.serverAddress),
+                        "user_name": self._c(online_address.userName),
+                        "user_password": self._c(online_address.userPassword),
+                        "path": self._c(online_address.path),
+                    })
+        else:
+            info = None
+        return info
 
+    def get_invoice_address(self, requested_invoice_address):
+        if requested_invoice_address is not None:
+            invoice = self._get_delivery_address(requested_invoice_address)
+        else:
+            invoice = None
+        return invoice
 
-
-
-
-        creation_date = dt.datetime.now(pytz.utc)
-        order = models.Order(
-            created_on=creation_date,
-            status_changed_on=creation_date,
-            remark=self._c(order_specification.orderRemark),
-            reference=self._c(order_specification.orderReference),
-            packaging=self._c(order_specification.packaging),
-            priority=self._c(order_specification.priority)
-        )
-        order.user = user
-        ia = order_specification.invoiceAddress
-        if ia is not None:
-            address = self.extract_invoice_address(ia)
-            order.invoice_address = address
-        order.order_type = self._get_order_type(order_specification)
-        order.status = self._validate_order_type(order.order_type)
-        # not very nice but we will deal with option groups some other day
-        order.option_group = models.OptionGroup.objects.get(id=1)
-        order.save()
-        if order.status == models.CustomizableItem.FAILED:
-            raise errors.InvalidOrderTypeError("Order of type {} is not "
-                                               "supported".format(
-                order.order_type))
-        self.parse_order_delivery_method(order_specification, order)
-        self.configure_delivery(order, user)
-        order_options = self.extract_options(order_specification.option,
-                                             order.customizableitem_ptr)
-        if len(order_options) > 0:
-            order.selected_options.add(*order_options)
-            order.save()
-        if order.order_type == models.OrderType.PRODUCT_ORDER:
-            self.create_normal_order_batch(order_specification, order)
-        return order
-
+    def _get_delivery_address(self, delivery_address_type):
+        address = {
+            "first_name": self._c(delivery_address_type.firstName),
+            "last_name": self._c(delivery_address_type.lastName),
+            "company_ref": self._c(delivery_address_type.companyRef),
+            "telephone_number": self._c(
+                delivery_address_type.telephoneNumber),
+            "facsimile_telephone_number": self._c(
+                delivery_address_type.facsimileTelephoneNumber),
+        }
+        postal_address = delivery_address_type.postalAddress
+        if postal_address is not None:
+            address["postal_address"] = {
+                "street_address": self._c(
+                    postal_address.streetAddress),
+                "city": self._c(postal_address.city),
+                "state": self._c(postal_address.state),
+                "postal_code": self._c(postal_address.postalCode),
+                "country": self._c(postal_address.country),
+                "post_box": self._c(postal_address.postBox),
+                }
+        return address
 
     def get_collection_id(self, item_id, user_group):
         """
@@ -277,9 +334,9 @@ class Submit(OseoOperation):
                                "'{}'".format(option_value, option_name))
                         raise errors.InvalidOptionError(msg)
                 else:
-                    raise errors.InvalidOptionError(
-                        "Option '{}' is not valid on this server".format(
-                            option_name))
+                    msg = "Option {} is not valid on this server".format(
+                        option_name)
+                    raise errors.InvalidOptionError(msg)
         return model_options
 
     def extract_invoice_address(self, invoice_address):
@@ -356,13 +413,6 @@ class Submit(OseoOperation):
         :return:
         """
 
-        # * confirm that the productId or subscriptionId or taskingRequestId
-        #   is valid
-        # * confirm that the options are valid
-        # * confirm that the sceneSelection options are valid
-        # * confirm that the deliveryOptions options are valid
-        # * confirm that the payment option is valid
-
         item = {
             "item_id": requested_item.itemId,
             "product_order_options_id": self._c(
@@ -374,7 +424,7 @@ class Submit(OseoOperation):
                 requested_item, user)
             item["identifier"] = validation_details["identifier"]
             item["collection"] = validation_details["collection"]
-            item["options"] = validation_details["options"]
+            item["option"] = validation_details["option"]
             item["scene_selection"] = validation_details["scene_selection"]
             item["delivery_options"] = validation_details["delivery_options"]
             item["payment"] = validation_details["payment"]
@@ -404,7 +454,7 @@ class Submit(OseoOperation):
             collection,
             models.Order.PRODUCT_ORDER
         )
-        details["options"] = self._validate_requested_options(
+        details["option"] = self._validate_requested_options(
             requested_item,
             order_config
         )
@@ -447,41 +497,75 @@ class Submit(OseoOperation):
             # since values is an xsd:anyType, we will not do schema
             # validation on it
             values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
-            handler_path = order_config.collection.item_preparation_class
-            handler = utilities.import_class(handler_path)
             for value in values_tree:
                 option_name = etree.QName(value).localname
-                option_value = handler.parse_option(option_name, value)
-                self._validate_selected_option(option_name, option_value,
-                                               order_config)
+                option_value = self._validate_selected_option(option_name,
+                                                              value,
+                                                              order_config)
                 valid_options[option_name] = option_value
         return valid_options
 
+    def _validate_global_options(self, requested_order_spec,
+                                 ordered_order_configs):
+        for order_config in ordered_order_configs:
+            options = self._validate_requested_options(requested_order_spec,
+                                                       order_config)
+        return options
 
     def _validate_selected_option(self, name, value, order_config):
         """
-        Get the value for the option.
+        Validate a selected option choice.
 
-        raises errors in case the option is not valid or the chosen value
-        is not allowed
+        The validation process first tries to extract the option's value as
+        a simple text and matches it with the available choices for the
+        option. If a match cannot be made, the collection's custom processing
+        class is instantiated and used to parse the option into a text based
+        format. This parsed value is again matched against the available
+        choices.
+
+        :param name: The name of the option
+        :type name: string
+        :param value:
+        :type value:
+        :param order_config:
+        :type order_config:
+        :return:
+        :rtype:
         """
 
         try:
             option = order_config.options.get(name=name)
             choices = [c.value for c in option.choices.all()]
-            if value not in choices and len(choices) >  0:
-                raise errors.InvalidOptionError(
-                    "Value {} is not allowed for option {}".format(value,
-                                                                   name))
+            if len(choices) > 0:
+                naive_value = value.text
+                if naive_value in choices:
+                    result = naive_value
+                else:
+                    h = order_config.collection.item_preparation_class
+                    handler = utilities.import_class(h)
+                    parsed_value = handler.parse_option(name, value)
+                    if parsed_value in choices:
+                        result = parsed_value
+                    else:
+                        #msg = "Value {} is not allowed for option {}.".format(
+                        #    parsed_value, name)
+                        raise errors.InvalidOptionValueError(name,
+                                                             parsed_value,
+                                                             order_config)
+            else:
+                h = order_config.collection.item_preparation_class
+                handler = utilities.import_class(h)
+                result = handler.parse_option(name, value)
         except models.Option.DoesNotExist:
-            msg = ("Option {} is not available for orders of type {} of"
-                   "the {} collection".format(
-                        name,
-                        order_config.__class__.__name__,
-                        order_config.collection
-                   )
-            )
-            raise errors.InvalidOptionError(msg)
+            #msg = ("Option {} is not available for orders of type {} of "
+            #       "the {} collection".format(
+            #    name,
+            #    order_config.__class__.__name__,
+            #    order_config.collection
+            #)
+            #)
+            raise errors.InvalidOptionError(name, order_config)
+        return result
 
     def _validate_delivery_options(self, requested_item, order_config):
         """
@@ -521,6 +605,26 @@ class Submit(OseoOperation):
             delivery["annotation"] = self._c(dop.productAnnotation)
             delivery["special_instructions"] = self._c(dop.specialInstructions)
         return delivery
+
+    def _validate_global_delivery_options(self, requested_order_spec,
+                                          ordered_order_configs):
+        """
+        Validate global order delivery options.
+
+        PyOSEO only accepts global options that are valid for each of the
+        order items contained in the order. As such, the requested
+        delivery options must be valid according to all of order
+        configurations of the ordered collections.
+
+        :param requested_order_spec:
+        :param ordered_order_configs:
+        :return:
+        """
+
+        for order_config in ordered_order_configs:
+            delivery_options = self._validate_delivery_options(
+                requested_order_spec, order_config)
+        return delivery_options
 
     def parse_order_delivery_method(self, order_specification, order):
         """

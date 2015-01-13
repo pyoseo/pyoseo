@@ -16,7 +16,10 @@
 Custom exception classes for oseoserver
 """
 
-class ServerError(Exception):
+class PyOseoError(Exception):
+    pass
+
+class ServerError(PyOseoError):
     """
     Used for errors which are related to server-side operations
     """
@@ -24,51 +27,85 @@ class ServerError(Exception):
     pass
 
 
-class UnAuthorizedOrder(Exception):
+class UnAuthorizedOrder(PyOseoError):
     pass
 
 
-class NonSoapRequestError(Exception):
+class NonSoapRequestError(PyOseoError):
     pass
 
 
-class InvalidOrderError(Exception):
+class InvalidOrderError(PyOseoError):
     pass
 
 
-class InvalidOptionError(Exception):
+class InvalidOptionError(PyOseoError):
+
+    def __init__(self, option, order_config):
+        self.option = option
+        self.order_config = order_config
+
+    def __str__(self):
+        order_type = self.order_config.__class__.__name__.lower()
+        collection = self.order_config.collection.name
+        return "{} of collection {} does not support option {}".format(
+            order_type, collection, self.option)
+
+
+class InvalidGlobalOptionError(InvalidOptionError):
+
     pass
 
 
-class InvalidDeliveryOptionError(Exception):
+class InvalidOptionValueError(PyOseoError):
+
+    def __init__(self, option, value, order_config):
+        self.option = option
+        self.value = value
+        self.order_config = order_config
+
+    def __str__(self):
+        return "Value {} is not supported for option {}".format(self.value,
+                                                                self.option)
+
+class InvalidGlobalOptionValueError(InvalidOptionValueError):
+
     pass
 
 
-class InvalidOrderDeliveryMethodError(Exception):
+class InvalidDeliveryOptionError(PyOseoError):
     pass
 
 
-class InvalidCollectionError(Exception):
+class InvalidGlobalDeliveryOptionError(PyOseoError):
     pass
 
 
-class OnlineDataAccessInvalidProtocol(Exception):
+class InvalidOrderDeliveryMethodError(PyOseoError):
     pass
 
 
-class OnlineDataDeliveryInvalidProtocol(Exception):
+class InvalidCollectionError(PyOseoError):
     pass
 
 
-class OperationNotImplementedError(Exception):
+class OnlineDataAccessInvalidProtocol(PyOseoError):
     pass
 
 
-class SubmitWithQuotationError(Exception):
+class OnlineDataDeliveryInvalidProtocol(PyOseoError):
     pass
 
 
-class OseoError(Exception):
+class OperationNotImplementedError(PyOseoError):
+    pass
+
+
+class SubmitWithQuotationError(PyOseoError):
+    pass
+
+
+class OseoError(PyOseoError):
 
     def __init__(self, code, text, locator=None):
         self.code = code
@@ -76,10 +113,10 @@ class OseoError(Exception):
         self.locator = locator
 
 
-class InvalidSettingsError(Exception):
+class InvalidSettingsError(PyOseoError):
     pass
 
 
-class AuthenticationError(Exception):
+class AuthenticationError(PyOseoError):
     pass
 

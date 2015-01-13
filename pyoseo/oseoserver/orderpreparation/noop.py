@@ -20,10 +20,8 @@ example of the API that PyOSEO expects to find on a real implementation
 class FakeOrderProcessor(object):
 
     def parse_option(self, name, value):
+        parsed_value = value.text
         print("name: {}".format(name))
         print("value: {}".format(value))
-        if name == "Dummy":
-            parsed_value = "Fake parsed value"
-        else:
-            parsed_value = value
+        print("parsed_value: {}".format(parsed_value))
         return parsed_value
