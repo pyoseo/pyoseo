@@ -18,6 +18,7 @@ Database models for pyoseo
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
@@ -262,7 +263,8 @@ class DeliveryOption(models.Model):
 
 
 class InvoiceAddress(AbstractDeliveryAddress):
-    order = models.OneToOneField("Order", related_name="invoice_address")
+    order = models.OneToOneField("Order", null=True,
+                                 related_name="invoice_address")
 
     class Meta:
         verbose_name_plural = "invoice addresses"
@@ -426,6 +428,11 @@ class TaskingOrderConfiguration(OrderConfiguration):
 
 
 class Order(CustomizableItem):
+    MAX_ORDER_ITEMS = getattr(settings, "MAX_ORDER_ITEMS", 200)
+    PRODUCT_ORDER = 'PRODUCT_ORDER'
+    SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
+    MASSIVE_ORDER = 'MASSIVE_ORDER'
+    TASKING_ORDER = 'TASKING_ORDER'
     BZIP2 = "bzip2"
     PACKAGING_CHOICES = (
         (BZIP2, BZIP2),
@@ -433,16 +440,6 @@ class Order(CustomizableItem):
     STANDARD = "STANDARD"
     FAST_TRACK = "FAST_TRACK"
     PRIORITY_CHOICES = ((STANDARD, STANDARD), (FAST_TRACK, FAST_TRACK))
-    PRODUCT_ORDER = 'PRODUCT_ORDER'
-    SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
-    MASSIVE_ORDER = 'MASSIVE_ORDER'
-    TASKING_ORDER = 'TASKING_ORDER'
-    ORDER_TYPE_CHOICES = (
-        (PRODUCT_ORDER, PRODUCT_ORDER),
-        (MASSIVE_ORDER, MASSIVE_ORDER),
-        (SUBSCRIPTION_ORDER, SUBSCRIPTION_ORDER),
-        (TASKING_ORDER, TASKING_ORDER),
-    )
     NONE = 'None'
     FINAL = 'Final'
     ALL = 'All'
@@ -452,8 +449,6 @@ class Order(CustomizableItem):
         (ALL, ALL),
     )
     user = models.ForeignKey("OseoUser", related_name="orders")
-    order_type = models.CharField(max_length=30, choices=ORDER_TYPE_CHOICES,
-                                  default=PRODUCT_ORDER)
     last_describe_result_access_request = models.DateTimeField(null=True,
                                                                blank=True)
     reference = models.CharField(max_length=30,
@@ -474,7 +469,64 @@ class Order(CustomizableItem):
     show_batches.short_description = 'available batches'
 
     def __unicode__(self):
-        return '{}({})'.format(self.order_type, self.id)
+        return '{}'.format(self.id)
+
+
+class ProductOrder(Order):
+
+    def create_batch(self, item_status, *order_item_spec):
+        batch = Batch()
+        for oi in order_item_spec:
+            item = OrderItem(
+                status=item_status,
+                additional_status_info="Order item has been submitted and "
+                                       "is awaiting approval",
+                remark=oi["order_item_remark"],
+                collection=oi["collection"],
+                identifier=oi["identifier"],
+                item_id=oi["item_id"]
+            )
+            item.save()
+            # add the payment options
+
+            for k, v in oi["option"]:
+                item.selected_options.add(SelectedOption(option=k, value=v))
+            for k, v in oi["scene_selection"]:
+                item.selected_scene_selection_options.add(
+                    SelectedSceneSelectionOption(option=k, value=v))
+            delivery = oi["delivery_options"]
+            copies = 1 if delivery["copies"] is None else delivery["copies"]
+            item.selected_delivery_option = SelectedDeliveryOption(
+                annotation=delivery["annotation"],
+                copies=copies,
+                special_instructions=delivery["special_instructions"],
+                option=delivery["type"]
+            )
+            item.selected_payment_option = SelectedPaymentOption(
+                option=oi["payment"])
+            batch.order_items.add(item)
+        batch.save()
+        return batch
+
+
+class DerivedOrder(Order):
+    collections = models.ManyToManyField("Collection",
+                                         related_name="derived_orders")
+
+    def create_batch(self):
+        raise NotImplementedError
+
+
+class MassiveOrder(DerivedOrder):
+    pass
+
+
+class SubscriptionOrder(DerivedOrder):
+    pass
+
+
+class TaskingOrder(DerivedOrder):
+    pass
 
 
 class OrderItem(CustomizableItem):
@@ -572,7 +624,10 @@ class SelectedOption(models.Model):
 
 
 class SelectedPaymentOption(models.Model):
-    order_item = models.OneToOneField('OrderItem', null=True, blank=True)
+    order_item = models.OneToOneField('OrderItem',
+                                      related_name='selected_payment_option',
+                                      null=True,
+                                      blank=True)
     option = models.ForeignKey('PaymentOption')
 
     def __unicode__(self):
@@ -580,7 +635,10 @@ class SelectedPaymentOption(models.Model):
 
 
 class SelectedSceneSelectionOption(models.Model):
-    order_item = models.ForeignKey('OrderItem')
+    order_item = models.ForeignKey(
+        'OrderItem',
+        related_name='selected_scene_selection_options'
+    )
     option = models.ForeignKey('SceneSelectionOption')
     value = models.CharField(max_length=255,
                              help_text='Value for this option')

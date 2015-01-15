@@ -183,10 +183,26 @@ class Order {
 class OrderItem {
     +batch: Batch
     +collection: Collection
-    +identifier: String
     +item_id: String
+}
+
+
+class ProductOrderItem {
+    +identifier: String
     +file_name: String
     +downloads: Integer
+}
+
+class MassiveOrderItem {
+    +identifier: String
+    +file_name: String
+}
+
+class SubscriptionOrderItem {
+}
+
+class TaskingOrderItem {
+    +tasking_id: String
 }
 
 class OseoUser {
@@ -292,6 +308,10 @@ ProductOrderConfiguration "1" --* "1" Collection
 MassiveOrderConfiguration "1" --* "1" Collection
 SubscriptionOrderConfiguration "1" --* "1" Collection
 TaskingOrderConfiguration "1" --* "1" Collection
+OrderItem <|-- ProductOrderItem
+OrderItem <|-- MassiveOrderItem
+OrderItem <|-- SubscriptionOrderItem
+OrderItem <|-- TaskingOrderItem
 
 'note bottom of SelectedOption
 'note as N1

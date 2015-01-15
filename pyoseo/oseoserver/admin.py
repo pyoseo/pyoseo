@@ -83,9 +83,8 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = (SelectedOptionInline, SelectedDeliveryOptionInline,)
     fieldsets = (
         (None, {
-            'fields': ('order_type', 'status',
-                       'status_changed_on', 'completed_on', 'user',
-                       'reference', 'priority', 'packaging',)
+            'fields': ('status', 'status_changed_on', 'completed_on',
+                       'user', 'reference', 'priority', 'packaging',)
         }),
         ('Further info', {
             'classes': ('collapse',),
@@ -93,12 +92,20 @@ class OrderAdmin(admin.ModelAdmin):
                        'mission_specific_status_info')
         }),
     )
-    list_display = ('id', 'order_type', 'status', 'status_changed_on',
-                    'show_batches',)
+    list_display = ('id', 'status', 'status_changed_on', 'show_batches',)
     list_filter = ('status', 'user',)
     readonly_fields = ('status_changed_on', 'completed_on',
                        'last_describe_result_access_request',)
     date_hierarchy = 'created_on'
+
+@admin.register(models.ProductOrder)
+class ProductOrderAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(models.SubscriptionOrder)
+class SubscriptionOrderAdmin(admin.ModelAdmin):
+    pass
 
 
 @admin.register(models.OrderItem)

@@ -67,13 +67,18 @@ class Submit(OseoOperation):
         """
 
         status_code = 200
-        self.validate_status_notification(request)
+        status_notification = self.validate_status_notification(request)
         if request.orderSpecification is not None:
-            order = self.process_order_specification(
+            order_spec = self.process_order_specification(
                 request.orderSpecification, user)
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
+        default_status = self._get_initial_order_status(order_spec)
+        order = self.create_order(order_spec, user, status_notification,
+                                  default_status)
+        if order.order_type == models.Order.PRODUCT_ORDER:
+            batch = self.create_order_batch(order, order_spec, default_status)
         if order.status == models.CustomizableItem.SUBMITTED:
             self.dispatch_order(order)
         elif order.status == models.CustomizableItem.ACCEPTED:
@@ -84,9 +89,17 @@ class Submit(OseoOperation):
         response.orderId = str(order.id)
         return response, status_code
 
+    def _get_initial_order_status(self, order_spec):
+        approved = True
+        for config in order_spec["requested_order_configurations"]:
+            approved = approved and config.automatic_approval
+        default_status = models.Order.ACCEPTED if approved else \
+            models.Order.SUBMITTED
+        return default_status
+
     def process_order_specification(self, order_specification, user):
         """
-        Handle submit requests that provide an order specification.
+        Validate and extract the order specification from the request
 
         :arg order_specification:
         :type order_specification:
@@ -94,34 +107,39 @@ class Submit(OseoOperation):
         :type user:
 
         :return:
-        :rtype: models.Order
+        :rtype: dict
         """
 
-        order = {
+        spec = {
             "order_type": self._get_order_type(order_specification),
             "order_item": [],
         }
+        if len(order_specification.orderItem) > models.Order.MAX_ORDER_ITEMS:
+            raise errors.InvalidOrderError(
+                "Maximum number of order items is {}".format(
+                    models.Order.MAX_ORDER_ITEMS)
+            )
         for oi in order_specification.orderItem:
-            item = self.validate_order_item(oi, order["order_type"], user)
-            order["order_item"].append(item)
-        requested_order_configurations = []
-        for col in set([i["collection"] for i in order["order_item"]]):
+            item = self.validate_order_item(oi, spec["order_type"], user)
+            spec["order_item"].append(item)
+        spec["requested_order_configurations"] = []
+        for col in set([i["collection"] for i in spec["order_item"]]):
             order_config = self._get_order_configuration(col,
-                                                         order["order_type"])
-            requested_order_configurations.append(order_config)
-        order["order_reference"] = self._c(order_specification.orderReference)
-        order["order_remark"] = self._c(order_specification.orderRemark)
-        order["packaging"] = self._c(order_specification.packaging)
-        order["priority"] = self._c(order_specification.priority)
-        order["delivery_information"] = self.get_delivery_information(
+                                                         spec["order_type"])
+            spec["requested_order_configurations"].append(order_config)
+        spec["order_reference"] = self._c(order_specification.orderReference)
+        spec["order_remark"] = self._c(order_specification.orderRemark)
+        spec["packaging"] = self._c(order_specification.packaging)
+        spec["priority"] = self._c(order_specification.priority)
+        spec["delivery_information"] = self.get_delivery_information(
             order_specification.deliveryInformation)
-        order["invoice_address"] = self.get_invoice_address(
+        spec["invoice_address"] = self.get_invoice_address(
             order_specification.invoiceAddress)
         try:
-            order["option"] = self._validate_global_options(
-                order_specification, requested_order_configurations)
-            order["delivery_options"] = self._validate_global_delivery_options(
-                order_specification, requested_order_configurations)
+            spec["option"] = self._validate_global_options(
+                order_specification, spec["requested_order_configurations"])
+            spec["delivery_options"] = self._validate_global_delivery_options(
+                order_specification, spec["requested_order_configurations"])
         except errors.InvalidOptionError as e:
             raise errors.InvalidGlobalOptionError(e.option, e.order_config)
         except errors.InvalidOptionValueError as e:
@@ -130,45 +148,58 @@ class Submit(OseoOperation):
         except errors.InvalidDeliveryOptionError as e:
             logger.debug(e)
             raise errors.InvalidGlobalDeliveryOptionError()
-        return order
-        # extension is not implemented yet
+        return spec
 
-        # WIP
-        # now we need to create the actual models.Order object
+    def create_order(self, order_spec, user, status_notification, status):
+        """
+        Persist the order specification in the database.
 
-        #creation_date = dt.datetime.now(pytz.utc)
-        #order = models.Order(
-        #    created_on=creation_date,
-        #    status_changed_on=creation_date,
-        #    remark=self._c(order_specification.orderRemark),
-        #    reference=self._c(order_specification.orderReference),
-        #    packaging=self._c(order_specification.packaging),
-        #    priority=self._c(order_specification.priority)
+        :param order_specification:
+        :param user:
+        :param status_notification:
+        :param status:
+        :return:
+        """
+
+        general_params = {
+            "status": status,
+            "additional_status_info": "Order has been submitted and is "
+                                      "awaiting approval",
+            "remark": order_spec["order_remark"],
+            "user": user,
+            "reference": order_spec["order_reference"],
+            "packaging": order_spec["packaging"],
+            "priority": order_spec["priority"],
+            "status_notification": status_notification,
+        }
+        if order_spec["order_type"] == models.Order.PRODUCT_ORDER:
+            order = models.ProductOrder(**general_params)
+        elif order_spec["order_type"] == models.Order.MASSIVE_ORDER:
+            order = models.MassiveOrder(**general_params)
+        elif order_spec["order_type"] == models.Order.SUBSCRIPTION_ORDER:
+            order = models.SubscriptionOrder(**general_params)
+        else:
+            order = models.TaskingOrder(**general_params)
+        order.save()
+        #order.invoice_address = order_spec["invoice_address"]
+        #order.delivery_information = order_spec["delivery_information"]
+        #for k, v in order_spec["option"]:
+        #    order.selected_options.add(models.SelectedOption(option=k,
+        #                                                     value=v))
+        #delivery = order_spec["delivery_options"]
+        #copies = 1 if delivery["copies"] is None else delivery["copies"]
+        #order.selected_delivery_option = models.SelectedDeliveryOption(
+        #    annotation=delivery["annotation"],
+        #    copies=copies,
+        #    special_instructions=delivery["special_instructions"],
+        #    option=delivery["type"]
         #)
-        #order.user = user
-        #ia = order_specification.invoiceAddress
-        #if ia is not None:
-        #    address = self.extract_invoice_address(ia)
-        #    order.invoice_address = address
-        #order.order_type = self._get_order_type(order_specification)
-        #order.status = self._validate_order_type(order.order_type)
-        ## not very nice but we will deal with option groups some other day
-        #order.option_group = models.OptionGroup.objects.get(id=1)
         #order.save()
-        #if order.status == models.CustomizableItem.FAILED:
-        #    raise errors.InvalidOrderTypeError("Order of type {} is not "
-        #                                       "supported".format(
-        #        order.order_type))
-        #self.parse_order_delivery_method(order_specification, order)
-        #self.configure_delivery(order, user)
-        #order_options = self.extract_options(order_specification.option,
-        #                                     order.customizableitem_ptr)
-        #if len(order_options) > 0:
-        #    order.selected_options.add(*order_options)
-        #    order.save()
-        #if order.order_type == models.OrderType.PRODUCT_ORDER:
-        #    self.create_normal_order_batch(order_specification, order)
-        #return order
+        return order
+
+    def create_order_batch(self, order, order_spec, default_status):
+        batch = order.create_batch(default_status, *order_spec["order_item"])
+        return batch
 
     def get_delivery_information(self, requested_delivery_info):
         if requested_delivery_info is not None:
@@ -419,50 +450,53 @@ class Submit(OseoOperation):
                 requested_item.productOrderOptionsId),
             "order_item_remark": self._c(requested_item.orderItemRemark)
         }
-        if order_type == models.Order.PRODUCT_ORDER:
-            validation_details = self._validate_product_order_item(
+        if order_type in (models.Order.PRODUCT_ORDER,
+                          models.Order.MASSIVE_ORDER):
+            identifier, collection = self._validate_product_order_item(
                 requested_item, user)
-            item["identifier"] = validation_details["identifier"]
-            item["collection"] = validation_details["collection"]
-            item["option"] = validation_details["option"]
-            item["scene_selection"] = validation_details["scene_selection"]
-            item["delivery_options"] = validation_details["delivery_options"]
-            item["payment"] = validation_details["payment"]
-            # extensions to the CommonOrderItemType are not implemented yet
-        elif order_type == models.Order.MASSIVE_ORDER:
-            raise NotImplementedError
+            item["identifier"] = identifier
         elif order_type == models.Order.SUBSCRIPTION_ORDER:
-            col_id = requested_item.productId.collectionId
-            collection = models.Collection.objects.get(collection_id=col_id)
-            raise NotImplementedError
-        elif order_type == models.Order.TASKING_ORDER:
-            raise NotImplementedError
-        return item
-
-    def _validate_product_order_item(self, requested_item, user):
-        details = {
-            "identifier": self._c(requested_item.productId.identifier)
-        }
-        col_id = requested_item.productId.collectionId
-        if col_id is None:
-            col_id = self.get_collection_id(details["identifier"],
-                                            user.oseo_group)
-        collection = self._validate_requested_collection(col_id,
-                                                         user.oseo_group)
-        details["collection"] = collection
-        order_config = self._get_order_configuration(
-            collection,
-            models.Order.PRODUCT_ORDER
-        )
-        details["option"] = self._validate_requested_options(
+            collection = self._validate_subscription_order_item(
+                requested_item, user)
+        else:  # TASKING_ORDER
+            tasking_id, collection = self._validate_tasking_order_item(
+                requested_item, user)
+            item["tasking_id"] = tasking_id
+        item["collection"] = collection
+        order_config = self._get_order_configuration(collection, order_type)
+        item["option"] = self._validate_requested_options(
             requested_item,
             order_config
         )
-        details["delivery_options"] = self._validate_delivery_options(
+        item["delivery_options"] = self._validate_delivery_options(
             requested_item, order_config)
-        details["scene_selection"] = dict()  # not implemented yet
-        details["payment"] = dict()  # not implemented yet
-        return details
+        item["scene_selection"] = dict()  # not implemented yet
+        item["payment"] = dict()  # not implemented yet
+        # extensions to the CommonOrderItemType are not implemented yet
+        return item
+
+    def _validate_product_order_item(self, requested_item, user):
+        identifier = self._c(requested_item.productId.identifier)
+        col_id = requested_item.productId.collectionId
+        if col_id is None:
+            col_id = self.get_collection_id(identifier,
+                                            user.oseo_group)
+        collection = self._validate_requested_collection(col_id,
+                                                         user.oseo_group)
+        return identifier, collection
+
+    def _validate_subscription_order_item(self, requested_item, user):
+        col_id = requested_item.subscriptionId.collectionId
+        collection = self._validate_requested_collection(col_id,
+                                                         user.oseo_group)
+        return collection
+
+    def _validate_tasking_order_item(self, requested_item, user):
+        tasking_id = requested_item.taskingRequestId
+        # TODO: find a way to retrieve the collection
+        # TODO: validate the tasking_id
+        collection = None
+        return tasking_id, collection
 
     def _get_order_configuration(self, collection, order_type):
         if order_type == models.Order.PRODUCT_ORDER:
@@ -1075,3 +1109,4 @@ class Submit(OseoOperation):
         if request.statusNotification != models.Order.NONE:
             raise NotImplementedError('Status notifications are '
                                       'not supported')
+        return request.statusNotification
