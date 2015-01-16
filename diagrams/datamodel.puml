@@ -289,7 +289,7 @@ InvoiceAddress "0..1" --* "1" Order
 OseoUser "1" o-- "*" Order : places >
 OseoUser "*" --o "1" OseoGroup : belongs >
 OrderItem "1..*" -* "1" Batch
-Batch "1..*" -* "1" Order
+Batch "1..*" -o "1" Order
 Collection "1" -o "*" OrderItem
 Collection "*" -- "*" OseoGroup : authorized <
 SelectedSceneSelectionOption "*" --* "1" OrderItem

@@ -60,7 +60,7 @@ class AbstractOptionChoice(models.Model):
 
 
 class Batch(models.Model):
-    order = models.ForeignKey("Order", related_name="batches")
+    order = models.ForeignKey("Order", null=True, related_name="batches")
     created_on = models.DateTimeField(auto_now_add=True)
     completed_on = models.DateTimeField(null=True, blank=True)
     updated_on = models.DateTimeField(editable=False, blank=True, null=True)
@@ -89,14 +89,14 @@ class Batch(models.Model):
 
     def price(self):
         total = Decimal(0)
-        order_fee = None
-        for oi in self.order_items.all():
-            collection = oi.collection
-            product_price = collection.product_price
-            if order_fee is None:
-                order_fee = collection.orderconfiguration.order_processing_fee
-            total += product_price
-        total += order_fee
+        #order_fee = None
+        #for oi in self.order_items.all():
+        #    collection = oi.collection
+        #    product_price = collection.product_price
+        #    if order_fee is None:
+        #        order_fee = collection.orderconfiguration.order_processing_fee
+        #    total += product_price
+        #total += order_fee
         return total
 
     class Meta:
@@ -468,6 +468,10 @@ class Order(CustomizableItem):
         return ', '.join([str(b.id) for b in self.batches.all()])
     show_batches.short_description = 'available batches'
 
+    def _order_type(self):
+        return self.__class__.__name__.upper().replace("ORDER", "_ORDER")
+    order_type = property(_order_type)
+
     def __unicode__(self):
         return '{}'.format(self.id)
 
@@ -476,8 +480,10 @@ class ProductOrder(Order):
 
     def create_batch(self, item_status, *order_item_spec):
         batch = Batch()
+        batch.save()
         for oi in order_item_spec:
             item = OrderItem(
+                batch=batch,
                 status=item_status,
                 additional_status_info="Order item has been submitted and "
                                        "is awaiting approval",
@@ -487,25 +493,31 @@ class ProductOrder(Order):
                 item_id=oi["item_id"]
             )
             item.save()
-            # add the payment options
 
-            for k, v in oi["option"]:
-                item.selected_options.add(SelectedOption(option=k, value=v))
-            for k, v in oi["scene_selection"]:
+            for k, v in oi["option"].iteritems():
+                option = Option.objects.get(name=k)
+                item.selected_options.add(SelectedOption(option=option,
+                                                         value=v))
+            for k, v in oi["scene_selection"].iteritems():
                 item.selected_scene_selection_options.add(
                     SelectedSceneSelectionOption(option=k, value=v))
             delivery = oi["delivery_options"]
-            copies = 1 if delivery["copies"] is None else delivery["copies"]
-            item.selected_delivery_option = SelectedDeliveryOption(
-                annotation=delivery["annotation"],
-                copies=copies,
-                special_instructions=delivery["special_instructions"],
-                option=delivery["type"]
-            )
-            item.selected_payment_option = SelectedPaymentOption(
-                option=oi["payment"])
-            batch.order_items.add(item)
-        batch.save()
+            if delivery is not None:
+                copies = 1 if delivery["copies"] is None else delivery["copies"]
+                sdo = SelectedDeliveryOption(
+                    customizable_item=item,
+                    annotation=delivery["annotation"],
+                    copies=copies,
+                    special_instructions=delivery["special_instructions"],
+                    option=delivery["type"]
+                )
+                sdo.save()
+            if oi["payment"] is not None:
+                payment = PaymentOption.objects.get(oi["payment"])
+                item.selected_payment_option = SelectedPaymentOption(
+                    option=payment)
+            item.save()
+        self.batches.add(batch)
         return batch
 
 
@@ -658,3 +670,6 @@ class SelectedDeliveryOption(models.Model):
     copies = models.PositiveSmallIntegerField(null=True, blank=True)
     annotation = models.TextField(blank=True)
     special_instructions = models.TextField(blank=True)
+
+    def __unicode__(self):
+        return self.option.__unicode__()

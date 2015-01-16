@@ -29,8 +29,6 @@ class OseoOperation(object):
     It should not be instantiated directly
     """
 
-    NAME = None  # to be reimplemented in child classes
-
     def _get_delivery_options(self, db_item):
         """
         Return the delivery options for an input database item.
@@ -64,14 +62,6 @@ class OseoOperation(object):
         except ObjectDoesNotExist:
             dot = None
         return dot
-
-    def _order_type_enabled(self, order_type):
-        """
-        Return a boolean indicating if the specified order type is enabled in
-        the settings.
-        """
-        order_type_enabled = models.OrderType.objects.filter(name=order_type)
-        return True if len(order_type_enabled) > 0 else False
 
     def _c(self, value):
         """

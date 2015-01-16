@@ -51,7 +51,7 @@ def update_status_changed_on_by_order_item(sender, **kwargs):
                     order_item.status != order_item.old_status:
         order_item.status_changed_on = dt.datetime.now(pytz.utc)
 
-@receiver(pre_save, sender=models.OrderItem, weak=False,
+@receiver(post_save, sender=models.OrderItem, weak=False,
           dispatch_uid='id_for_update_batch')
 def update_batch(sender, **kwargs):
     order_item = kwargs["instance"]
