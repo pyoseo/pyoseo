@@ -101,6 +101,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'oseoserver',
+    'actstream',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -149,6 +150,14 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'sitestatic')
 STATIC_URL = '/static/'
+
+# settings for django-activity-stream
+# the default settings are fine, they are commented here just for the record
+# ACTSTREAM_SETTINGS = {
+#     "MANAGER": "actstreams.manager.ActionManager",
+#     "FETCH_RELATIONS": True,
+#     "USE_JSONFIELD": False,
+# }
 
 # Logging
 LOGGING = {

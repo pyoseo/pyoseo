@@ -390,11 +390,6 @@ class OnlineAddress(models.Model):
 class OrderConfiguration(models.Model):
 
     enabled = models.BooleanField(default=False)
-    automatic_approval = models.BooleanField(
-        default=False,
-        help_text="Should this type of order be approved automatically for "
-                  "the selected collection?"
-    )
     order_processing_fee = models.DecimalField(default=Decimal(0),
                                                max_digits=5,
                                                decimal_places=2)
@@ -407,8 +402,7 @@ class OrderConfiguration(models.Model):
                                                      null=True, blank=True)
 
     def __unicode__(self):
-        return "{}:{}".format("Enabled" if self.enabled else "Disabled",
-                              "Auto" if self.automatic_approval else "Manual")
+        return "{}".format("Enabled" if self.enabled else "Disabled")
 
 
 class ProductOrderConfiguration(OrderConfiguration):
@@ -449,6 +443,7 @@ class Order(CustomizableItem):
         (ALL, ALL),
     )
     user = models.ForeignKey("OseoUser", related_name="orders")
+    order_type = models.ForeignKey("OrderType", related_name="orders")
     last_describe_result_access_request = models.DateTimeField(null=True,
                                                                blank=True)
     reference = models.CharField(max_length=30,
@@ -467,10 +462,6 @@ class Order(CustomizableItem):
     def show_batches(self):
         return ', '.join([str(b.id) for b in self.batches.all()])
     show_batches.short_description = 'available batches'
-
-    def _order_type(self):
-        return self.__class__.__name__.upper().replace("ORDER", "_ORDER")
-    order_type = property(_order_type)
 
     def __unicode__(self):
         return '{}'.format(self.id)
@@ -520,6 +511,9 @@ class ProductOrder(Order):
         self.batches.add(batch)
         return batch
 
+    def __unicode__(self):
+        return "ProductOrder({})".format(self.id)
+
 
 class DerivedOrder(Order):
     collections = models.ManyToManyField("Collection",
@@ -539,6 +533,16 @@ class SubscriptionOrder(DerivedOrder):
 
 class TaskingOrder(DerivedOrder):
     pass
+
+
+class OrderType(models.Model):
+    name = models.CharField(max_length=30)
+    enabled = models.BooleanField(default=False)
+    automatic_approval = models.BooleanField(default=False)
+    notify_creation = models.BooleanField(default=True)
+
+    def __unicode__(self):
+        return self.name
 
 
 class OrderItem(CustomizableItem):

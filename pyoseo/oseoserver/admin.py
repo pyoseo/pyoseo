@@ -83,8 +83,9 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = (SelectedOptionInline, SelectedDeliveryOptionInline,)
     fieldsets = (
         (None, {
-            'fields': ('status', 'status_changed_on', 'completed_on',
-                       'user', 'reference', 'priority', 'packaging',)
+            'fields': ('order_type', 'status', 'status_changed_on',
+                       'completed_on', 'user', 'reference', 'priority',
+                       'packaging',)
         }),
         ('Further info', {
             'classes': ('collapse',),
@@ -201,6 +202,21 @@ class BatchAdmin(admin.ModelAdmin):
 class MediaDeliveryAdmin(admin.ModelAdmin):
     list_display = ("package_medium", "shipping_instructions", "delivery_fee")
 
+@admin.register(models.OrderType)
+class OrderTypeAdmin(admin.ModelAdmin):
+    list_display = ("name", "enabled", "automatic_approval",
+                    "notify_creation",)
+    list_editable = ("enabled", "automatic_approval", "notify_creation",)
+    readonly_fields = ("name",)
+    fieldsets = (
+        (None, {
+            'fields': ("name", "enabled", "automatic_approval",
+                       "notify_creation"),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        return False
 
 admin.site.register(models.OnlineDataAccess)
 admin.site.register(models.OnlineDataDelivery)

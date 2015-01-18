@@ -35,8 +35,13 @@ class NonSoapRequestError(PyOseoError):
     pass
 
 
-class InvalidOrderError(PyOseoError):
-    pass
+class InvalidOrderTypeError(PyOseoError):
+
+    def __init__(self, order_type):
+        self.order_type = order_type
+
+    def __str__(self):
+        return "Orders of type {} are not allowed".format(order_type)
 
 
 class InvalidOptionError(PyOseoError):
@@ -86,7 +91,14 @@ class InvalidOrderDeliveryMethodError(PyOseoError):
 
 
 class InvalidCollectionError(PyOseoError):
-    pass
+
+    def __init__(self, collection, order_type):
+        self.collection = collection
+        self.order_type = order_type
+
+    def __str__(self):
+        return "Collection {} does not allow orders of type {}".format(
+            self.collection, self.order_type)
 
 
 class OnlineDataAccessInvalidProtocol(PyOseoError):

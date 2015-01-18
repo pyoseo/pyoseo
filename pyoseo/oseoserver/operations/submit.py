@@ -52,8 +52,6 @@ class Submit(OseoOperation):
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
         :arg user: User making the request
         :type user: oseoserver.models.OseoUser
-        :arg user_password: Password of the user making the request
-        :type user_password: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         """
@@ -66,29 +64,16 @@ class Submit(OseoOperation):
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
-        default_status = self._get_initial_order_status(order_spec)
+        default_status = models.Order.SUBMITTED
+        if order_spec["order_type"].automatic_approval:
+            default_status = models.Order.ACCEPTED
         order = self.create_order(order_spec, user, status_notification,
                                   default_status)
-        if order.order_type == models.Order.PRODUCT_ORDER:
-            batch = self.create_order_batch(order, order_spec, default_status)
-        if order.status == models.CustomizableItem.SUBMITTED:
-            # this is where we notify the admin that an order is awaiting
-            # moderation
-            print("The order {} is awaiting moderation".format(order.id))
-        elif order.status == models.CustomizableItem.ACCEPTED:
-            self.dispatch_order(order)
+        self.dispatch_order(order, order_spec["order_item"])
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         response.orderReference = self._n(order.reference)
         return response, status_code
-
-    def _get_initial_order_status(self, order_spec):
-        approved = True
-        for config in order_spec["requested_order_configurations"]:
-            approved = approved and config.automatic_approval
-        default_status = models.Order.ACCEPTED if approved else \
-            models.Order.SUBMITTED
-        return default_status
 
     def process_order_specification(self, order_specification, user):
         """
@@ -113,12 +98,13 @@ class Submit(OseoOperation):
                     models.Order.MAX_ORDER_ITEMS)
             )
         for oi in order_specification.orderItem:
-            item = self.validate_order_item(oi, spec["order_type"], user)
+            item = self.validate_order_item(oi, spec["order_type"].name,
+                                            user)
             spec["order_item"].append(item)
         spec["requested_order_configurations"] = []
         for col in set([i["collection"] for i in spec["order_item"]]):
-            order_config = self._get_order_configuration(col,
-                                                         spec["order_type"])
+            order_config = self._get_order_configuration(
+                col, spec["order_type"].name)
             spec["requested_order_configurations"].append(order_config)
         spec["order_reference"] = self._c(order_specification.orderReference)
         spec["order_remark"] = self._c(order_specification.orderRemark)
@@ -155,6 +141,7 @@ class Submit(OseoOperation):
         """
 
         general_params = {
+            "order_type": order_spec["order_type"],
             "status": status,
             "additional_status_info": "Order has been submitted and is "
                                       "awaiting approval",
@@ -165,11 +152,11 @@ class Submit(OseoOperation):
             "priority": order_spec["priority"],
             "status_notification": status_notification,
         }
-        if order_spec["order_type"] == models.Order.PRODUCT_ORDER:
+        if order_spec["order_type"].name == models.Order.PRODUCT_ORDER:
             order = models.ProductOrder(**general_params)
-        elif order_spec["order_type"] == models.Order.MASSIVE_ORDER:
+        elif order_spec["order_type"].name == models.Order.MASSIVE_ORDER:
             order = models.MassiveOrder(**general_params)
-        elif order_spec["order_type"] == models.Order.SUBSCRIPTION_ORDER:
+        elif order_spec["order_type"].name == models.Order.SUBSCRIPTION_ORDER:
             order = models.SubscriptionOrder(**general_params)
         else:
             order = models.TaskingOrder(**general_params)
@@ -199,10 +186,6 @@ class Submit(OseoOperation):
             sdo.save()
         order.save()
         return order
-
-    def create_order_batch(self, order, order_spec, default_status):
-        batch = order.create_batch(default_status, *order_spec["order_item"])
-        return batch
 
     def get_delivery_information(self, requested_delivery_info):
         if requested_delivery_info is not None:
@@ -307,9 +290,11 @@ class Submit(OseoOperation):
             current += 1
         return collection_id
 
-    def dispatch_order(self, order):
+    def dispatch_order(self, order, order_items_spec):
         """Dispatch an order for processing in the async queue."""
-        if order.order_type == models.Order.PRODUCT_ORDER:
+
+        if order.order_type.name == models.Order.PRODUCT_ORDER:
+            batch = order.create_batch(order.status, *order_items_spec)
             tasks.process_normal_order.apply_async((order.id,))
         else:  # only normal PRODUCT_ORDERs are implemented
             raise NotImplementedError
@@ -319,7 +304,7 @@ class Submit(OseoOperation):
 
         :param requested_item:
         :type requested_item: oseo.CommonOrderItemType
-        :param order_type:
+        :param order_type: The name of the order type
         :type order_type: string
         :param user:
         :type user: models.OseoUser
@@ -381,6 +366,14 @@ class Submit(OseoOperation):
         return tasking_id, collection
 
     def _get_order_configuration(self, collection, order_type):
+        """
+
+        :param collection:
+        :param order_type:
+        :type order_type: string
+        :return:
+        """
+
         if order_type == models.Order.PRODUCT_ORDER:
             config = collection.productorderconfiguration
         elif order_type == models.Order.MASSIVE_ORDER:
@@ -389,6 +382,8 @@ class Submit(OseoOperation):
             config = collection.subscriptionorderconfiguration
         else:  # tasking order
             config = collection.taskingorderconfiguration
+        if not config.enabled:
+            raise errors.InvalidCollectionError(collection.name, order_type)
         return config
 
     def _validate_requested_collection(self, collection_id, group):
@@ -605,8 +600,9 @@ class Submit(OseoOperation):
         :rtype: models.OrderType
         """
 
-        result = order_specification.orderType
-        if result == models.Order.PRODUCT_ORDER:
+        order_type = models.OrderType.objects.get(
+            name=order_specification.orderType)
+        if order_type.name == "PRODUCT_ORDER":
             ref = self._c(order_specification.orderReference)
             massive_reference = getattr(
                 django_settings,
@@ -614,8 +610,11 @@ class Submit(OseoOperation):
                 None
             )
             if massive_reference is not None and ref == massive_reference:
-                result = models.Order.MASSIVE_ORDER
-        return result
+                order_type = models.OrderType.objects.get(
+                    name="MASSIVE_ORDER")
+        if not order_type.enabled:
+            raise errors.InvalidOrderTypeError(order_type.name)
+        return order_type
 
     def validate_status_notification(self, request):
         """

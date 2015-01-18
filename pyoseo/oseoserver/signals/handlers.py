@@ -4,6 +4,7 @@ import pytz
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_init, pre_save
 from django.contrib.auth.models import User
+from actstream import action
 
 import oseoserver.models as models
 
@@ -76,3 +77,16 @@ def create_order_configurations(sender, **kwargs):
     models.MassiveOrderConfiguration.objects.get_or_create(collection=c)
     models.SubscriptionOrderConfiguration.objects.get_or_create(collection=c)
     models.TaskingOrderConfiguration.objects.get_or_create(collection=c)
+
+@receiver(post_save, sender=models.ProductOrder, weak=False,
+          dispatch_uid='id_for_notify_new_product_order')
+def notify_new_product_order(sender, **kwargs):
+    order = kwargs["instance"]
+    user = order.user
+    if kwargs["created"]:
+        action.send(user, verb="created", target=order)
+        if not order.order_type.automatic_approval:
+            for staff in User.objects.filter(is_staff=True):
+                action.send(order, verb="awaits moderation by",
+                            target=staff.oseouser)
+
