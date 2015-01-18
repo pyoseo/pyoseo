@@ -147,7 +147,7 @@ class OseoServer(object):
             data = element
             response_headers['Content-Type'] = 'application/xml'
         try:
-            user, password = self.authenticate_request(element, soap_version)
+            user = self.authenticate_request(element, soap_version)
             schema_instance = self.parse_xml(data)
             operation = self._get_operation(schema_instance)
             response, status_code, info = operation(schema_instance, user)
@@ -208,12 +208,15 @@ class OseoServer(object):
         auth = UsernameTokenAuthentication()
         user_name, password, extra = auth.get_details(request_element,
                                                       soap_version)
+        logger.debug("user_name: {}".format(user_name))
+        logger.debug("password: {}".format(password))
+        logger.debug("extra: {}".format(extra))
         try:
             user = models.OseoUser.objects.get(user__username=user_name)
             auth_class = user.oseo_group.authentication_class
         except models.OseoUser.DoesNotExist:
-            user, group = self.add_user(user_name, password, **extra)
-            auth_class = group.authentication_class
+            user = self.add_user(user_name, password, **extra)
+            auth_class = user.oseo_group.authentication_class
         try:
             instance = utilities.import_class(auth_class)
             authenticated = instance.authenticate_request(user_name, password,
@@ -234,18 +237,23 @@ class OseoServer(object):
         return user
 
     def add_user(self, user_name, password, **kwargs):
-        oseo_user = None,
-        oseo_group = None
-        for group in models.OseoGroup.objects.all():
-            custom_auth = utilities.import_class(group.authentication_class)
+        oseo_user = None
+        groups = models.OseoGroup.objects.all()
+        found_group = False
+        current = 0
+        while not found_group and current < len(groups):
+            current_group = groups[current]
+            custom_auth = utilities.import_class(
+                current_group.authentication_class)
             if custom_auth.is_user(user_name, password, **kwargs):
+                found_group = True
                 user = models.User.objects.create_user(user_name,
                                                        password=None)
-                oseo_user = user.oseouser
-                oseo_user.oseo_group = group
+                oseo_user = models.OseoUser.objects.get(user=user)
+                oseo_user.oseo_group = current_group
                 oseo_user.save()
-                oseo_group = group
-        return oseo_user, oseo_group
+            current += 1
+        return oseo_user
 
     def create_exception_report(self, code, text, soap_version, locator=None):
         """
@@ -424,4 +432,4 @@ class OseoServer(object):
         order = models.Order.objects.get(order_id)
         if order.status == models.CustomizableItem.ACCEPTED:
             if order.order_type.name == models.Order.PRODUCT_ORDER:
-            tasks.process_normal_order.apply_async((order.id,))
+                tasks.process_normal_order.apply_async((order.id,))

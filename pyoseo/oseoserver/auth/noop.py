@@ -31,5 +31,5 @@ class NoAuthentication(object):
 
         return True
 
-    def is_user(self):
+    def is_user(self, username, password, **kwargs):
         return True

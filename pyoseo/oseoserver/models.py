@@ -579,10 +579,6 @@ class OseoGroup(models.Model):
         blank=True
     )
     # these fields are probably not needed
-    #product_orders_enabled = models.BooleanField(default=False)
-    #massive_orders_enabled = models.BooleanField(default=False)
-    #subscription_orders_enabled = models.BooleanField(default=False)
-    #tasking_orders_enabled = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.name
@@ -590,7 +586,7 @@ class OseoGroup(models.Model):
 
 class OseoUser(models.Model):
     user = models.OneToOneField(User)
-    oseo_group = models.ForeignKey("OseoGroup")
+    oseo_group = models.ForeignKey("OseoGroup", blank=True, null=True)
     disk_quota = models.SmallIntegerField(default=50, help_text='Disk space '
                                           'available to each user. Expressed '
                                           'in Gigabytes')
