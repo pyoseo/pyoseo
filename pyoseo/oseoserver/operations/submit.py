@@ -32,7 +32,6 @@ from lxml import etree
 import requests
 
 from oseoserver import models
-from oseoserver import tasks
 from oseoserver import errors
 from oseoserver import utilities
 from oseoserver.server import OseoServer
@@ -69,11 +68,10 @@ class Submit(OseoOperation):
             default_status = models.Order.ACCEPTED
         order = self.create_order(order_spec, user, status_notification,
                                   default_status)
-        self.dispatch_order(order, order_spec["order_item"])
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         response.orderReference = self._n(order.reference)
-        return response, status_code
+        return response, status_code, {"order": order}
 
     def process_order_specification(self, order_specification, user):
         """
@@ -185,6 +183,9 @@ class Submit(OseoOperation):
             )
             sdo.save()
         order.save()
+        if order.order_type.name == models.Order.PRODUCT_ORDER:
+            batch = order.create_batch(order.status,
+                                       *order_spec["order_item"])
         return order
 
     def get_delivery_information(self, requested_delivery_info):
@@ -289,15 +290,6 @@ class Submit(OseoOperation):
             collection_id = id_container[0] if len(id_container) == 1 else None
             current += 1
         return collection_id
-
-    def dispatch_order(self, order, order_items_spec):
-        """Dispatch an order for processing in the async queue."""
-
-        if order.order_type.name == models.Order.PRODUCT_ORDER:
-            batch = order.create_batch(order.status, *order_items_spec)
-            tasks.process_normal_order.apply_async((order.id,))
-        else:  # only normal PRODUCT_ORDERs are implemented
-            raise NotImplementedError
 
     def validate_order_item(self, requested_item, order_type, user):
         """

@@ -84,7 +84,8 @@ def notify_new_product_order(sender, **kwargs):
     order = kwargs["instance"]
     user = order.user
     if kwargs["created"]:
-        action.send(user, verb="created", target=order)
+        if order.order_type.notify_creation:
+            action.send(user, verb="created", target=order)
         if not order.order_type.automatic_approval:
             for staff in User.objects.filter(is_staff=True):
                 action.send(order, verb="awaits moderation by",

@@ -51,6 +51,7 @@ from lxml import etree
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
 
+from oseoserver import tasks
 import models
 import errors
 import utilities
@@ -149,7 +150,9 @@ class OseoServer(object):
             user, password = self.authenticate_request(element, soap_version)
             schema_instance = self.parse_xml(data)
             operation = self._get_operation(schema_instance)
-            response, status_code = operation(schema_instance, user)
+            response, status_code, info = operation(schema_instance, user)
+            if operation == "Submit":
+                self.dispatch_order(info["order"].id)
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
@@ -414,3 +417,11 @@ class OseoServer(object):
             detail.append(exception_element)
         return etree.tostring(soap_env, encoding=self.ENCODING,
                               pretty_print=True)
+
+    def dispatch_order(self, order_id):
+        """Dispatch an order for processing in the async queue."""
+
+        order = models.Order.objects.get(order_id)
+        if order.status == models.CustomizableItem.ACCEPTED:
+            if order.order_type.name == models.Order.PRODUCT_ORDER:
+            tasks.process_normal_order.apply_async((order.id,))
