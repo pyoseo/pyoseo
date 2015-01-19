@@ -20,8 +20,28 @@ example of the API that PyOSEO expects to find on a real implementation
 class FakeOrderProcessor(object):
 
     def parse_option(self, name, value):
+        """
+
+        :param name:
+        :param value:
+        :return:
+        """
+
         parsed_value = value.text
         print("name: {}".format(name))
         print("value: {}".format(value))
         print("parsed_value: {}".format(parsed_value))
         return parsed_value
+
+    def process_item_online_access(self, identifier, order_id, user_name,
+                                   http_root):
+        """
+
+        :param identifier:
+        :param order_id:
+        :param user_name:
+        :param http_root:
+        :return:
+        """
+
+        return None

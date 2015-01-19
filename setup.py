@@ -18,12 +18,15 @@ setup(
     packages=find_packages('pyoseo'),
     install_requires=[
         'django',
+        'django-activity-stream',
+        'django-grappelli',
         'pyxb',
         'redis',
         'celery',
         'lxml',
         'wsgiref',
         'librabbitmq',
+        'django-mail-queue',
     ],
     include_package_data=True,
     entry_points={

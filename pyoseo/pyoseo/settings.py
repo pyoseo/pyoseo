@@ -56,6 +56,17 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
+# mail settings
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 25
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+
+# settings for django-mail-queue
+MAILQUEUE_CELERY = True
+
 
 def find_or_create_secret_key():
     '''
@@ -102,6 +113,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'oseoserver',
     'actstream',
+    'mailqueue',
 )
 
 MIDDLEWARE_CLASSES = (

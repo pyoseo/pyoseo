@@ -1,4 +1,4 @@
-# Copyright 2014 Ricardo Garcia Silva
+# Copyright 2015 Ricardo Garcia Silva
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,14 +23,14 @@ that preform each OSEO operation.
    result, status_code, response_headers = s.process_request(request)
 """
 
-#Creating the ParameterData element:
+# Creating the ParameterData element:
 #
-#* create an appropriate XML Schema Definition file (xsd)
-#* generate pyxb bindings for the XML schema with:
+# * create an appropriate XML Schema Definition file (xsd)
+# * generate pyxb bindings for the XML schema with:
 #
 #  pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
 #
-#* in ipython
+# * in ipython
 #
 #  import pyxb.binding.datatypes as xsd
 #  import pyxb.bundles.opengis.oseo as oseo
@@ -50,6 +50,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
+import pyxb
+from mailqueue.models import MailerMessage
+from django.contrib.auth.models import User
+from django.conf import settings
 
 from oseoserver import tasks
 import models
@@ -64,7 +68,7 @@ class OseoServer(object):
     """
     Handle requests that come from Django and process them.
 
-    This class performs some pre-procesing of requests, such as schema
+    This class performs some pre-processing of requests, such as schema
     validation and user authentication. It then offloads the actual processing
     of requests to specialized OSEO operation classes. After the request has
     been processed, there is also some post-processing stuff, such as wrapping
@@ -102,6 +106,7 @@ class OseoServer(object):
         "AuthorizationFailed": "client",
         "AuthenticationFailed": "client",
         "InvalidOrderIdentifier": "client",
+        "NoApplicableCode": "client",
         "UnsupportedCollection": "client",
     }
 
@@ -149,10 +154,12 @@ class OseoServer(object):
         try:
             user = self.authenticate_request(element, soap_version)
             schema_instance = self.parse_xml(data)
-            operation = self._get_operation(schema_instance)
+            operation, op_name = self._get_operation(schema_instance)
             response, status_code, info = operation(schema_instance, user)
-            if operation == "Submit":
-                self.dispatch_order(info["order"].id)
+            if op_name == "Submit":
+                order = info["order"]
+                if order.order_type.name == models.Order.PRODUCT_ORDER:
+                    self.dispatch_order(info["order"])
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
@@ -167,12 +174,24 @@ class OseoServer(object):
             result = self.create_exception_report(err.code, err.text,
                                                   soap_version,
                                                   locator=err.locator)
-        except errors.NonSoapRequestError as err:
+        except errors.NonSoapRequestError as e:
             status_code = 400
-            result = err
-        except errors.InvalidSettingsError as err:
+            result = e
+        except errors.InvalidSettingsError as e:
             status_code = 500
-            result = err
+            result = e
+        except pyxb.UnrecognizedDOMRootNodeError as e:
+            status_code = 404
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                "Unsupported operation: {}".format(e.node.tagName),
+                soap_version)
+        except pyxb.UnrecognizedContentError as e:
+            status_code = 404
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                str(e),
+                soap_version)
         return result, status_code, response_headers
 
     def authenticate_request(self, request_element, soap_version):
@@ -223,14 +242,14 @@ class OseoServer(object):
                                                           **extra)
             if not authenticated:
                 raise errors.AuthenticationError()
-        except errors.OseoError as err:
-             # this error is handled by the calling method
+        except errors.OseoError:
+            # this error is handled by the calling method
             raise
-        except Exception as err:
+        except Exception as e:
             # other errors are re-raised as InvalidSettings
             logger.error('exception class: {}'.format(
-                         err.__class__.__name__))
-            logger.error('exception args: {}'.format(err.args))
+                         e.__class__.__name__))
+            logger.error('exception args: {}'.format(e.args))
             raise errors.InvalidSettingsError('Invalid authentication '
                                               'class')
         logger.info('User {} authenticated successfully'.format(user_name))
@@ -275,7 +294,7 @@ class OseoServer(object):
             exception.locator = locator
         exception.append(text)
         exception_report = ows_bindings.ExceptionReport(
-                version=self.OSEO_VERSION)
+            version=self.OSEO_VERSION)
         exception_report.append(exception)
         if soap_version is not None:
             soap_code = self._exception_codes[code]
@@ -323,7 +342,7 @@ class OseoServer(object):
     def _get_operation(self, pyxb_request):
         oseo_op = pyxb_request.toDOM().firstChild.tagName.partition(":")[-1]
         op = self.OPERATION_CLASSES[oseo_op]
-        return utilities.import_class(op)
+        return utilities.import_class(op), oseo_op
 
     def _get_soap_data(self, element, soap_version):
         """
@@ -360,7 +379,7 @@ class OseoServer(object):
             soap_env_ns['soap'] = self._namespaces['soap1.1']
         soap_env = etree.Element('{%s}Envelope' % soap_env_ns['soap'],
                                  nsmap=soap_env_ns)
-        soap_body = etree.SubElement(soap_env, '{%s}Body' % \
+        soap_body = etree.SubElement(soap_env, '{%s}Body' %
                                      soap_env_ns['soap'])
 
         response_string = response.toxml(encoding=self.ENCODING)
@@ -426,10 +445,32 @@ class OseoServer(object):
         return etree.tostring(soap_env, encoding=self.ENCODING,
                               pretty_print=True)
 
-    def dispatch_order(self, order_id):
+    def dispatch_order(self, order, **kwargs):
         """Dispatch an order for processing in the async queue."""
 
-        order = models.Order.objects.get(order_id)
-        if order.status == models.CustomizableItem.ACCEPTED:
+        if order.status == models.CustomizableItem.SUBMITTED:
+            utilities.send_moderation_email(order)
+        elif order.status == models.CustomizableItem.ACCEPTED:
             if order.order_type.name == models.Order.PRODUCT_ORDER:
-                tasks.process_normal_order.apply_async((order.id,))
+                tasks.process_product_order.apply_async((order.id,))
+            elif order.order_type.name == models.Order.SUBSCRIPTION_ORDER:
+                tasks.process_subscription_order.apply_async((order.id, kwargs))
+
+    #def send_moderation_email(self, order):
+    #    for staff in User.objects.filter(is_staff=True):
+    #        if staff.email != '':
+    #            msg = MailerMessage(
+    #                subject="{} {} awaits moderation".format(
+    #                    order.order_type.name, order.id),
+    #                to_address=staff.email,
+    #                from_address=settings.EMAIL_HOST_USER,
+    #                content="{} {} is waiting to be moderated".format(
+    #                    order.order_type.name, order.id),
+    #                app="oseoserver"
+    #            )
+    #            msg.save()
+
+    def process_subscriptions(self, current_timeslot):
+        for s in models.SubscriptionOrder.objects.filter(active=True):
+            self.dispatch_order(s, current_timeslot=current_timeslot)
+

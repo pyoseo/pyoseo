@@ -44,24 +44,27 @@ from oseoserver import utilities
 
 logger = get_task_logger(__name__)
 
-@shared_task(bind=True)
-def process_normal_order(self, order_id):
-    """
-    Process a normal order.
 
-    A normal order is one that does not come from a subscription and is also 
-    not considered to be a massive order.
+@shared_task(bind=True)
+def process_product_order(self, order_id):
+    raise NotImplementedError
+
+
+@shared_task(bind=True)
+def process_product_order(self, order_id):
+    """
+    Process a product order.
 
     :arg order_id:
     :type order_id: int
     """
 
     try:
-        order = models.Order.objects.get(pk=order_id)
+        order = models.ProductOrder.objects.get(pk=order_id)
         order.status = models.CustomizableItem.IN_PRODUCTION
         order.save()
-    except ObjectDoesNotExist:
-        logger.error('could not find order')
+    except models.ProductOrder.DoesNotExist:
+        logger.error('could not find order {}'.format(order_id))
         raise
     g = []
     for batch in order.batches.all():
@@ -69,6 +72,7 @@ def process_normal_order(self, order_id):
         g.append(sig)
     job = group(g)
     job.apply_async()
+
 
 @shared_task(bind=True)
 def process_batch(self, batch_id):
@@ -81,28 +85,26 @@ def process_batch(self, batch_id):
 
     try:
         batch = models.Batch.objects.get(pk=batch_id)
-    except ObjectDoesNotExist:
-        logger.error('Could not find batch %s in the order server database'
-                     % batch_id)
+    except models.Batch.DoesNotExist:
+        logger.error('Could not find batch {}'.format(batch_id))
         raise
     header = []
     for order_item in batch.order_items.all():
         try:
             selected = order_item.selected_delivery_option
-        except ObjectDoesNotExist:
+        except order_item.DoesNotExist:
             selected = order_item.batch.order.selected_delivery_option
-        delivery_option = selected.group_delivery_option.delivery_option
-        if hasattr(delivery_option, 'onlinedataaccess'):
+        if hasattr(selected.option, 'onlinedataaccess'):
             sig = process_online_data_access_item.subtask(
-                (order_item.id, delivery_option.id)
+                (order_item.id, selected.id)
             )
-        elif hasattr(delivery_option, 'onlinedatadelivery'):
+        elif hasattr(selected.option, 'onlinedatadelivery'):
             sig = process_online_data_delivery_item.subtask(
-                (order_item.id, delivery_option.id)
+                (order_item.id, selected.id)
             )
-        elif hasattr(delivery_option, 'mediadelivery'):
+        elif hasattr(selected.option, 'mediadelivery'):
             sig = process_media_delivery_item.subtask(
-                (order_item.id, delivery_option.id)
+                (order_item.id, selected.id)
             )
         else:
             raise
@@ -111,8 +113,10 @@ def process_batch(self, batch_id):
     c = chord(header, body)
     c.apply_async()
 
+
 @shared_task(bind=True)
-def process_online_data_access_item(self, order_item_id, delivery_option_id):
+def process_online_data_access_item(self, order_item_id,
+                                    selected_delivery_option_id):
     """
     Process an order item that specifies online data access as delivery
     """
@@ -125,9 +129,9 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
     logger.debug('Changed the order_item status to {}'.format(
                  models.CustomizableItem.IN_PRODUCTION))
     try:
-        delivery_option = models.DeliveryOption.objects.get(
-                pk=delivery_option_id)
-        protocol = delivery_option.onlinedataaccess.protocol
+        selected_delivery_option = models.DeliveryOption.objects.get(
+                pk=selected_delivery_option_id)
+        protocol = selected_delivery_option.option.onlinedataaccess.protocol
         protocol_path_map = {
             models.OnlineDataAccess.HTTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
                 "HTTP_PROTOCOL_ROOT_DIR",
@@ -141,14 +145,14 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
         item_identifier = order_item.identifier
         order_id = order_item.batch.order.id
         user_name = order_item.batch.order.user.user.username
-        processing_class = getattr(django_settings,
-                                   'OSEOSERVER_PROCESSING_CLASS')
+        processing_class = order_item.collection.item_preparation_class
         logger.debug('processing_class: {}'.format(processing_class))
-        p = utilities.import_class(processing_class, under_celery=True)
-        logger.debug('p: {}'.format(p))
-        result = p.process_order_item_online_access(item_identifier, order_id,
-                                                    user_name,
-                                                    protocol_root_dir)
+        processor = utilities.import_class(processing_class, under_celery=True)
+        logger.debug('processor: {}'.format(processor))
+        result = processor.process_item_online_access(item_identifier,
+                                                      order_id,
+                                                      user_name,
+                                                      protocol_root_dir)
         if result is not None:
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
@@ -164,6 +168,7 @@ def process_online_data_access_item(self, order_item_id, delivery_option_id):
     finally:
         order_item.save()
 
+
 @shared_task(bind=True)
 def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
     """
@@ -172,6 +177,7 @@ def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
 
     raise NotImplementedError
 
+
 @shared_task(bind=True)
 def process_media_delivery_item(self, order_item_id, delivery_option_id):
     """
@@ -179,6 +185,7 @@ def process_media_delivery_item(self, order_item_id, delivery_option_id):
     """
 
     raise NotImplementedError
+
 
 @shared_task(bind=True)
 def update_order_status(self, order_id):
@@ -191,7 +198,7 @@ def update_order_status(self, order_id):
     """
 
     order = models.Order.objects.get(pk=order_id)
-    if order.order_type.name == models.OrderType.PRODUCT_ORDER:
+    if order.order_type.name == models.Order.PRODUCT_ORDER:
         batch_statuses = set([b.status() for b in order.batches.all()])
         old_order_status = order.status
         if len(batch_statuses) == 1:
@@ -202,8 +209,9 @@ def update_order_status(self, order_id):
                     order.completed_on = dt.datetime.now(pytz.utc)
                 elif new_order_status == models.CustomizableItem.FAILED:
                     message = 'Order {} has failed.'.format(order_id) 
-                    utilities.send_mail_to_admins(message)
+                    utilities.send_order_failed_email(order, details=message)
                 order.save()
+
 
 @shared_task(bind=True)
 def monitor_ftp_downloads(self):
@@ -235,6 +243,7 @@ def monitor_ftp_downloads(self):
                     order_item.save()
     except IOError:
         pass # the log file does not exist
+
 
 # TODO
 # this task can be generalized and executed as smaller tasks
@@ -291,6 +300,7 @@ def delete_old_orders(self):
             except (ObjectDoesNotExist, AttributeError) as err:
                 logger.warn(err)
 
+
 def parse_ftp_log_line(line):
     """
     Parse a line of the FTP transfer log file looking for downloaded items.
@@ -339,6 +349,7 @@ def parse_ftp_log_line(line):
         result = oi, current_time
     return result
 
+
 @shared_task(bind=True)
 def test_task(self):
     print('printing something from within a task')
@@ -356,5 +367,4 @@ def test_task(self):
     except ValueError as err:
         logger.error(err)
         utilities.send_mail_to_admins(str(err))
-
 

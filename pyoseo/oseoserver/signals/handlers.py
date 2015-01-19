@@ -4,7 +4,9 @@ import pytz
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_init, pre_save
 from django.contrib.auth.models import User
+from django.conf import settings
 from actstream import action
+from mailqueue.models import MailerMessage
 
 import oseoserver.models as models
 
@@ -52,6 +54,7 @@ def update_status_changed_on_by_order_item(sender, **kwargs):
                     order_item.status != order_item.old_status:
         order_item.status_changed_on = dt.datetime.now(pytz.utc)
 
+
 @receiver(post_save, sender=models.OrderItem, weak=False,
           dispatch_uid='id_for_update_batch')
 def update_batch(sender, **kwargs):
@@ -69,6 +72,7 @@ def update_batch(sender, **kwargs):
     else:
         batch.completed_on = None
 
+
 @receiver(post_save, sender=models.Collection, weak=False,
           dispatch_uid='id_for_create_order_configurations')
 def create_order_configurations(sender, **kwargs):
@@ -78,6 +82,7 @@ def create_order_configurations(sender, **kwargs):
     models.SubscriptionOrderConfiguration.objects.get_or_create(collection=c)
     models.TaskingOrderConfiguration.objects.get_or_create(collection=c)
 
+
 @receiver(post_save, sender=models.ProductOrder, weak=False,
           dispatch_uid='id_for_notify_new_product_order')
 def notify_new_product_order(sender, **kwargs):
@@ -86,8 +91,13 @@ def notify_new_product_order(sender, **kwargs):
     if kwargs["created"]:
         if order.order_type.notify_creation:
             action.send(user, verb="created", target=order)
-        if not order.order_type.automatic_approval:
-            for staff in User.objects.filter(is_staff=True):
-                action.send(order, verb="awaits moderation by",
-                            target=staff.oseouser)
 
+@receiver(post_save, sender=models.ProductOrder, weak=False,
+          dispatch_uid='id_for_moderate_product_order')
+def moderate_product_order(sender, **kwargs):
+    order = kwargs["instance"]
+    created = kwargs["created"]
+    if created and not order.order_type.automatic_approval:
+        for staff in User.objects.filter(is_staff=True):
+            action.send(order, verb="awaits moderation by",
+                        target=staff.oseouser)

@@ -428,8 +428,10 @@ class Order(CustomizableItem):
     MASSIVE_ORDER = 'MASSIVE_ORDER'
     TASKING_ORDER = 'TASKING_ORDER'
     BZIP2 = "bzip2"
+    ZIP = "zip"
     PACKAGING_CHOICES = (
         (BZIP2, BZIP2),
+        (ZIP, ZIP)
     )
     STANDARD = "STANDARD"
     FAST_TRACK = "FAST_TRACK"
