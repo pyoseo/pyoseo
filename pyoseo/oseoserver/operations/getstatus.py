@@ -54,7 +54,7 @@ class GetStatus(OseoOperation):
         if request.orderId is not None:  # 'order retrieve' type of request
             try:
                 order = models.Order.objects.get(id=int(request.orderId))
-                if self._is_user_authorized(user, order):
+                if self._user_is_authorized(user, order):
                     records.append(order)
                 else:
                     raise errors.OseoError('AuthorizationFailed',
@@ -211,16 +211,6 @@ class GetStatus(OseoOperation):
                     raise NotImplementedError
             response.orderMonitorSpecification.append(om)
         return response
-
-    def _is_user_authorized(self, user, order):
-        """
-        Test if a user is allowed to check on the status of an order
-        """
-
-        result = False
-        if order.user == user:
-            result = True
-        return result
 
     def _find_orders(self, request, user):
         """

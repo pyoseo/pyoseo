@@ -27,7 +27,8 @@ class FakeOrderProcessor(object):
     def __init__(self, **kwargs):
         pass
 
-    def parse_option(self, name, value):
+    @staticmethod
+    def parse_option(name, value):
         """
 
         :param name:
@@ -41,20 +42,37 @@ class FakeOrderProcessor(object):
         logger.debug("parsed_value: {}".format(parsed_value))
         return parsed_value
 
-    def process_item_online_access(self, identifier, order_id, user_name,
-                                   http_root):
+    @staticmethod
+    def process_item_online_access(identifier, order_id, user_name,
+                                   packaging, options, delivery_options):
         """
+        Process an item that has been ordered.
+
+        According to the selected options, a single item can in fact result
+        in multiple output files. For example, a multiband dataset may be
+        split into its sub bands.
 
         :param identifier:
+        :type identifier:
         :param order_id:
+        :type order_id:
         :param user_name:
-        :param http_root:
-        :return:
-        :rtype: (bool, string)
+        :type user_name:
+        :param packaging:
+        :type packaging: bool
+        :param options:
+        :type options: dict()
+        :param delivery_options:
+        :type delivery_options: dict()
+        :return: A list with the name of the processed item(s) and a
+            string with additional details
+        :rtype: ([string], string)
         """
 
         logger.debug("fake processing of an order item")
-        #file_name = "bogus file name"
-        file_name = None
-        details = "The item failed because this is a fake processor"
-        return file_name, details
+        logger.debug("arguments: {}".format(locals()))
+        #file_name = None
+        #details = "The item failed because this is a fake processor"
+        file_name = "bogus_file"
+        details = "Pretending to be a file"
+        return [file_name], details

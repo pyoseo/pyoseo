@@ -4,6 +4,14 @@ from django.utils.html import format_html
 
 import models
 
+class OseoFileInline(admin.StackedInline):
+    model = models.OseoFile
+    extra = 1
+
+    def has_add_permission(self, request):
+        return False
+
+
 class OptionChoiceInline(admin.StackedInline):
     model = models.OptionChoice
     extra = 1
@@ -114,12 +122,13 @@ class SubscriptionOrderAdmin(admin.ModelAdmin):
 class OrderItemAdmin(admin.ModelAdmin):
     inlines = (SelectedOptionInline, SelectedDeliveryOptionInline,
                SelectedPaymentOptionInline,
-               SelectedSceneSelectionOptionInline,)
+               SelectedSceneSelectionOptionInline,
+               OseoFileInline,)
     fieldsets = (
         (None, {
             'fields': ('item_id', 'batch', 'status',
-                       'status_changed_on', 'completed_on', 'downloads',
-                       'identifier', 'collection', 'file_name',)
+                       'status_changed_on', 'completed_on',
+                       'identifier', 'collection',)
         }),
         ('Further info',{
             'classes': ('collapse',),
@@ -130,8 +139,7 @@ class OrderItemAdmin(admin.ModelAdmin):
     )
     list_display = ('id', 'item_id', 'link_to_batch', 'link_to_order',
                     'status', 'status_changed_on', 'additional_status_info',)
-    readonly_fields = ('status_changed_on', 'completed_on', 'file_name',
-                       'downloads',)
+    readonly_fields = ('status_changed_on', 'completed_on',)
 
     def link_to_batch(self, obj):
         url = reverse('admin:oseoserver_batch_change', args=(obj.batch_id,))

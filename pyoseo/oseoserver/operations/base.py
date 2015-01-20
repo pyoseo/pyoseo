@@ -29,6 +29,16 @@ class OseoOperation(object):
     It should not be instantiated directly
     """
 
+    def _user_is_authorized(self, user, order):
+        """
+        Test if a user is allowed to check on the status of an order
+        """
+
+        result = False
+        if order.user == user:
+            result = True
+        return result
+
     def _c(self, value):
         """
         Convert between a None and an empty string.

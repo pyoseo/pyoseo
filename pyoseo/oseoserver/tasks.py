@@ -140,19 +140,29 @@ def process_online_data_access_item(self, order_item_id,
             protocol_path_map.get(protocol, ''),
         )
         item_identifier = order_item.identifier
-        order_id = order_item.batch.order.id
-        user_name = order_item.batch.order.user.user.username
+        order = order_item.batch.order
+        user_name = order.user.user.username
         processing_class = order_item.collection.item_preparation_class
         logger.debug('processing_class: {}'.format(processing_class))
         processor = utilities.import_class(processing_class, under_celery=True)
         logger.debug('processor: {}'.format(processor))
-        result, details = processor.process_item_online_access(
-            item_identifier, order_id, user_name, protocol_root_dir)
+        options = order_item.export_options()
+        delivery_options = order_item.export_delivery_options()
+        items, details = processor.process_item_online_access(item_identifier,
+                                                              order.id,
+                                                              user_name,
+                                                              order.packaging,
+                                                              options,
+                                                              delivery_options)
         order_item.additional_status_info = details
-        if result is not None:
+        if any(items):
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
-            order_item.file_name = os.path.basename(result)
+            for i in items:
+                f = models.OseoFile(name=os.path.basename(i),
+                                    available=True,
+                                    order_item=order_item)
+                f.save()
         else:
             order_item.status = models.CustomizableItem.FAILED
             logger.error('THERE HAS BEEN AN ERROR: order item {} has '
@@ -204,6 +214,7 @@ def update_order_status(self, order_id):
             order.status = new_order_status
             if new_order_status == models.CustomizableItem.COMPLETED:
                 order.completed_on = dt.datetime.now(pytz.utc)
+                order.additional_status_info = ""
             elif new_order_status == models.CustomizableItem.FAILED:
                 msg = ""
                 for oi in batch.order_items.all():

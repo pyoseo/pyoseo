@@ -38,7 +38,7 @@ class DescribeResultAccess(OseoOperation):
     ALL_READY = 'allReady'
     NEXT_READY = 'nextReady'
 
-    def __call__(self, request, user, user_password=None, **kwargs):
+    def __call__(self, request, user, **kwargs):
         """
         Implements the OSEO DescribeResultAccess operation.
 
@@ -67,45 +67,38 @@ class DescribeResultAccess(OseoOperation):
             raise errors.OseoError('InvalidOrderIdentifier',
                                    'Invalid value for order',
                                    locator=request.orderId)
-        if order.user != user:
-            raise errors.OseoError('AuthorizationFailed', 'The client is not '
-                                   'authorized to call the operation',
-                                   locator=request.orderId)
+        if not self._user_is_authorized(user, order):
+            raise errors.OseoError('AuthorizationFailed',
+                                   'The client is not authorized to '
+                                   'call the operation',
+                                   locator='orderId')
         completed_items = self._get_completed_items(order,
                                                     request.subFunction)
         logger.info('completed_items: %s' % completed_items)
         order.last_describe_result_access_request = dt.datetime.utcnow()
         order.save()
         response = oseo.DescribeResultAccessResponse(status='success')
-        for i in completed_items:
-            try:
-                gdo = i.selected_delivery_option.group_delivery_option
-            except ObjectDoesNotExist:
-                try:
-                    gdo = order.selected_delivery_option.group_delivery_option
-                except ObjectDoesNotExist:
-                    pass  # this object does not specify onlineDataAccess
-            try:
-                protocol = gdo.delivery_option.onlinedataaccess.protocol
+        for item, delivery in completed_items:
+            protocol = delivery.onlinedataaccess.protocol
+            for f in item.files.all():
                 iut = oseo.ItemURLType()
-                iut.itemId = i.item_id
+                iut.itemId = item.item_id
                 iut.productId = oseo.ProductIdType(
-                    identifier=i.identifier,
+                    identifier=item.identifier,
                 )
-                if i.collection_id is not None:
-                    iut.productId.collectionId = self._n(i.collection_id)
+                iut.productId.collectionId = item.collection.collection_id
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
                 iut.itemAddress.ResourceAddress.URL = self.get_url(
                     protocol,
-                    i,
+                    f,
+                    order.id,
+                    item.item_id,
                     user.user.username,
-                    user_password
+                    "user's password is unknown"  # user password
                 )
                 response.URLs.append(iut)
-            except ObjectDoesNotExist:
-                pass
-        return response, status_code
+        return response, status_code, None
 
     def _get_completed_items(self, order, behaviour):
         """
@@ -115,46 +108,66 @@ class DescribeResultAccess(OseoOperation):
                         OSEO specification
         :type behaviour: str
         :return: a list with the completed order items for this order
+        :rtyp: [(models.OrderItem, models.DeliveryOption)]
         """
 
         now = dt.datetime.utcnow()
         last_time = order.last_describe_result_access_request
         completed_items = []
+        order_delivery = order.selected_delivery_option.option
         for batch in order.batches.all():
             for order_item in batch.order_items.all():
+                try:
+                    delivery = order_item.selected_delivery_option.option
+                except models.SelectedDeliveryOption.DoesNotExist:
+                    delivery = order_delivery
+                if not hasattr(delivery, "onlinedataaccess"):
+                    # getStatus only applies to items with onlinedataaccess
+                    continue
                 if order_item.status == models.CustomizableItem.COMPLETED:
+                    to_append = None
                     if last_time is None or behaviour == self.ALL_READY:
-                        completed_items.append(order_item)
+                        to_append = (order_item, delivery)
                     elif behaviour == self.NEXT_READY and \
                             order_item.completed_on >= last_time:
-                        completed_items.append(order_item)
+                        to_append = (order_item, delivery)
+                    if to_append is not None:
+                        completed_items.append(to_append)
+
         return completed_items
 
-    def get_url(self, protocol, order_item, user_name, user_password):
+    def get_url(self, protocol, oseo_file, order_id, item_id, user_name,
+                user_password):
         """
         Return the URL where the order item is available for online access.
 
         :arg protocol:
         :type protocol: str
-        :arg order_item:
-        :type order_item:
-        :arg user: User that made the order
-        :type user: oseoserver.models.OseoUser
-        :arg user_name:
+        :arg oseo_file:
+        :type oseo_file: models.OseoFile
+        :arg order_id:
+        :type order_id: int
+        :arg item_id:
+        :type item_id: str
+        :arg user_name: User that made the order
         :type user_name: str
+        :arg user_password:
+        :type user_password: str
         """
 
-        host_name = django_settings.ALLOWED_HOSTS[0][1:]
+        host_name = django_settings.ALLOWED_HOSTS[0].lstrip('.')
         if protocol == models.OnlineDataAccess.HTTP:
             uri = reverse(views.show_item, args=(user_name,
-                          order_item.batch.order.id, order_item.file_name))
+                          order_id, item_id, oseo_file.name))
             url = ''.join(('http://', host_name, uri))
         elif protocol == models.OnlineDataAccess.FTP:
-            url_template = 'ftp://{user}@{host}/order_{order:02d}/{file}'
+            url_template = ("ftp://{user}@{host}/order_{order:02d}/"
+                            "{item}/{oseo_file}")
             url = url_template.format(user=user_name, password=user_password,
                                       host=host_name,
-                                      order=order_item.batch.order.id,
-                                      file=order_item.file_name)
+                                      order=order_id,
+                                      item=item_id,
+                                      oseo_file=oseo_file.name)
         else:
             raise NotImplementedError
         return url

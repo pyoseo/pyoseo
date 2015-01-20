@@ -556,19 +556,54 @@ class OrderItem(CustomizableItem):
                                             "catalog")
     item_id = models.CharField(max_length=30, help_text="Id for the item in "
                                                         "the order request")
-    file_name = models.CharField(max_length=255,
-                                 help_text="name of the file that this order "
-                                           "item represents",
-                                 blank=True)
+
+    def export_options(self):
+        valid_options = dict()
+        for order_option in self.batch.order.selected_options.all():
+            valid_options[order_option.option.name] = order_option.value
+        for item_option in self.selected_options.all():
+            valid_options[item_option.option.name] = item_option.value
+        return valid_options
+
+    def export_delivery_options(self):
+        delivery = getattr(self, "selected_delivery_option", None)
+        if delivery is None:
+            delivery = getattr(self.batch.order, "selected_delivery_option")
+        valid_delivery = {
+            "copies": delivery.copies,
+            "annotation": delivery.annotation,
+            "special_instructions": delivery.special_instructions,
+            "delivery_fee": delivery.option.delivery_fee,
+        }
+        if hasattr(delivery.option, "onlinedataaccess"):
+            valid_delivery["delivery_type"] = "onlinedataaccess"
+            valid_delivery["protocol"] = \
+                delivery.option.onlinedataaccess.protocol
+        elif hasattr(delivery.option, "onlinedatadelivery"):
+            valid_delivery["delivery_type"] = "onlinedatadelivery"
+            valid_delivery["protocol"] = \
+                delivery.option.onlinedatadelivery.protocol
+        else:  # media delivery
+            valid_delivery["delivery_type"] = "mediadelivery"
+        return valid_delivery
+
+
+    def __unicode__(self):
+        return str(self.item_id)
+
+
+class OseoFile(models.Model):
+    order_item = models.ForeignKey("OrderItem", related_name="files")
+    created_on = models.DateTimeField(auto_now_add=True)
+    name = models.CharField(max_length=255)
+    available = models.BooleanField(default=False)
     downloads = models.SmallIntegerField(default=0,
                                          help_text="Number of times this "
                                                    "order item has been "
                                                    "downloaded.")
-    #    last_downloaded_on = models.DateTimeField(editable=False, blank=True,
-    #                                              null=True)
 
-    def __unicode__(self):
-        return str(self.item_id)
+    def __unicode(self):
+        return self.name
 
 
 class OseoGroup(models.Model):
