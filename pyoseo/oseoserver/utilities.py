@@ -34,44 +34,6 @@ def import_class(python_path, *instance_args, **instance_kwargs):
     instance = the_class(*instance_args, **instance_kwargs)
     return instance
 
-def send_mail_to_admins(message):
-    """
-    """
-
-    mail_domain = settings.OSEOSERVER_MAIL_DOMAIN
-    sender_user = settings.OSEOSERVER_MAIL_ACCOUNT
-    mail_sender = '{}@{}'.format(sender_user, mail_domain)
-    mail_sender_password = settings.OSEOSERVER_MAIL_ACCOUNT_PASSWORD
-    sender_server = settings.OSEOSERVER_MAIL_SERVER
-    mail_server = '{}.{}'.format(sender_server, mail_domain)
-    mail_server_port = settings.OSEOSERVER_MAIL_SERVER_PORT
-    mailing_list = settings.OSEOSERVER_ADMIN_MAILS
-    msg = MIMEText(message)
-    msg['Subject'] = 'pyoseo error'
-    msg['From'] = mail_sender
-    msg['To'] = ', '.join(mailing_list)
-    #print('message: {}'.format(msg))
-    #print('mail_server: {}'.format(mail_server))
-    #print('mail_server_port: {}'.format(mail_server_port))
-    s = smtplib.SMTP(mail_server, mail_server_port)
-    s.starttls()
-    s.login(sender_user, mail_sender_password)
-    s.sendmail(mail_sender, mailing_list, msg.as_string())
-    s.quit()
-
-#def send_moderation_email(order):
-#    for staff in User.objects.filter(is_staff=True).exclude(email=""):
-#        msg = MailerMessage(
-#            subject="{} {} awaits moderation".format(order.order_type.name,
-#                                                     order.id),
-#            to_address=staff.email,
-#            from_address=settings.EMAIL_HOST_USER,
-#            content="{} {} is waiting to be moderated".format(
-#                order.order_type.name, order.id),
-#            app="oseoserver"
-#        )
-#        msg.save()
-
 def send_moderation_email(order):
     send_email(
         "{} {} awaits moderation".format(order.order_type.name, order.id),

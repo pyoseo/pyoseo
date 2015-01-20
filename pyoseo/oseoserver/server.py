@@ -445,32 +445,30 @@ class OseoServer(object):
         return etree.tostring(soap_env, encoding=self.ENCODING,
                               pretty_print=True)
 
-    def dispatch_order(self, order, **kwargs):
+    def dispatch_order(self, order, force=False, **kwargs):
         """Dispatch an order for processing in the async queue."""
 
+        if force:
+            order.status = models.CustomizableItem.ACCEPTED
         if order.status == models.CustomizableItem.SUBMITTED:
             utilities.send_moderation_email(order)
         elif order.status == models.CustomizableItem.ACCEPTED:
+            logger.debug("sending order {} to processing queue...".format(
+                order.id))
             if order.order_type.name == models.Order.PRODUCT_ORDER:
                 tasks.process_product_order.apply_async((order.id,))
             elif order.order_type.name == models.Order.SUBSCRIPTION_ORDER:
                 tasks.process_subscription_order.apply_async((order.id, kwargs))
 
-    #def send_moderation_email(self, order):
-    #    for staff in User.objects.filter(is_staff=True):
-    #        if staff.email != '':
-    #            msg = MailerMessage(
-    #                subject="{} {} awaits moderation".format(
-    #                    order.order_type.name, order.id),
-    #                to_address=staff.email,
-    #                from_address=settings.EMAIL_HOST_USER,
-    #                content="{} {} is waiting to be moderated".format(
-    #                    order.order_type.name, order.id),
-    #                app="oseoserver"
-    #            )
-    #            msg.save()
-
     def process_subscriptions(self, current_timeslot):
         for s in models.SubscriptionOrder.objects.filter(active=True):
             self.dispatch_order(s, current_timeslot=current_timeslot)
 
+    def process_product_orders(self):
+        for order in models.ProductOrder.objects.filter(
+                status=models.CustomizableItem.ACCEPTED):
+            self.dispatch_order(order)
+
+    def reprocess_order(self, order_id):
+        order = models.Order.objects.get(id=order_id)
+        self.dispatch_order(order, force=True)

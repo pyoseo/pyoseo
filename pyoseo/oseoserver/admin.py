@@ -101,7 +101,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(models.ProductOrder)
 class ProductOrderAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("id", "status",)
+    list_editable = ("status",)
 
 
 @admin.register(models.SubscriptionOrder)
@@ -128,7 +129,7 @@ class OrderItemAdmin(admin.ModelAdmin):
         }),
     )
     list_display = ('id', 'item_id', 'link_to_batch', 'link_to_order',
-                    'status', 'status_changed_on',)
+                    'status', 'status_changed_on', 'additional_status_info',)
     readonly_fields = ('status_changed_on', 'completed_on', 'file_name',
                        'downloads',)
 

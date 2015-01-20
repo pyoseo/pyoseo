@@ -29,40 +29,6 @@ class OseoOperation(object):
     It should not be instantiated directly
     """
 
-    def _get_delivery_options(self, db_item):
-        """
-        Return the delivery options for an input database item.
-
-        :arg db_item: the database record model that has the delivery options
-        :type db_item: pyoseo.models.CustomizableItem
-        :return: A pyxb object with the delivery options
-        """
-
-        try:
-            do = db_item.selected_delivery_option
-            dot = oseo.DeliveryOptionsType()
-            try:
-                oda = do.group_delivery_option.delivery_option.onlinedataaccess
-                dot.onlineDataAccess = pyxb.BIND()
-                dot.onlineDataAccess.protocol = oda.protocol
-            except ObjectDoesNotExist:
-                try:
-                    odd = do.group_delivery_option.delivery_option.onlinedatadelivery
-                    dot.onlineDataDelivery = pyxb.BIND()
-                    dot.onlineDataDelivery.protocol = odd.protocol
-                except ObjectDoesNotExist:
-                    md = do.group_delivery_option.delivery_option.mediadelivery
-                    dot.mediaDelivery = pyxb.BIND()
-                    dot.mediaDelivery.packageMedium = md.package_medium
-                    dot.mediaDelivery.shippingInstructions = self._n(
-                            md.shipping_instructions)
-            dot.numberOfCopies = self._n(do.copies)
-            dot.productAnnotation = self._n(do.annotation)
-            dot.specialInstructions = self._n(do.special_instructions)
-        except ObjectDoesNotExist:
-            dot = None
-        return dot
-
     def _c(self, value):
         """
         Convert between a None and an empty string.

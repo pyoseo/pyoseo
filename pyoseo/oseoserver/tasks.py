@@ -47,11 +47,6 @@ logger = get_task_logger(__name__)
 
 @shared_task(bind=True)
 def process_product_order(self, order_id):
-    raise NotImplementedError
-
-
-@shared_task(bind=True)
-def process_product_order(self, order_id):
     """
     Process a product order.
 
@@ -92,7 +87,7 @@ def process_batch(self, batch_id):
     for order_item in batch.order_items.all():
         try:
             selected = order_item.selected_delivery_option
-        except order_item.DoesNotExist:
+        except models.SelectedDeliveryOption.DoesNotExist:
             selected = order_item.batch.order.selected_delivery_option
         if hasattr(selected.option, 'onlinedataaccess'):
             sig = process_online_data_access_item.subtask(
@@ -121,6 +116,8 @@ def process_online_data_access_item(self, order_item_id,
     Process an order item that specifies online data access as delivery
     """
 
+    print("SELECTED_DELIVERY_OPTION_ID: {}".format(selected_delivery_option_id))
+
     order_item = models.OrderItem.objects.get(pk=order_item_id)
     logger.debug('Retrieved order item from the database: {}'.format(
                  order_item))
@@ -129,14 +126,14 @@ def process_online_data_access_item(self, order_item_id,
     logger.debug('Changed the order_item status to {}'.format(
                  models.CustomizableItem.IN_PRODUCTION))
     try:
-        selected_delivery_option = models.DeliveryOption.objects.get(
-                pk=selected_delivery_option_id)
+        selected_delivery_option = models.SelectedDeliveryOption.objects.get(
+            pk=selected_delivery_option_id)
         protocol = selected_delivery_option.option.onlinedataaccess.protocol
         protocol_path_map = {
             models.OnlineDataAccess.HTTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
-                "HTTP_PROTOCOL_ROOT_DIR",
+                                          "HTTP_PROTOCOL_ROOT_DIR",
             models.OnlineDataAccess.FTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
-                "FTP_PROTOCOL_ROOT_DIR",
+                                         "FTP_PROTOCOL_ROOT_DIR",
         }
         protocol_root_dir = getattr(
             django_settings,
@@ -149,10 +146,9 @@ def process_online_data_access_item(self, order_item_id,
         logger.debug('processing_class: {}'.format(processing_class))
         processor = utilities.import_class(processing_class, under_celery=True)
         logger.debug('processor: {}'.format(processor))
-        result = processor.process_item_online_access(item_identifier,
-                                                      order_id,
-                                                      user_name,
-                                                      protocol_root_dir)
+        result, details = processor.process_item_online_access(
+            item_identifier, order_id, user_name, protocol_root_dir)
+        order_item.additional_status_info = details
         if result is not None:
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
@@ -161,10 +157,11 @@ def process_online_data_access_item(self, order_item_id,
             order_item.status = models.CustomizableItem.FAILED
             logger.error('THERE HAS BEEN AN ERROR: order item {} has '
                          'failed'.format(order_item_id))
-    except Exception as err:
+    except Exception as e:
         order_item.status = models.CustomizableItem.FAILED
+        order_item.additional_status_info = str(e)
         logger.error('THERE HAS BEEN AN ERROR: order item {} has failed '
-                     'with the error: {}'.format(order_item_id, err))
+                     'with the error: {}'.format(order_item_id, e))
     finally:
         order_item.save()
 
@@ -199,18 +196,31 @@ def update_order_status(self, order_id):
 
     order = models.Order.objects.get(pk=order_id)
     if order.order_type.name == models.Order.PRODUCT_ORDER:
-        batch_statuses = set([b.status() for b in order.batches.all()])
         old_order_status = order.status
-        if len(batch_statuses) == 1:
-            new_order_status = batch_statuses.pop()
-            if old_order_status != new_order_status:
-                order.status = new_order_status
-                if new_order_status == models.CustomizableItem.COMPLETED:
-                    order.completed_on = dt.datetime.now(pytz.utc)
-                elif new_order_status == models.CustomizableItem.FAILED:
-                    message = 'Order {} has failed.'.format(order_id) 
-                    utilities.send_order_failed_email(order, details=message)
-                order.save()
+        batch = order.batches.get()  # ProductOrder's have only one batch
+        new_order_status = batch.status()
+        if old_order_status != new_order_status or \
+                        old_order_status == models.CustomizableItem.FAILED:
+            order.status = new_order_status
+            if new_order_status == models.CustomizableItem.COMPLETED:
+                order.completed_on = dt.datetime.now(pytz.utc)
+            elif new_order_status == models.CustomizableItem.FAILED:
+                msg = ""
+                for oi in batch.order_items.all():
+                    if oi.status == models.CustomizableItem.FAILED:
+                        additional = oi.additional_status_info
+                        msg = "\n\t".join(
+                            (
+                                msg,
+                                 "* Order item {}: {}".format(oi.id,
+                                                              additional)
+                            ),
+                        )
+                order.additional_status_info = ("Order {} has "
+                                                "failed.{}".format(order.id,
+                                                                   msg))
+                utilities.send_order_failed_email(order, details=msg)
+            order.save()
 
 
 @shared_task(bind=True)

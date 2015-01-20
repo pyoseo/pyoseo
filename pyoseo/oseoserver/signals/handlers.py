@@ -23,8 +23,14 @@ def add_user_profile_callback(sender, **kwargs):
     profile.save()
 
 
-@receiver(post_init, sender=models.Order, weak=False,
-          dispatch_uid='id_for_get_old_status_order')
+@receiver(post_init, sender=models.TaskingOrder, weak=False,
+          dispatch_uid='id_for_get_old_status_tasking_order')
+@receiver(post_init, sender=models.SubscriptionOrder, weak=False,
+          dispatch_uid='id_for_get_old_status_subscription_order')
+@receiver(post_init, sender=models.MassiveOrder, weak=False,
+          dispatch_uid='id_for_get_old_status_massive_order')
+@receiver(post_init, sender=models.ProductOrder, weak=False,
+          dispatch_uid='id_for_get_old_status_product_order')
 def get_old_status_order(sender, **kwargs):
     order = kwargs['instance']
     order.old_status = order.status
@@ -37,9 +43,15 @@ def get_old_status_order_item(sender, **kwargs):
     order_item.old_status = order_item.status
 
 
-@receiver(pre_save, sender=models.Order, weak=False,
-          dispatch_uid='id_for_update_status_changed_on_order')
-def update_status_changed_on_by_order(sender, **kwargs):
+@receiver(pre_save, sender=models.TaskingOrder, weak=False,
+          dispatch_uid='id_for_update_status_changed_on_tasking_order')
+@receiver(pre_save, sender=models.SubscriptionOrder, weak=False,
+          dispatch_uid='id_for_update_status_changed_on_subscription_order')
+@receiver(pre_save, sender=models.MassiveOrder, weak=False,
+          dispatch_uid='id_for_update_status_changed_on_massive_order')
+@receiver(pre_save, sender=models.ProductOrder, weak=False,
+          dispatch_uid='id_for_update_status_changed_on_product_order')
+def update_status_changed_on_order(sender, **kwargs):
     order = kwargs['instance']
     if order.status_changed_on is None or \
             order.status != order.old_status:

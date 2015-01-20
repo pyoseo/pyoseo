@@ -17,7 +17,15 @@ A default order processing module for PyOSEO. It does nothing, but serves as an
 example of the API that PyOSEO expects to find on a real implementation
 """
 
+import logging
+
+logger = logging.getLogger('.'.join(('pyoseo', __name__)))
+
+
 class FakeOrderProcessor(object):
+
+    def __init__(self, **kwargs):
+        pass
 
     def parse_option(self, name, value):
         """
@@ -28,9 +36,9 @@ class FakeOrderProcessor(object):
         """
 
         parsed_value = value.text
-        print("name: {}".format(name))
-        print("value: {}".format(value))
-        print("parsed_value: {}".format(parsed_value))
+        logger.debug("name: {}".format(name))
+        logger.debug("value: {}".format(value))
+        logger.debug("parsed_value: {}".format(parsed_value))
         return parsed_value
 
     def process_item_online_access(self, identifier, order_id, user_name,
@@ -42,6 +50,11 @@ class FakeOrderProcessor(object):
         :param user_name:
         :param http_root:
         :return:
+        :rtype: (bool, string)
         """
 
-        return None
+        logger.debug("fake processing of an order item")
+        #file_name = "bogus file name"
+        file_name = None
+        details = "The item failed because this is a fake processor"
+        return file_name, details
