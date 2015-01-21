@@ -157,9 +157,7 @@ class OseoServer(object):
             operation, op_name = self._get_operation(schema_instance)
             response, status_code, info = operation(schema_instance, user)
             if op_name == "Submit":
-                order = info["order"]
-                if order.order_type.name == models.Order.PRODUCT_ORDER:
-                    self.dispatch_order(info["order"])
+                self.dispatch_order(info["order"])
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:

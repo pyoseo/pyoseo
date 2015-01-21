@@ -17,12 +17,13 @@ Some utility functions for pyoseo
 """
 
 import importlib
-import smtplib
-from email.mime.text import MIMEText
+import logging
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from mailqueue.models import MailerMessage
+
+logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
 def import_class(python_path, *instance_args, **instance_kwargs):
     """
@@ -33,6 +34,16 @@ def import_class(python_path, *instance_args, **instance_kwargs):
     the_class = getattr(the_module, class_name)
     instance = the_class(*instance_args, **instance_kwargs)
     return instance
+
+
+def get_custom_code(collection, processing_step):
+    item_processor = collection.item_processor
+    processing_class = item_processor.python_path
+    params = item_processor.export_params(processing_step)
+    logger.debug('processing_class: {}'.format(processing_class))
+    logger.debug('params: {}'.format(params))
+    return processing_class, params
+
 
 def send_moderation_email(order):
     send_email(

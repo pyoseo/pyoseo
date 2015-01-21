@@ -28,7 +28,7 @@ class FakeOrderProcessor(object):
         pass
 
     @staticmethod
-    def parse_option(name, value):
+    def parse_option(name, value, **kwargs):
         """
 
         :param name:
@@ -44,7 +44,8 @@ class FakeOrderProcessor(object):
 
     @staticmethod
     def process_item_online_access(identifier, order_id, user_name,
-                                   packaging, options, delivery_options):
+                                   packaging, options, delivery_options,
+                                   **kwargs):
         """
         Process an item that has been ordered.
 
@@ -76,3 +77,9 @@ class FakeOrderProcessor(object):
         file_name = "bogus_file"
         details = "Pretending to be a file"
         return [file_name], details
+
+    @staticmethod
+    def clean_up_item(path, **kwargs):
+        logger.debug("fake clean up of an order item")
+        logger.debug("arguments: {}".format(locals()))
+

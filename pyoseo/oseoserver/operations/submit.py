@@ -454,9 +454,12 @@ class Submit(OseoOperation):
                                                              parsed_value,
                                                              order_config)
             else:
-                h = order_config.collection.item_preparation_class
-                handler = utilities.import_class(h)
-                result = handler.parse_option(name, value)
+                processing_class, params = utilities.get_custom_code(
+                    order_config.collection,
+                    models.ItemProcessor.PROCESSING_PARSE_OPTION
+                )
+                handler = utilities.import_class(processing_class)
+                result = handler.parse_option(name, value, **params)
         except models.Option.DoesNotExist:
             raise errors.InvalidOptionError(name, order_config)
         return result

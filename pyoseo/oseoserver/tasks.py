@@ -142,9 +142,11 @@ def process_online_data_access_item(self, order_item_id,
         item_identifier = order_item.identifier
         order = order_item.batch.order
         user_name = order.user.user.username
-        processing_class = order_item.collection.item_preparation_class
-        logger.debug('processing_class: {}'.format(processing_class))
-        processor = utilities.import_class(processing_class, under_celery=True)
+        processing_class, params = utilities.get_custom_code(
+            order_item.collection,
+            models.ItemProcessor.PROCESSING_PROCESS_ITEM
+        )
+        processor = utilities.import_class(processing_class)
         logger.debug('processor: {}'.format(processor))
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
@@ -153,7 +155,8 @@ def process_online_data_access_item(self, order_item_id,
                                                               user_name,
                                                               order.packaging,
                                                               options,
-                                                              delivery_options)
+                                                              delivery_options,
+                                                              **params)
         order_item.additional_status_info = details
         if any(items):
             order_item.status = models.CustomizableItem.COMPLETED

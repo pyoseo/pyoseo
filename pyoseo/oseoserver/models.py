@@ -125,11 +125,7 @@ class Collection(models.Model):
         help_text="The price of an individual product",
         default=Decimal(0)
     )
-    item_preparation_class = models.CharField(
-        max_length=255,
-        help_text="Python path to a custom class used for preparing "
-                  "order items"
-    )
+    item_processor = models.ForeignKey("ItemProcessor")
 
     def _product_orders_enabled(self):
         return "enabled" if self.productorderconfiguration.enabled \
@@ -268,6 +264,35 @@ class InvoiceAddress(AbstractDeliveryAddress):
 
     class Meta:
         verbose_name_plural = "invoice addresses"
+
+
+class ItemProcessor(models.Model):
+    PROCESSING_PARSE_OPTION = "option_parsing"
+    PROCESSING_PROCESS_ITEM = "item_processing"
+    PROCESSING_CLEAN_ITEM = "item_cleanup"
+
+    python_path = models.CharField(
+        max_length=255,
+        default="oseoserver.orderpreparation.noop.FakeOrderProcessor",
+        help_text="Python import path to a custom class that is used to "
+                  "process the order items. This class must conform to the "
+                  "expected interface."
+    )
+
+    def export_params(self, processing_step):
+        valid_params = dict()
+        if processing_step == self.PROCESSING_PARSE_OPTION:
+            qs = self.parameters.filter(use_in_option_parsing=True)
+        elif processing_step == self.PROCESSING_PROCESS_ITEM:
+            qs = self.parameters.filter(use_in_item_processing=True)
+        else:
+            qs = self.parameters.filter(use_in_item_cleanup=True)
+        for param in qs:
+            valid_params[param.name] = param.value
+        return valid_params
+
+    def __unicode__(self):
+        return self.python_path
 
 
 class MediaDelivery(DeliveryOption):
@@ -651,6 +676,19 @@ class PaymentOption(AbstractOption):
         return self.name
 
 
+class ProcessorParameter(models.Model):
+    item_processor = models.ForeignKey("ItemProcessor",
+                                       related_name="parameters")
+    name = models.CharField(max_length=255)
+    value = models.CharField(max_length=255)
+    use_in_option_parsing = models.BooleanField(default=False)
+    use_in_item_processing = models.BooleanField(default=False)
+    use_in_item_cleanup = models.BooleanField(default=False)
+
+    def __unicode__(self):
+        return self.name
+
+
 class SceneSelectionOption(AbstractOption):
 
     def __unicode__(self):
@@ -710,3 +748,5 @@ class SelectedDeliveryOption(models.Model):
 
     def __unicode__(self):
         return self.option.__unicode__()
+
+

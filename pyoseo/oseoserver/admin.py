@@ -4,6 +4,11 @@ from django.utils.html import format_html
 
 import models
 
+
+class ProcessorParameterInline(admin.StackedInline):
+    model = models.ProcessorParameter
+    extra = 1
+
 class OseoFileInline(admin.StackedInline):
     model = models.OseoFile
     extra = 1
@@ -188,7 +193,7 @@ class CollectionAdmin(admin.ModelAdmin):
                TaskingOrderConfigurationInline,)
     list_display = ('name',
                     'collection_id',
-                    'item_preparation_class',
+                    'item_processor',
                     'product_orders',
                     'massive_orders',
                     'subscription_orders',
@@ -226,6 +231,12 @@ class OrderTypeAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(models.ItemProcessor)
+class ItemProcessorAdmin(admin.ModelAdmin):
+    inlines = (ProcessorParameterInline,)
+
 
 admin.site.register(models.OnlineDataAccess)
 admin.site.register(models.OnlineDataDelivery)
