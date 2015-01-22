@@ -108,6 +108,7 @@ class OseoServer(object):
         "InvalidOrderIdentifier": "client",
         "NoApplicableCode": "client",
         "UnsupportedCollection": "client",
+        "InvalidParameterValue": "client",
     }
 
     OPERATION_CLASSES = {
@@ -172,6 +173,13 @@ class OseoServer(object):
             result = self.create_exception_report(err.code, err.text,
                                                   soap_version,
                                                   locator=err.locator)
+        except errors.InvalidOptionError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "InvalidParameterValue",
+                "Invalid value for parameter",
+                soap_version,
+                e.option)
         except errors.NonSoapRequestError as e:
             status_code = 400
             result = e
@@ -179,13 +187,13 @@ class OseoServer(object):
             status_code = 500
             result = e
         except pyxb.UnrecognizedDOMRootNodeError as e:
-            status_code = 404
+            status_code = 400
             result = self.create_exception_report(
                 "NoApplicableCode",
                 "Unsupported operation: {}".format(e.node.tagName),
                 soap_version)
         except pyxb.UnrecognizedContentError as e:
-            status_code = 404
+            status_code = 400
             result = self.create_exception_report(
                 "NoApplicableCode",
                 str(e),

@@ -41,7 +41,7 @@ class InvalidOrderTypeError(PyOseoError):
         self.order_type = order_type
 
     def __str__(self):
-        return "Orders of type {} are not allowed".format(order_type)
+        return "Orders of type {} are not allowed".format(self.order_type)
 
 
 class InvalidOptionError(PyOseoError):
@@ -79,7 +79,19 @@ class InvalidGlobalOptionValueError(InvalidOptionValueError):
 
 
 class InvalidDeliveryOptionError(PyOseoError):
-    pass
+
+    def __init__(self, collection, order_type):
+        self.collection = collection
+        self.order_type = order_type
+
+
+class CustomOptionParsingError(PyOseoError):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def __str__(self):
+        return "CustomOptionParsingError: {} {}".format(self.args, self.kwargs)
 
 
 class InvalidGlobalDeliveryOptionError(PyOseoError):

@@ -57,6 +57,7 @@ def process_product_order(self, order_id):
     try:
         order = models.ProductOrder.objects.get(pk=order_id)
         order.status = models.CustomizableItem.IN_PRODUCTION
+        order.additional_status_info = "Order is being processed"
         order.save()
     except models.ProductOrder.DoesNotExist:
         logger.error('could not find order {}'.format(order_id))
@@ -122,6 +123,7 @@ def process_online_data_access_item(self, order_item_id,
     logger.debug('Retrieved order item from the database: {}'.format(
                  order_item))
     order_item.status = models.CustomizableItem.IN_PRODUCTION
+    order_item.additional_status_info = "Item is being processed"
     order_item.save()
     logger.debug('Changed the order_item status to {}'.format(
                  models.CustomizableItem.IN_PRODUCTION))
@@ -146,7 +148,8 @@ def process_online_data_access_item(self, order_item_id,
             order_item.collection,
             models.ItemProcessor.PROCESSING_PROCESS_ITEM
         )
-        processor = utilities.import_class(processing_class)
+        processor = utilities.import_class(processing_class,
+                                           logger_type="celery")
         logger.debug('processor: {}'.format(processor))
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()

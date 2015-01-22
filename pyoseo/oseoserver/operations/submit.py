@@ -64,10 +64,12 @@ class Submit(OseoOperation):
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
         default_status = models.Order.SUBMITTED
+        additional_status_info = ("Order is awaiting approval")
         if order_spec["order_type"].automatic_approval:
             default_status = models.Order.ACCEPTED
+            additional_status_info = ("Order is placed in processing queue")
         order = self.create_order(order_spec, user, status_notification,
-                                  default_status)
+                                  default_status, additional_status_info)
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
         response.orderReference = self._n(order.reference)
@@ -127,7 +129,8 @@ class Submit(OseoOperation):
             raise errors.InvalidGlobalDeliveryOptionError()
         return spec
 
-    def create_order(self, order_spec, user, status_notification, status):
+    def create_order(self, order_spec, user, status_notification, status,
+                     additional_status_info):
         """
         Persist the order specification in the database.
 
@@ -141,8 +144,7 @@ class Submit(OseoOperation):
         general_params = {
             "order_type": order_spec["order_type"],
             "status": status,
-            "additional_status_info": "Order has been submitted and is "
-                                      "awaiting approval",
+            "additional_status_info": additional_status_info,
             "remark": order_spec["order_remark"],
             "user": user,
             "reference": order_spec["order_reference"],
@@ -436,6 +438,7 @@ class Submit(OseoOperation):
         :rtype:
         """
 
+        logger_type = "pyoseo"
         try:
             option = order_config.options.get(name=name)
             choices = [c.value for c in option.choices.all()]
@@ -444,9 +447,13 @@ class Submit(OseoOperation):
                 if naive_value in choices:
                     result = naive_value
                 else:
-                    h = order_config.collection.item_preparation_class
-                    handler = utilities.import_class(h)
-                    parsed_value = handler.parse_option(name, value)
+                    processing_class, params = utilities.get_custom_code(
+                        order_config.collection,
+                        models.ItemProcessor.PROCESSING_PARSE_OPTION
+                    )
+                    handler = utilities.import_class(processing_class,
+                                                     logger_type=logger_type)
+                    parsed_value = handler.parse_option(name, value, **params)
                     if parsed_value in choices:
                         result = parsed_value
                     else:
@@ -458,10 +465,13 @@ class Submit(OseoOperation):
                     order_config.collection,
                     models.ItemProcessor.PROCESSING_PARSE_OPTION
                 )
-                handler = utilities.import_class(processing_class)
+                handler = utilities.import_class(processing_class,
+                                                 logger_type=logger_type)
                 result = handler.parse_option(name, value, **params)
         except models.Option.DoesNotExist:
             raise errors.InvalidOptionError(name, order_config)
+        except Exception as e:
+            raise errors.CustomOptionParsingError(*e.args)
         return result
 
     def _validate_delivery_options(self, requested_item, order_config):
