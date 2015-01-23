@@ -34,7 +34,8 @@ def oseo_endpoint(request):
     return response
 
 
-def show_item(request, user_name, order_id, item_file_name):
+# TODO: Account for files which are not ACTIVE anymore
+def show_item(request, user_name, order_id, item_id, item_file_name):
     """
     Return the already available order item
 
@@ -44,8 +45,9 @@ def show_item(request, user_name, order_id, item_file_name):
 
     order_id = int(order_id)
     try:
-        order_item = models.OrderItem.objects.get(batch__order__id=order_id,
-                                                  file_name=item_file_name)
+        oseo_file = models.OseoFile.objects.get(order_item=item_id,
+                                                name__contains=item_file_name)
+        order_item = oseo_file.order_item
     except ObjectDoesNotExist:
         raise Http404
     orders_root_dir = getattr(
@@ -66,12 +68,13 @@ def show_item(request, user_name, order_id, item_file_name):
             ct = 'application/x-bzip2'
         response = HttpResponse(FileWrapper(open(item_path)),
                                 content_type=ct)
-        response['Content-Disposition'] = 'attachment; filename="%s"' % \
-            item_file_name
-        order_item.downloads += 1
-        order_item.status = models.CustomizableItem.DOWNLOADED
-        order_item.last_downloaded_on = dt.datetime.utcnow()
-        order_item.save()
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(
+            item_file_name)
+        oseo_file.downloads += 1
+        oseo_file.save()
+        if all([f.downloaded() for f in order_item.files.all()]):
+            order_item.status = models.CustomizableItem.DOWNLOADED
+            order_item.save()
     else:
         raise Http404
     return response

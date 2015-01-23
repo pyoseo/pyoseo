@@ -627,7 +627,10 @@ class OseoFile(models.Model):
                                                    "order item has been "
                                                    "downloaded.")
 
-    def __unicode(self):
+    def downloaded(self):
+        return True if self.downloads > 0 else False
+
+    def __unicode__(self):
         return self.name
 
 

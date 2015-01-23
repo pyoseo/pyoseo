@@ -470,6 +470,8 @@ class Submit(OseoOperation):
                 result = handler.parse_option(name, value, **params)
         except models.Option.DoesNotExist:
             raise errors.InvalidOptionError(name, order_config)
+        except errors.InvalidOptionValueError:
+            raise
         except Exception as e:
             raise errors.CustomOptionParsingError(*e.args)
         return result

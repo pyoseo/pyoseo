@@ -31,6 +31,7 @@ import os
 import re
 import shutil
 import datetime as dt
+from zipfile import ZipFile
 
 import pytz
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
@@ -64,14 +65,14 @@ def process_product_order(self, order_id):
         raise
     g = []
     for batch in order.batches.all():
-        sig = process_batch.subtask((batch.id,))
+        sig = process_product_order_batch.subtask((batch.id,))
         g.append(sig)
     job = group(g)
     job.apply_async()
 
 
 @shared_task(bind=True)
-def process_batch(self, batch_id):
+def process_product_order_batch(self, batch_id):
     """
     Process an order batch.
 
@@ -105,7 +106,7 @@ def process_batch(self, batch_id):
         else:
             raise
         header.append(sig)
-    body = update_order_status.subtask((batch.order.id,), immutable=True)
+    body = update_product_order_status.subtask((batch.order.id,), immutable=True)
     c = chord(header, body)
     c.apply_async()
 
@@ -156,7 +157,6 @@ def process_online_data_access_item(self, order_item_id,
         items, details = processor.process_item_online_access(item_identifier,
                                                               order.id,
                                                               user_name,
-                                                              order.packaging,
                                                               options,
                                                               delivery_options,
                                                               **params)
@@ -165,8 +165,7 @@ def process_online_data_access_item(self, order_item_id,
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
             for i in items:
-                f = models.OseoFile(name=os.path.basename(i),
-                                    available=True,
+                f = models.OseoFile(name=i, available=True,
                                     order_item=order_item)
                 f.save()
         else:
@@ -201,7 +200,7 @@ def process_media_delivery_item(self, order_item_id, delivery_option_id):
 
 
 @shared_task(bind=True)
-def update_order_status(self, order_id):
+def update_product_order_status(self, order_id):
     """
     Update the status of a normal order whenever the status of its batch
     changes
@@ -210,10 +209,13 @@ def update_order_status(self, order_id):
     :type order_id: oseoserver.models.Order
     """
 
-    order = models.Order.objects.get(pk=order_id)
+    order = models.ProductOrder.objects.get(pk=order_id)
     if order.order_type.name == models.Order.PRODUCT_ORDER:
         old_order_status = order.status
         batch = order.batches.get()  # ProductOrder's have only one batch
+        if batch.status() == models.CustomizableItem.COMPLETED and \
+                        order.packaging is not None:
+            _package_batch(batch, order.packaging)
         new_order_status = batch.status()
         if old_order_status != new_order_status or \
                         old_order_status == models.CustomizableItem.FAILED:
@@ -375,6 +377,23 @@ def parse_ftp_log_line(line):
             oi = None
         result = oi, current_time
     return result
+
+
+def _package_batch(batch, compression):
+    order_id = batch.order.id
+    out_dir = os.path.dirname(batch.order_items.first().files.first().name)
+    if compression == "zip":
+        output_path = os.path.join(order_id, out_dir,
+                                   "order_{:02d}.zip".format(order_id))
+        with ZipFile(output_path, "w") as fh:
+            for item in batch.order_items.all():
+                for oseo_file in item.files.all():
+                    fh.write(oseo_file.name, os.path.basename(oseo_file.name))
+                item.files.all().delete()
+                f = models.OseoFile(name=output_path, available=True,
+                                    order_item=item)
+                f.save()
+
 
 
 @shared_task(bind=True)

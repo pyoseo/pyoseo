@@ -36,13 +36,6 @@ def get_old_status_order(sender, **kwargs):
     order.old_status = order.status
 
 
-@receiver(post_init, sender=models.OrderItem, weak=False,
-          dispatch_uid='id_for_get_old_status_order_item')
-def get_old_status_order_item(sender, **kwargs):
-    order_item = kwargs['instance']
-    order_item.old_status = order_item.status
-
-
 @receiver(pre_save, sender=models.TaskingOrder, weak=False,
           dispatch_uid='id_for_update_status_changed_on_tasking_order')
 @receiver(pre_save, sender=models.SubscriptionOrder, weak=False,
@@ -56,6 +49,13 @@ def update_status_changed_on_order(sender, **kwargs):
     if order.status_changed_on is None or \
             order.status != order.old_status:
         order.status_changed_on = dt.datetime.now(pytz.utc)
+
+
+@receiver(post_init, sender=models.OrderItem, weak=False,
+          dispatch_uid='id_for_get_old_status_order_item')
+def get_old_status_order_item(sender, **kwargs):
+    order_item = kwargs['instance']
+    order_item.old_status = order_item.status
 
 
 @receiver(pre_save, sender=models.OrderItem, weak=False,
@@ -96,13 +96,18 @@ def create_order_configurations(sender, **kwargs):
 
 
 @receiver(post_save, sender=models.ProductOrder, weak=False,
-          dispatch_uid='id_for_notify_new_product_order')
-def notify_new_product_order(sender, **kwargs):
+          dispatch_uid='id_for_notify_product_order')
+def notify_product_order(sender, **kwargs):
     order = kwargs["instance"]
     user = order.user
     if kwargs["created"]:
         if order.order_type.notify_creation:
             action.send(user, verb="created", target=order)
+    else:
+        if order.status == models.Order.COMPLETED:
+            action.send(order, verb="has been completed")
+        elif order.status == models.Order.FAILED:
+            action.send(order, verb="has failed")
 
 @receiver(post_save, sender=models.ProductOrder, weak=False,
           dispatch_uid='id_for_moderate_product_order')

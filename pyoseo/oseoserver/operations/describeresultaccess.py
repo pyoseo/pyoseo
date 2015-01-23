@@ -16,6 +16,7 @@
 Implements the OSEO DescribeResultAccess operation
 """
 
+import os
 import logging
 import datetime as dt
 
@@ -27,7 +28,6 @@ import pyxb.bundles.opengis.oseo_1_0 as oseo
 
 from oseoserver import models
 from oseoserver import errors
-from oseoserver import views
 from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -157,8 +157,9 @@ class DescribeResultAccess(OseoOperation):
 
         host_name = django_settings.ALLOWED_HOSTS[0].lstrip('.')
         if protocol == models.OnlineDataAccess.HTTP:
-            uri = reverse(views.show_item, args=(user_name,
-                          order_id, item_id, oseo_file.name))
+            uri = reverse("oseoserver.views.show_item",
+                          args=(user_name, order_id, item_id,
+                                os.path.basename(oseo_file.name)))
             url = ''.join(('http://', host_name, uri))
         elif protocol == models.OnlineDataAccess.FTP:
             url_template = ("ftp://{user}@{host}/order_{order:02d}/"

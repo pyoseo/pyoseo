@@ -173,7 +173,10 @@ class OseoServer(object):
             result = self.create_exception_report(err.code, err.text,
                                                   soap_version,
                                                   locator=err.locator)
-        except errors.InvalidOptionError as e:
+        except (errors.InvalidOptionError,
+                errors.InvalidOptionValueError,
+                errors.InvalidGlobalOptionError,
+                errors.InvalidGlobalOptionValueError) as e:
             status_code = 400
             result = self.create_exception_report(
                 "InvalidParameterValue",
