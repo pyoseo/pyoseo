@@ -20,8 +20,8 @@ from celery.schedules import crontab
 # pyoseo oseoserver options
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
 OSEOSERVER_ORDER_DELETION_THRESHOLD = 5 #: in days
-OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
-OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
+#OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
+#OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
 
 # these settings should be redefined in a settings_local file
 OSEOSERVER_AUTHENTICATION_CLASS = None

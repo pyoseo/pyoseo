@@ -155,6 +155,7 @@ def process_online_data_access_item(self, order_item_id,
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
         items, details = processor.process_item_online_access(item_identifier,
+                                                              order_item_id,
                                                               order.id,
                                                               user_name,
                                                               options,
@@ -380,19 +381,21 @@ def parse_ftp_log_line(line):
 
 
 def _package_batch(batch, compression):
-    order_id = batch.order.id
-    out_dir = os.path.dirname(batch.order_items.first().files.first().name)
-    if compression == "zip":
-        output_path = os.path.join(order_id, out_dir,
-                                   "order_{:02d}.zip".format(order_id))
-        with ZipFile(output_path, "w") as fh:
-            for item in batch.order_items.all():
-                for oseo_file in item.files.all():
-                    fh.write(oseo_file.name, os.path.basename(oseo_file.name))
-                item.files.all().delete()
-                f = models.OseoFile(name=output_path, available=True,
-                                    order_item=item)
-                f.save()
+    files_to_package = []
+    for item in batch.order_items.all():
+        for oseo_file in item.files.all():
+            files_to_package.append(oseo_file.name)
+        item.files.all().delete()
+    processing_class, params = utilities.get_custom_code(
+        batch.order_items.first().collection,
+        models.ItemProcessor.PROCESSING_PROCESS_ITEM
+    )
+    processor = utilities.import_class(processing_class,
+                                       logger_type="pyoseo")
+    packaged = processor.package_files(files_to_package, compression)
+    for item in batch.order_items.all():
+        f = models.OseoFile(name=packaged, available=True, order_item=item)
+        f.save()
 
 
 

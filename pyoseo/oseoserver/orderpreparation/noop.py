@@ -43,7 +43,7 @@ class FakeOrderProcessor(object):
         return parsed_value
 
     @staticmethod
-    def process_item_online_access(identifier, order_id, user_name,
+    def process_item_online_access(identifier, item_id, order_id, user_name,
                                    packaging, options, delivery_options,
                                    **kwargs):
         """
@@ -65,8 +65,10 @@ class FakeOrderProcessor(object):
         :type options: dict()
         :param delivery_options:
         :type delivery_options: dict()
-        :return: A list with the name of the processed item(s) and a
-            string with additional details
+        :return: A list with the URI of the processed item(s) and a
+            string with additional details. Each URI is relative to
+            the url pattern declared in the show_item urlconf entry
+            in oseoserver.urls
         :rtype: ([string], string)
         """
 
@@ -74,7 +76,7 @@ class FakeOrderProcessor(object):
         logger.debug("arguments: {}".format(locals()))
         #file_name = None
         #details = "The item failed because this is a fake processor"
-        file_name = "bogus_file"
+        file_name = "fakeorder"
         details = "Pretending to be a file"
         return [file_name], details
 

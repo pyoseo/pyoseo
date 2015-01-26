@@ -34,6 +34,9 @@ def oseo_endpoint(request):
     return response
 
 
+def show_item_2(request, oseo_file_path):
+    pass
+
 # TODO: Account for files which are not ACTIVE anymore
 def show_item(request, user_name, order_id, item_id, item_file_name):
     """
@@ -46,7 +49,7 @@ def show_item(request, user_name, order_id, item_id, item_file_name):
     order_id = int(order_id)
     try:
         oseo_file = models.OseoFile.objects.get(order_item=item_id,
-                                                name__contains=item_file_name)
+                                                name=item_file_name)
         order_item = oseo_file.order_item
     except ObjectDoesNotExist:
         raise Http404

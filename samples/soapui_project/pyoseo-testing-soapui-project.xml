@@ -37503,7 +37503,7 @@ organization or individual.</documentation>
     </complexContent>
   </complexType>
   <!--==========================================================-->
-</schema>]]></con:content><con:type>http://www.w3.org/2001/XMLSchema</con:type></con:part></con:definitionCache><con:endpoints><con:endpoint>http://localhost:8000/oseo/server</con:endpoint></con:endpoints><con:operation isOneWay="false" action="Cancel" name="Cancel" bindingOperationName="Cancel" type="Request-Response" inputName="" receivesAttachments="false" sendsAttachments="false" anonymous="optional"><con:settings/><con:call name="Request 1"><con:settings/><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:add="http://www.w3.org/2005/08/addressing" xmlns:ns="http://www.opengis.net/oseo/1.0">
+</schema>]]></con:content><con:type>http://www.w3.org/2001/XMLSchema</con:type></con:part></con:definitionCache><con:endpoints><con:endpoint>http://geoland2.meteo.pt/giosystem/ordering/oseo/server</con:endpoint><con:endpoint>http://localhost:8000/oseo/server</con:endpoint></con:endpoints><con:operation isOneWay="false" action="Cancel" name="Cancel" bindingOperationName="Cancel" type="Request-Response" inputName="" receivesAttachments="false" sendsAttachments="false" anonymous="optional"><con:settings/><con:call name="Request 1"><con:settings/><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:add="http://www.w3.org/2005/08/addressing" xmlns:ns="http://www.opengis.net/oseo/1.0">
    <soapenv:Header>
       <add:MessageID>?</add:MessageID>
       <add:ReplyTo>
@@ -37987,7 +37987,7 @@ organization or individual.</documentation>
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>ricardogsilva</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38018,7 +38018,7 @@ organization or individual.</documentation>
                   <ns:ParameterData>
                      <ns:encoding>XMLEncoding</ns:encoding>
                      <ns:values>
-                        <Format>NetCDF</Format>
+                        <Format>GeoTiff</Format>
                         <MapProjection>LAT_LONG</MapProjection>
                         <RegionOfInterest>Outra</RegionOfInterest>
                      </ns:values>
@@ -38307,7 +38307,7 @@ organization or individual.</documentation>
    </soapenv:Header>
    <soapenv:Body>
       <ns:DescribeResultAccess service="OS" version="1.0.0">
-         <ns:orderId>141</ns:orderId>
+         <ns:orderId>332</ns:orderId>
          <ns:subFunction>allReady</ns:subFunction>
       </ns:DescribeResultAccess>
    </soapenv:Body>
