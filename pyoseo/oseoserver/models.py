@@ -125,7 +125,6 @@ class Collection(models.Model):
         help_text="The price of an individual product",
         default=Decimal(0)
     )
-    item_processor = models.ForeignKey("ItemProcessor")
 
     def _product_orders_enabled(self):
         return "enabled" if self.productorderconfiguration.enabled \
@@ -494,6 +493,7 @@ class Order(CustomizableItem):
         return '{}'.format(self.id)
 
 
+
 class ProductOrder(Order):
 
     def create_batch(self, item_status, *order_item_spec):
@@ -567,6 +567,7 @@ class OrderType(models.Model):
     enabled = models.BooleanField(default=False)
     automatic_approval = models.BooleanField(default=False)
     notify_creation = models.BooleanField(default=True)
+    item_processor = models.ForeignKey("ItemProcessor")
 
     def __unicode__(self):
         return self.name
@@ -612,7 +613,6 @@ class OrderItem(CustomizableItem):
             valid_delivery["delivery_type"] = "mediadelivery"
         return valid_delivery
 
-
     def __unicode__(self):
         return str(self.item_id)
 
@@ -620,7 +620,8 @@ class OrderItem(CustomizableItem):
 class OseoFile(models.Model):
     order_item = models.ForeignKey("OrderItem", related_name="files")
     created_on = models.DateTimeField(auto_now_add=True)
-    name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255, help_text="URL where this file "
+                                                     "is available")
     available = models.BooleanField(default=False)
     downloads = models.SmallIntegerField(default=0,
                                          help_text="Number of times this "

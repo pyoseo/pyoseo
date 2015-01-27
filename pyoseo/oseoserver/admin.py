@@ -193,7 +193,6 @@ class CollectionAdmin(admin.ModelAdmin):
                TaskingOrderConfigurationInline,)
     list_display = ('name',
                     'collection_id',
-                    'item_processor',
                     'product_orders',
                     'massive_orders',
                     'subscription_orders',
@@ -219,13 +218,13 @@ class MediaDeliveryAdmin(admin.ModelAdmin):
 @admin.register(models.OrderType)
 class OrderTypeAdmin(admin.ModelAdmin):
     list_display = ("name", "enabled", "automatic_approval",
-                    "notify_creation",)
+                    "item_processor", "notify_creation",)
     list_editable = ("enabled", "automatic_approval", "notify_creation",)
     readonly_fields = ("name",)
     fieldsets = (
         (None, {
             'fields': ("name", "enabled", "automatic_approval",
-                       "notify_creation"),
+                       "notify_creation", "item_processor"),
         }),
     )
 

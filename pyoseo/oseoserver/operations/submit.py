@@ -98,13 +98,13 @@ class Submit(OseoOperation):
                     models.Order.MAX_ORDER_ITEMS)
             )
         for oi in order_specification.orderItem:
-            item = self.validate_order_item(oi, spec["order_type"].name,
+            item = self.validate_order_item(oi, spec["order_type"],
                                             user)
             spec["order_item"].append(item)
         spec["requested_order_configurations"] = []
         for col in set([i["collection"] for i in spec["order_item"]]):
             order_config = self._get_order_configuration(
-                col, spec["order_type"].name)
+                col, spec["order_type"])
             spec["requested_order_configurations"].append(order_config)
         spec["order_reference"] = self._c(order_specification.orderReference)
         spec["order_remark"] = self._c(order_specification.orderRemark)
@@ -116,7 +116,10 @@ class Submit(OseoOperation):
             order_specification.invoiceAddress)
         try:
             spec["option"] = self._validate_global_options(
-                order_specification, spec["requested_order_configurations"])
+                order_specification,
+                spec["order_type"],
+                spec["requested_order_configurations"]
+            )
             spec["delivery_options"] = self._validate_global_delivery_options(
                 order_specification, spec["requested_order_configurations"])
         except errors.InvalidOptionError as e:
@@ -298,8 +301,8 @@ class Submit(OseoOperation):
 
         :param requested_item:
         :type requested_item: oseo.CommonOrderItemType
-        :param order_type: The name of the order type
-        :type order_type: string
+        :param order_type: The order type in use
+        :type order_type: models.OrderType
         :param user:
         :type user: models.OseoUser
         :return:
@@ -327,6 +330,7 @@ class Submit(OseoOperation):
         order_config = self._get_order_configuration(collection, order_type)
         item["option"] = self._validate_requested_options(
             requested_item,
+            order_type,
             order_config
         )
         item["delivery_options"] = self._validate_delivery_options(
@@ -368,16 +372,18 @@ class Submit(OseoOperation):
         :return:
         """
 
-        if order_type == models.Order.PRODUCT_ORDER:
+        logger.info("collection: {}".format(collection))
+        if order_type.name == models.Order.PRODUCT_ORDER:
             config = collection.productorderconfiguration
-        elif order_type == models.Order.MASSIVE_ORDER:
+        elif order_type.name == models.Order.MASSIVE_ORDER:
             config = collection.massiveorderconfiguration
-        elif order_type == models.Order.SUBSCRIPTION_ORDER:
+        elif order_type.name == models.Order.SUBSCRIPTION_ORDER:
             config = collection.subscriptionorderconfiguration
         else:  # tasking order
             config = collection.taskingorderconfiguration
         if not config.enabled:
-            raise errors.InvalidCollectionError(collection.name, order_type)
+            raise errors.InvalidCollectionError(collection.name,
+                                                order_type.name)
         return config
 
     def _validate_requested_collection(self, collection_id, group):
@@ -394,7 +400,15 @@ class Submit(OseoOperation):
                 "Collection {} does not exist".format(collection_id))
         return collection
 
-    def _validate_requested_options(self, requested_item, order_config):
+    def _validate_requested_options(self, requested_item, order_type,
+                                    order_config):
+        """
+
+        :param requested_item:
+        :param order_config:
+        :return:
+        """
+
         valid_options = dict()
         for option in requested_item.option:
             values = option.ParameterData.values
@@ -404,20 +418,21 @@ class Submit(OseoOperation):
             values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
             for value in values_tree:
                 option_name = etree.QName(value).localname
-                option_value = self._validate_selected_option(option_name,
-                                                              value,
-                                                              order_config)
+                option_value = self._validate_selected_option(
+                    option_name, value, order_type, order_config)
                 valid_options[option_name] = option_value
         return valid_options
 
     def _validate_global_options(self, requested_order_spec,
+                                 order_type,
                                  ordered_order_configs):
         for order_config in ordered_order_configs:
             options = self._validate_requested_options(requested_order_spec,
+                                                       order_type,
                                                        order_config)
         return options
 
-    def _validate_selected_option(self, name, value, order_config):
+    def _validate_selected_option(self, name, value, order_type, order_config):
         """
         Validate a selected option choice.
 
@@ -432,6 +447,8 @@ class Submit(OseoOperation):
         :type name: string
         :param value:
         :type value:
+        :param order_type:
+        :type order_type:
         :param order_config:
         :type order_config:
         :return:
@@ -448,7 +465,7 @@ class Submit(OseoOperation):
                     result = naive_value
                 else:
                     processing_class, params = utilities.get_custom_code(
-                        order_config.collection,
+                        order_type,
                         models.ItemProcessor.PROCESSING_PARSE_OPTION
                     )
                     handler = utilities.import_class(processing_class,
@@ -462,7 +479,7 @@ class Submit(OseoOperation):
                                                              order_config)
             else:
                 processing_class, params = utilities.get_custom_code(
-                    order_config.collection,
+                    order_type,
                     models.ItemProcessor.PROCESSING_PARSE_OPTION
                 )
                 handler = utilities.import_class(processing_class,

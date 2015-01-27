@@ -86,87 +86,57 @@ def process_product_order_batch(self, batch_id):
         logger.error('Could not find batch {}'.format(batch_id))
         raise
     header = []
+    order = batch.order
     for order_item in batch.order_items.all():
         try:
             selected = order_item.selected_delivery_option
         except models.SelectedDeliveryOption.DoesNotExist:
-            selected = order_item.batch.order.selected_delivery_option
+            selected = order.selected_delivery_option
         if hasattr(selected.option, 'onlinedataaccess'):
-            sig = process_online_data_access_item.subtask(
-                (order_item.id, selected.id)
-            )
+            sig = process_online_data_access_item.subtask((order_item.id))
         elif hasattr(selected.option, 'onlinedatadelivery'):
-            sig = process_online_data_delivery_item.subtask(
-                (order_item.id, selected.id)
-            )
+            sig = process_online_data_delivery_item.subtask((order_item.id))
         elif hasattr(selected.option, 'mediadelivery'):
-            sig = process_media_delivery_item.subtask(
-                (order_item.id, selected.id)
-            )
+            sig = process_media_delivery_item.subtask((order_item.id))
         else:
             raise
         header.append(sig)
-    body = update_product_order_status.subtask((batch.order.id,), immutable=True)
+    body = update_product_order_status.subtask((order.id,),
+                                               immutable=True)
     c = chord(header, body)
     c.apply_async()
 
 
 @shared_task(bind=True)
-def process_online_data_access_item(self, order_item_id,
-                                    selected_delivery_option_id):
+def process_online_data_access_item(self, order_item_id):
     """
     Process an order item that specifies online data access as delivery
     """
 
-    print("SELECTED_DELIVERY_OPTION_ID: {}".format(selected_delivery_option_id))
-
     order_item = models.OrderItem.objects.get(pk=order_item_id)
-    logger.debug('Retrieved order item from the database: {}'.format(
-                 order_item))
     order_item.status = models.CustomizableItem.IN_PRODUCTION
     order_item.additional_status_info = "Item is being processed"
     order_item.save()
-    logger.debug('Changed the order_item status to {}'.format(
-                 models.CustomizableItem.IN_PRODUCTION))
     try:
-        selected_delivery_option = models.SelectedDeliveryOption.objects.get(
-            pk=selected_delivery_option_id)
-        protocol = selected_delivery_option.option.onlinedataaccess.protocol
-        protocol_path_map = {
-            models.OnlineDataAccess.HTTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
-                                          "HTTP_PROTOCOL_ROOT_DIR",
-            models.OnlineDataAccess.FTP: "OSEOSERVER_ONLINE_DATA_ACCESS_"
-                                         "FTP_PROTOCOL_ROOT_DIR",
-        }
-        protocol_root_dir = getattr(
-            django_settings,
-            protocol_path_map.get(protocol, ''),
-        )
-        item_identifier = order_item.identifier
         order = order_item.batch.order
-        user_name = order.user.user.username
         processing_class, params = utilities.get_custom_code(
-            order_item.collection,
+            order.order_type,
             models.ItemProcessor.PROCESSING_PROCESS_ITEM
         )
         processor = utilities.import_class(processing_class,
                                            logger_type="celery")
-        logger.debug('processor: {}'.format(processor))
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
-        items, details = processor.process_item_online_access(item_identifier,
-                                                              order_item_id,
-                                                              order.id,
-                                                              user_name,
-                                                              options,
-                                                              delivery_options,
-                                                              **params)
+        urls, details = processor.process_item_online_access(
+            order_item.identifier, order_item_id, order.id,
+            order.user.user.user_name, options, delivery_options,
+            **params)
         order_item.additional_status_info = details
-        if any(items):
+        if any(urls):
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
-            for i in items:
-                f = models.OseoFile(name=i, available=True,
+            for i in urls:
+                f = models.OseoFile(url=i, available=True,
                                     order_item=order_item)
                 f.save()
         else:
@@ -183,7 +153,7 @@ def process_online_data_access_item(self, order_item_id,
 
 
 @shared_task(bind=True)
-def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
+def process_online_data_delivery_item(self, order_item_id):
     """
     Process an order item that specifies online data delivery
     """
@@ -192,7 +162,7 @@ def process_online_data_delivery_item(self, order_item_id, delivery_option_id):
 
 
 @shared_task(bind=True)
-def process_media_delivery_item(self, order_item_id, delivery_option_id):
+def process_media_delivery_item(self, order_item_id):
     """
     Process an order item that specifies media delivery
     """
@@ -387,7 +357,7 @@ def _package_batch(batch, compression):
             files_to_package.append(oseo_file.name)
         item.files.all().delete()
     processing_class, params = utilities.get_custom_code(
-        batch.order_items.first().collection,
+        batch.order.order_type,
         models.ItemProcessor.PROCESSING_PROCESS_ITEM
     )
     processor = utilities.import_class(processing_class,
