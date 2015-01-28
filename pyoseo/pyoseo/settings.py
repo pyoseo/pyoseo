@@ -111,6 +111,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'oseoserver',
     'actstream',
     'mailqueue',
@@ -162,6 +163,8 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'sitestatic')
 STATIC_URL = '/static/'
+
+SITE_ID = 1
 
 # settings for django-activity-stream
 # the default settings are fine, they are commented here just for the record

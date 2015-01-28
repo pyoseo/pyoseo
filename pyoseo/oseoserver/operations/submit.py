@@ -108,7 +108,8 @@ class Submit(OseoOperation):
             spec["requested_order_configurations"].append(order_config)
         spec["order_reference"] = self._c(order_specification.orderReference)
         spec["order_remark"] = self._c(order_specification.orderRemark)
-        spec["packaging"] = self._c(order_specification.packaging)
+        spec["packaging"] = self._validate_packaging(
+            order_specification.packaging)
         spec["priority"] = self._c(order_specification.priority)
         spec["delivery_information"] = self.get_delivery_information(
             order_specification.deliveryInformation)
@@ -299,11 +300,11 @@ class Submit(OseoOperation):
     def validate_order_item(self, requested_item, order_type, user):
         """
 
-        :param requested_item:
+        :param requested_item: The pyxb instance with the requested item
         :type requested_item: oseo.CommonOrderItemType
         :param order_type: The order type in use
         :type order_type: models.OrderType
-        :param user:
+        :param user: the user that has placed the order
         :type user: models.OseoUser
         :return:
         """
@@ -314,12 +315,12 @@ class Submit(OseoOperation):
                 requested_item.productOrderOptionsId),
             "order_item_remark": self._c(requested_item.orderItemRemark)
         }
-        if order_type in (models.Order.PRODUCT_ORDER,
-                          models.Order.MASSIVE_ORDER):
+        if order_type.name in (models.Order.PRODUCT_ORDER,
+                               models.Order.MASSIVE_ORDER):
             identifier, collection = self._validate_product_order_item(
                 requested_item, user)
             item["identifier"] = identifier
-        elif order_type == models.Order.SUBSCRIPTION_ORDER:
+        elif order_type.name == models.Order.SUBSCRIPTION_ORDER:
             collection = self._validate_subscription_order_item(
                 requested_item, user)
         else:  # TASKING_ORDER
@@ -368,7 +369,7 @@ class Submit(OseoOperation):
 
         :param collection:
         :param order_type:
-        :type order_type: string
+        :type order_type: models.OrderType
         :return:
         """
 
@@ -405,7 +406,11 @@ class Submit(OseoOperation):
         """
 
         :param requested_item:
+        :type requested_item:
+        :param order_type:
+        :type order_type: models.OrderType
         :param order_config:
+        :type order_config:
         :return:
         """
 
@@ -652,3 +657,10 @@ class Submit(OseoOperation):
             raise NotImplementedError('Status notifications are '
                                       'not supported')
         return request.statusNotification
+
+    def _validate_packaging(self, requested_packaging):
+        packaging = self._c(requested_packaging)
+        choices = [c[0] for c in models.Order.PACKAGING_CHOICES]
+        if packaging != "" and packaging not in choices:
+            raise errors.InvalidPackagingError(packaging)
+        return packaging

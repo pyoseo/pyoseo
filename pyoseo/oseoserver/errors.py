@@ -44,6 +44,15 @@ class InvalidOrderTypeError(PyOseoError):
         return "Orders of type {} are not allowed".format(self.order_type)
 
 
+class InvalidPackagingError(PyOseoError):
+
+    def __init__(self, packaging):
+        self.packaging = packaging
+
+    def __str__(self):
+        return "Packaging format {} is not supported".format(self.packaging)
+
+
 class InvalidOptionError(PyOseoError):
 
     def __init__(self, option, order_config):

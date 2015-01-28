@@ -36,6 +36,7 @@ from zipfile import ZipFile
 import pytz
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.conf import settings as django_settings
+from django.contrib.sites.models import Site
 from celery import shared_task
 from celery import group, chord
 from celery.utils.log import get_task_logger
@@ -93,11 +94,11 @@ def process_product_order_batch(self, batch_id):
         except models.SelectedDeliveryOption.DoesNotExist:
             selected = order.selected_delivery_option
         if hasattr(selected.option, 'onlinedataaccess'):
-            sig = process_online_data_access_item.subtask((order_item.id))
+            sig = process_online_data_access_item.subtask((order_item.id,))
         elif hasattr(selected.option, 'onlinedatadelivery'):
-            sig = process_online_data_delivery_item.subtask((order_item.id))
+            sig = process_online_data_delivery_item.subtask((order_item.id,))
         elif hasattr(selected.option, 'mediadelivery'):
-            sig = process_media_delivery_item.subtask((order_item.id))
+            sig = process_media_delivery_item.subtask((order_item.id,))
         else:
             raise
         header.append(sig)
@@ -128,16 +129,19 @@ def process_online_data_access_item(self, order_item_id):
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
         urls, details = processor.process_item_online_access(
-            order_item.identifier, order_item_id, order.id,
-            order.user.user.user_name, options, delivery_options,
+            order_item.identifier, order_item.item_id, order.id,
+            order.user.user.username, options, delivery_options,
+            domain=Site.objects.get_current().domain,
             **params)
         order_item.additional_status_info = details
+        logger.error("URLS: {}".format(urls))
         if any(urls):
             order_item.status = models.CustomizableItem.COMPLETED
             order_item.completed_on = dt.datetime.now(pytz.utc)
-            for i in urls:
-                f = models.OseoFile(url=i, available=True,
-                                    order_item=order_item)
+            for url, expiry_date in urls:
+                f = models.OseoFile(url=url, available=True,
+                                    order_item=order_item,
+                                    expires_on=expiry_date)
                 f.save()
         else:
             order_item.status = models.CustomizableItem.FAILED
@@ -181,36 +185,38 @@ def update_product_order_status(self, order_id):
     """
 
     order = models.ProductOrder.objects.get(pk=order_id)
-    if order.order_type.name == models.Order.PRODUCT_ORDER:
-        old_order_status = order.status
-        batch = order.batches.get()  # ProductOrder's have only one batch
-        if batch.status() == models.CustomizableItem.COMPLETED and \
-                        order.packaging is not None:
+    old_order_status = order.status
+    batch = order.batches.get()  # ProductOrder's have only one batch
+    if batch.status() == models.CustomizableItem.COMPLETED and \
+                    order.packaging != '':
+        try:
             _package_batch(batch, order.packaging)
-        new_order_status = batch.status()
-        if old_order_status != new_order_status or \
-                        old_order_status == models.CustomizableItem.FAILED:
-            order.status = new_order_status
-            if new_order_status == models.CustomizableItem.COMPLETED:
-                order.completed_on = dt.datetime.now(pytz.utc)
-                order.additional_status_info = ""
-            elif new_order_status == models.CustomizableItem.FAILED:
-                msg = ""
-                for oi in batch.order_items.all():
-                    if oi.status == models.CustomizableItem.FAILED:
-                        additional = oi.additional_status_info
-                        msg = "\n\t".join(
-                            (
-                                msg,
-                                 "* Order item {}: {}".format(oi.id,
-                                                              additional)
-                            ),
-                        )
-                order.additional_status_info = ("Order {} has "
-                                                "failed.{}".format(order.id,
-                                                                   msg))
-                utilities.send_order_failed_email(order, details=msg)
-            order.save()
+        except Exception as e:
+            raise
+    new_order_status = batch.status()
+    if old_order_status != new_order_status or \
+                    old_order_status == models.CustomizableItem.FAILED:
+        order.status = new_order_status
+        if new_order_status == models.CustomizableItem.COMPLETED:
+            order.completed_on = dt.datetime.now(pytz.utc)
+            order.additional_status_info = ""
+        elif new_order_status == models.CustomizableItem.FAILED:
+            msg = ""
+            for oi in batch.order_items.all():
+                if oi.status == models.CustomizableItem.FAILED:
+                    additional = oi.additional_status_info
+                    msg = "\n\t".join(
+                        (
+                            msg,
+                             "* Order item {}: {}".format(oi.id,
+                                                          additional)
+                        ),
+                    )
+            order.additional_status_info = ("Order {} has "
+                                            "failed.{}".format(order.id,
+                                                               msg))
+            utilities.send_order_failed_email(order, details=msg)
+        order.save()
 
 
 @shared_task(bind=True)
@@ -354,7 +360,7 @@ def _package_batch(batch, compression):
     files_to_package = []
     for item in batch.order_items.all():
         for oseo_file in item.files.all():
-            files_to_package.append(oseo_file.name)
+            files_to_package.append(oseo_file.url)
         item.files.all().delete()
     processing_class, params = utilities.get_custom_code(
         batch.order.order_type,
@@ -362,11 +368,13 @@ def _package_batch(batch, compression):
     )
     processor = utilities.import_class(processing_class,
                                        logger_type="pyoseo")
-    packaged = processor.package_files(files_to_package, compression)
+    domain = Site.objects.get_current().domain
+    packed, expiration_date = processor.package_files(
+        compression, domain, file_urls=files_to_package, **params)
     for item in batch.order_items.all():
-        f = models.OseoFile(name=packaged, available=True, order_item=item)
+        f = models.OseoFile(url=packed, available=True, order_item=item,
+                            expires_on=expiration_date)
         f.save()
-
 
 
 @shared_task(bind=True)

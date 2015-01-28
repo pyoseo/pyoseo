@@ -173,6 +173,12 @@ class OseoServer(object):
             result = self.create_exception_report(err.code, err.text,
                                                   soap_version,
                                                   locator=err.locator)
+        except errors.InvalidPackagingError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                "Invalid packaging value: {}".format(e),
+                soap_version)
         except (errors.InvalidOptionError,
                 errors.InvalidOptionValueError,
                 errors.InvalidGlobalOptionError,
@@ -196,6 +202,12 @@ class OseoServer(object):
                 "Unsupported operation: {}".format(e.node.tagName),
                 soap_version)
         except pyxb.UnrecognizedContentError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                str(e),
+                soap_version)
+        except pyxb.SimpleFacetValueError as e:
             status_code = 400
             result = self.create_exception_report(
                 "NoApplicableCode",

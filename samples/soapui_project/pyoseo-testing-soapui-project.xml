@@ -37982,7 +37982,135 @@ organization or individual.</documentation>
          <ns:statusNotification>?</ns:statusNotification>
       </ns:Submit>
    </soapenv:Body>
-</soapenv:Envelope>]]></con:request><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:call></con:operation></con:interface><con:testSuite name="IpmaTestSuite"><con:settings/><con:runType>SEQUENTIAL</con:runType><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="Submit" searchProperties="true" id="fb6c0183-db57-4429-8cc1-f97666240e7d"><con:settings/><con:testStep type="request" name="ProductOrder"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+</soapenv:Envelope>]]></con:request><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:call></con:operation></con:interface><con:testSuite name="IpmaTestSuite"><con:settings/><con:runType>SEQUENTIAL</con:runType><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="Submit" searchProperties="true" id="fb6c0183-db57-4429-8cc1-f97666240e7d"><con:settings/><con:testStep type="request" name="ProductOrder - no options"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder - no options" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>ricardogsilva</wsse:Username>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:Submit service="OS" version="1.0.0">
+         <ns:orderSpecification>
+            <ns:orderReference>Some random reference</ns:orderReference>
+            <ns:orderRemark>A remark mind you</ns:orderRemark>
+            <ns:deliveryOptions>
+               <ns:onlineDataAccess>
+                  <ns:protocol>ftp</ns:protocol>
+               </ns:onlineDataAccess>
+            </ns:deliveryOptions>
+            <ns:priority>STANDARD</ns:priority>
+            <ns:orderType>PRODUCT_ORDER</ns:orderType>
+            <ns:orderItem>
+               <ns:itemId>item_01</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_02</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_03</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_04</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_05</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+         </ns:orderSpecification>
+         <ns:statusNotification>None</ns:statusNotification>
+      </ns:Submit>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="ProductOrder - options"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder - options" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>ricardogsilva</wsse:Username>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:Submit service="OS" version="1.0.0">
+         <ns:orderSpecification>
+            <ns:orderReference>Some random reference</ns:orderReference>
+            <ns:orderRemark>A remark mind you</ns:orderRemark>
+            <ns:option>
+               <ns:ParameterData>
+                  <ns:encoding>XMLEncoding</ns:encoding>
+                  <ns:values>
+                     <Format>GeoTiff</Format>
+                  </ns:values>
+               </ns:ParameterData>
+            </ns:option>
+            <ns:deliveryOptions>
+               <ns:onlineDataAccess>
+                  <ns:protocol>http</ns:protocol>
+               </ns:onlineDataAccess>
+            </ns:deliveryOptions>
+            <ns:priority>STANDARD</ns:priority>
+            <ns:orderType>PRODUCT_ORDER</ns:orderType>
+            <ns:orderItem>
+               <ns:itemId>item_01</ns:itemId>
+               <ns:option>
+                  <ns:ParameterData>
+                     <ns:encoding>XMLEncoding</ns:encoding>
+                     <ns:values>
+                        <Format>GeoTiff</Format>
+                        <MapProjection>LAT_LONG</MapProjection>
+                        <RegionOfInterest>Outra</RegionOfInterest>
+                     </ns:values>
+                  </ns:ParameterData>
+               </ns:option>
+               <ns:productId>
+                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_02</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_03</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_04</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_05</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+         </ns:orderSpecification>
+         <ns:statusNotification>None</ns:statusNotification>
+      </ns:Submit>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="ProductOrder - packaging"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder - packaging" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
    <soapenv:Header>
       <wsse:Security>
          <wsse:UsernameToken>
@@ -38056,7 +38184,155 @@ organization or individual.</documentation>
          <ns:statusNotification>None</ns:statusNotification>
       </ns:Submit>
    </soapenv:Body>
-</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="Invalid operation"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Invalid operation" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="ProductOrder - illegal packaging"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder - illegal packaging" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>ricardogsilva</wsse:Username>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:Submit service="OS" version="1.0.0">
+         <ns:orderSpecification>
+            <ns:orderReference>Some random reference</ns:orderReference>
+            <ns:orderRemark>A remark mind you</ns:orderRemark>
+            <ns:packaging>FAKE PACKAGING OPTION</ns:packaging>
+            <ns:option>
+               <ns:ParameterData>
+                  <ns:encoding>XMLEncoding</ns:encoding>
+                  <ns:values>
+                     <Format>GeoTiff</Format>
+                  </ns:values>
+               </ns:ParameterData>
+            </ns:option>
+            <ns:deliveryOptions>
+               <ns:onlineDataAccess>
+                  <ns:protocol>http</ns:protocol>
+               </ns:onlineDataAccess>
+            </ns:deliveryOptions>
+            <ns:priority>STANDARD</ns:priority>
+            <ns:orderType>PRODUCT_ORDER</ns:orderType>
+            <ns:orderItem>
+               <ns:itemId>item_01</ns:itemId>
+               <ns:option>
+                  <ns:ParameterData>
+                     <ns:encoding>XMLEncoding</ns:encoding>
+                     <ns:values>
+                        <Format>GeoTiff</Format>
+                        <MapProjection>LAT_LONG</MapProjection>
+                        <RegionOfInterest>Outra</RegionOfInterest>
+                     </ns:values>
+                  </ns:ParameterData>
+               </ns:option>
+               <ns:productId>
+                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_02</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_03</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_04</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_05</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+         </ns:orderSpecification>
+         <ns:statusNotification>None</ns:statusNotification>
+      </ns:Submit>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="Not SOAP Fault Assertion" name="SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="ProductOrder - invalid packaging"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="ProductOrder - invalid packaging" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>ricardogsilva</wsse:Username>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:Submit service="OS" version="1.0.0">
+         <ns:orderSpecification>
+            <ns:orderReference>Some random reference</ns:orderReference>
+            <ns:orderRemark>A remark mind you</ns:orderRemark>
+            <ns:packaging>bzip2</ns:packaging>
+            <ns:option>
+               <ns:ParameterData>
+                  <ns:encoding>XMLEncoding</ns:encoding>
+                  <ns:values>
+                     <Format>GeoTiff</Format>
+                  </ns:values>
+               </ns:ParameterData>
+            </ns:option>
+            <ns:deliveryOptions>
+               <ns:onlineDataAccess>
+                  <ns:protocol>http</ns:protocol>
+               </ns:onlineDataAccess>
+            </ns:deliveryOptions>
+            <ns:priority>STANDARD</ns:priority>
+            <ns:orderType>PRODUCT_ORDER</ns:orderType>
+            <ns:orderItem>
+               <ns:itemId>item_01</ns:itemId>
+               <ns:option>
+                  <ns:ParameterData>
+                     <ns:encoding>XMLEncoding</ns:encoding>
+                     <ns:values>
+                        <Format>GeoTiff</Format>
+                        <MapProjection>LAT_LONG</MapProjection>
+                        <RegionOfInterest>Outra</RegionOfInterest>
+                     </ns:values>
+                  </ns:ParameterData>
+               </ns:option>
+               <ns:productId>
+                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_02</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_03</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_04</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_05</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+         </ns:orderSpecification>
+         <ns:statusNotification>None</ns:statusNotification>
+      </ns:Submit>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="Not SOAP Fault Assertion" name="SOAP Fault"/><con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="request" name="Invalid operation"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Invalid operation" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
    <soapenv:Header>
       <wsse:Security>
          <wsse:UsernameToken>
@@ -38211,7 +38487,7 @@ organization or individual.</documentation>
    </soapenv:Header>
    <soapenv:Body>
       <ns:GetStatus service="OS" version="1.0.0">
-         <ns:orderId>242</ns:orderId>
+         <ns:orderId>440</ns:orderId>
          <ns:presentation>brief</ns:presentation>
       </ns:GetStatus>
    </soapenv:Body>
@@ -38226,7 +38502,7 @@ organization or individual.</documentation>
    </soapenv:Header>
    <soapenv:Body>
       <ns:GetStatus service="OS" version="1.0.0">
-         <ns:orderId>141</ns:orderId>
+         <ns:orderId>476</ns:orderId>
          <ns:presentation>full</ns:presentation>
       </ns:GetStatus>
    </soapenv:Body>
@@ -38307,7 +38583,7 @@ organization or individual.</documentation>
    </soapenv:Header>
    <soapenv:Body>
       <ns:DescribeResultAccess service="OS" version="1.0.0">
-         <ns:orderId>332</ns:orderId>
+         <ns:orderId>476</ns:orderId>
          <ns:subFunction>allReady</ns:subFunction>
       </ns:DescribeResultAccess>
    </soapenv:Body>
@@ -38322,7 +38598,7 @@ organization or individual.</documentation>
    </soapenv:Header>
    <soapenv:Body>
       <ns:DescribeResultAccess service="OS" version="1.0.0">
-         <ns:orderId>141</ns:orderId>
+         <ns:orderId>446</ns:orderId>
          <ns:subFunction>nextReady</ns:subFunction>
       </ns:DescribeResultAccess>
    </soapenv:Body>

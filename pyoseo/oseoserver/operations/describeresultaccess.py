@@ -72,15 +72,22 @@ class DescribeResultAccess(OseoOperation):
                                    'The client is not authorized to '
                                    'call the operation',
                                    locator='orderId')
-        completed_items = self._get_completed_items(order,
+        completed_files = self._get_completed_files(order,
                                                     request.subFunction)
-        logger.info('completed_items: %s' % completed_items)
+        logger.info('completed_files: %s' % completed_files)
         order.last_describe_result_access_request = dt.datetime.utcnow()
         order.save()
         response = oseo.DescribeResultAccessResponse(status='success')
-        for item, delivery in completed_items:
-            protocol = delivery.onlinedataaccess.protocol
-            for f in item.files.all():
+        if order.packaging == models.Order.ZIP and any(completed_files):
+            iut = oseo.ItemURLType()
+            iut.itemId = "Packaged order items"
+            iut.itemAddress = oseo.OnLineAccessAddressType()
+            iut.itemAddress.ResourceAddress = pyxb.BIND()
+            iut.itemAddress.ResourceAddress.URL = completed_files[0].url
+            response.URLs.append(iut)
+        else:
+            for oseo_file, delivery in completed_files:
+                item = oseo_file.order_item
                 iut = oseo.ItemURLType()
                 iut.itemId = item.item_id
                 iut.productId = oseo.ProductIdType(
@@ -89,18 +96,11 @@ class DescribeResultAccess(OseoOperation):
                 iut.productId.collectionId = item.collection.collection_id
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
-                iut.itemAddress.ResourceAddress.URL = self.get_url(
-                    protocol,
-                    f,
-                    order.id,
-                    item.item_id,
-                    user.user.username,
-                    "user's password is unknown"  # user password
-                )
+                iut.itemAddress.ResourceAddress.URL = oseo_file.url
                 response.URLs.append(iut)
         return response, status_code, None
 
-    def _get_completed_items(self, order, behaviour):
+    def _get_completed_files(self, order, behaviour):
         """
         :arg order:
         :type order: oseoserver.models.Order
@@ -111,12 +111,14 @@ class DescribeResultAccess(OseoOperation):
         :rtyp: [(models.OrderItem, models.DeliveryOption)]
         """
 
-        now = dt.datetime.utcnow()
+        if not order.order_type.name == models.Order.PRODUCT_ORDER:
+            raise NotImplementedError
         last_time = order.last_describe_result_access_request
-        completed_items = []
+        completed = []
         order_delivery = order.selected_delivery_option.option
         for batch in order.batches.all():
-            for order_item in batch.order_items.all():
+            order_items = batch.order_items.all()
+            for order_item in order_items:
                 try:
                     delivery = order_item.selected_delivery_option.option
                 except models.SelectedDeliveryOption.DoesNotExist:
@@ -125,50 +127,13 @@ class DescribeResultAccess(OseoOperation):
                     # getStatus only applies to items with onlinedataaccess
                     continue
                 if order_item.status == models.CustomizableItem.COMPLETED:
-                    to_append = None
-                    if last_time is None or behaviour == self.ALL_READY:
-                        to_append = (order_item, delivery)
-                    elif behaviour == self.NEXT_READY and \
-                            order_item.completed_on >= last_time:
-                        to_append = (order_item, delivery)
-                    if to_append is not None:
-                        completed_items.append(to_append)
+                    if (last_time is None or behaviour == self.ALL_READY) or \
+                            (behaviour == self.NEXT_READY and
+                             order_item.completed_on >= last_time):
+                        for oseo_file in order_item.files.all():
+                            completed.append((oseo_file, delivery))
+        if order.packaging == models.Order.ZIP and any(completed):
+            completed = list(completed.pop())
+        return completed
 
-        return completed_items
 
-    def get_url(self, protocol, oseo_file, order_id, item_id, user_name,
-                user_password):
-        """
-        Return the URL where the order item is available for online access.
-
-        :arg protocol:
-        :type protocol: str
-        :arg oseo_file:
-        :type oseo_file: models.OseoFile
-        :arg order_id:
-        :type order_id: int
-        :arg item_id:
-        :type item_id: str
-        :arg user_name: User that made the order
-        :type user_name: str
-        :arg user_password:
-        :type user_password: str
-        """
-
-        host_name = django_settings.ALLOWED_HOSTS[0].lstrip('.')
-        if protocol == models.OnlineDataAccess.HTTP:
-            uri = reverse("oseoserver.views.show_item",
-                          args=(user_name, order_id, item_id,
-                                os.path.basename(oseo_file.name)))
-            url = ''.join(('http://', host_name, uri))
-        elif protocol == models.OnlineDataAccess.FTP:
-            url_template = ("ftp://{user}@{host}/order_{order:02d}/"
-                            "{item}/{oseo_file}")
-            url = url_template.format(user=user_name, password=user_password,
-                                      host=host_name,
-                                      order=order_id,
-                                      item=item_id,
-                                      oseo_file=oseo_file.name)
-        else:
-            raise NotImplementedError
-        return url

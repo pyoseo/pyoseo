@@ -451,11 +451,9 @@ class Order(CustomizableItem):
     SUBSCRIPTION_ORDER = 'SUBSCRIPTION_ORDER'
     MASSIVE_ORDER = 'MASSIVE_ORDER'
     TASKING_ORDER = 'TASKING_ORDER'
-    BZIP2 = "bzip2"
     ZIP = "zip"
     PACKAGING_CHOICES = (
-        (BZIP2, BZIP2),
-        (ZIP, ZIP)
+        (ZIP, ZIP),
     )
     STANDARD = "STANDARD"
     FAST_TRACK = "FAST_TRACK"
@@ -622,6 +620,7 @@ class OseoFile(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     url = models.CharField(max_length=255, help_text="URL where this file "
                                                      "is available")
+    expires_on = models.DateTimeField(null=True, blank=True)
     available = models.BooleanField(default=False)
     downloads = models.SmallIntegerField(default=0,
                                          help_text="Number of times this "
@@ -632,7 +631,7 @@ class OseoFile(models.Model):
         return True if self.downloads > 0 else False
 
     def __unicode__(self):
-        return self.name
+        return self.url
 
 
 class OseoGroup(models.Model):
