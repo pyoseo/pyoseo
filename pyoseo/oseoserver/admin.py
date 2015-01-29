@@ -83,11 +83,9 @@ class OseoGroupAdmin(admin.ModelAdmin):
 @admin.register(models.OseoUser)
 class OseoUserAdmin(admin.ModelAdmin):
     list_display = ('user', 'oseo_group', 'disk_quota',
-                    'order_availability_days',
                     'delete_downloaded_order_files',)
     list_editable = ('oseo_group',)
-    fields = ('user', 'disk_quota', 'order_availability_days',
-              'delete_downloaded_order_files')
+    fields = ('user', 'disk_quota', 'delete_downloaded_order_files')
     readonly_fields = ('user',)
 
 
@@ -218,13 +216,15 @@ class MediaDeliveryAdmin(admin.ModelAdmin):
 @admin.register(models.OrderType)
 class OrderTypeAdmin(admin.ModelAdmin):
     list_display = ("name", "enabled", "automatic_approval",
-                    "item_processor", "notify_creation",)
+                    "item_processor", "item_availability_days",
+                    "notify_creation",)
     list_editable = ("enabled", "automatic_approval", "notify_creation",)
     readonly_fields = ("name",)
     fieldsets = (
         (None, {
             'fields': ("name", "enabled", "automatic_approval",
-                       "notify_creation", "item_processor"),
+                       "notify_creation", "item_processor",
+                       "item_availability_days",),
         }),
     )
 

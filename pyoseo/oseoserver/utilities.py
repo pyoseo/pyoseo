@@ -44,6 +44,12 @@ def get_custom_code(order_type, processing_step):
     logger.debug('params: {}'.format(params))
     return processing_class, params
 
+def get_processor(order_type, processing_step,
+                  *instance_args, **instance_kwargs):
+    processing_class, params = get_custom_code(order_type, processing_step)
+    instance = import_class(processing_class, *instance_args, **instance_kwargs)
+    return instance, params
+
 
 def send_moderation_email(order):
     send_email(
@@ -60,6 +66,29 @@ def send_order_failed_email(order, details=None):
             order.order_type.name, order.id, details),
         User.objects.filter(is_staff=True).exclude(email="")
     )
+
+def send_cleaning_error_email(order_type, file_paths, error):
+    details = "\n".join(file_paths)
+    msg = ("Deleting expired files from {} has failed deleting the following "
+           "files:\n\n{}\n\nThe error was:\n\n{}".format(order_type.name,
+                                                         details,
+                                                         error))
+    send_email(
+        "Error deleting expired files",
+        msg,
+        User.objects.filter(is_staff=True).exclude(email="")
+    )
+
+
+def send_batch_packaging_failed_email(batch, error):
+    msg = ("There has been an error packaging batch {}. The error "
+          "was:\n\n\{}".format(batch, error))
+    send_email(
+        "Error packaging batch {}".format(batch),
+        msg,
+        User.objects.filter(is_staff=True).exclude(email="")
+    )
+
 
 def send_email(subject, message, recipients):
     for recipient in recipients:

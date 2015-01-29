@@ -80,6 +80,12 @@ class FakeOrderProcessor(object):
         details = "Pretending to be a file"
         return [file_name], details
 
+    def package_files(self, packaging, domain, delete_paths=True,
+                      site_name=None, server_port=None, file_urls=[],
+                      **kwargs):
+        output_url = "fake_url_for_the_package"
+        return output_url
+
     @staticmethod
     def clean_up_item(path, **kwargs):
         logger.debug("fake clean up of an order item")

@@ -17,6 +17,8 @@ Database models for pyoseo
 """
 
 from decimal import Decimal
+from datetime import datetime
+import pytz
 
 from django.conf import settings
 from django.db import models
@@ -566,6 +568,11 @@ class OrderType(models.Model):
     automatic_approval = models.BooleanField(default=False)
     notify_creation = models.BooleanField(default=True)
     item_processor = models.ForeignKey("ItemProcessor")
+    item_availability_days = models.PositiveSmallIntegerField(
+        default=10,
+        help_text="How many days will an item be available for "
+                  "download after it has been generated?"
+    )
 
     def __unicode__(self):
         return self.name
@@ -630,6 +637,17 @@ class OseoFile(models.Model):
     def downloaded(self):
         return True if self.downloads > 0 else False
 
+    def can_be_deleted(self):
+        result = False
+        now = datetime.now(pytz.utc)
+        if self.expires_on < now:
+            result = True
+        else:
+            user = self.order_item.batch.order.user
+            if self.downloaded() and user.delete_downloaded_files:
+                result = True
+        return result
+
     def __unicode__(self):
         return self.url
 
@@ -655,11 +673,6 @@ class OseoUser(models.Model):
     disk_quota = models.SmallIntegerField(default=50, help_text='Disk space '
                                           'available to each user. Expressed '
                                           'in Gigabytes')
-    order_availability_days = models.SmallIntegerField(
-        default=10,
-        help_text='How many days does a completed order stay on the server, '
-                  'waiting to be downloaded'
-    )
     delete_downloaded_order_files = models.BooleanField(
         default=True,
         help_text='If this option is selected, ordered items will be deleted '

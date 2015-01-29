@@ -31,7 +31,7 @@ import os
 import re
 import shutil
 import datetime as dt
-from zipfile import ZipFile
+from datetime import datetime, timedelta
 
 import pytz
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
@@ -120,12 +120,11 @@ def process_online_data_access_item(self, order_item_id):
     order_item.save()
     try:
         order = order_item.batch.order
-        processing_class, params = utilities.get_custom_code(
+        processor, params = utilities.get_processor(
             order.order_type,
-            models.ItemProcessor.PROCESSING_PROCESS_ITEM
+            models.ItemProcessor.PROCESSING_PROCESS_ITEM,
+            logger_type="celery"
         )
-        processor = utilities.import_class(processing_class,
-                                           logger_type="celery")
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
         urls, details = processor.process_item_online_access(
@@ -136,9 +135,12 @@ def process_online_data_access_item(self, order_item_id):
         order_item.additional_status_info = details
         logger.error("URLS: {}".format(urls))
         if any(urls):
+            now = datetime.now(pytz.utc)
+            expiry_date = now + timedelta(
+                days=order.order_type.item_availability_days)
             order_item.status = models.CustomizableItem.COMPLETED
-            order_item.completed_on = dt.datetime.now(pytz.utc)
-            for url, expiry_date in urls:
+            order_item.completed_on = now
+            for url in urls:
                 f = models.OseoFile(url=url, available=True,
                                     order_item=order_item,
                                     expires_on=expiry_date)
@@ -219,6 +221,7 @@ def update_product_order_status(self, order_id):
         order.save()
 
 
+# FIXME - This task must be moved somewhere outside of the oseoserver app
 @shared_task(bind=True)
 def monitor_ftp_downloads(self):
     """
@@ -251,62 +254,46 @@ def monitor_ftp_downloads(self):
         pass # the log file does not exist
 
 
-# TODO
-# this task can be generalized and executed as smaller tasks
+# TODO - Test this task out
 @shared_task(bind=True)
-def delete_old_orders(self):
-    """
-    Find completed orders that are lying around past their time.
-
-    This task should run once per day by being added to the 
-    :data:`~pyoseo.settings.CELERYBEAT_SCHEDULE` setting.
-
-    Orders that have been completed will remain on the server for an ammount of
-    days specified by the 
-    :data:`~pyoseo.settings.OSEOSERVER_ORDER_DELETION_THRESHOLD` setting.
-    Once this threshold is passed, an order becomes elligible for deletion.
-    """
-
-    ftp_root = getattr(
-        django_settings,
-        'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR',
-        None
-    )
-    deletion_threshold = getattr(
-        django_settings,
-        'OSEOSERVER_ORDER_DELETION_THRESHOLD',
-        None
-    )
-    for user in (u for u in os.listdir(ftp_root) if not u.startswith('.')):
-        logger.warn('Analyzing user {}'.format(user))
-        user_root = os.path.join(ftp_root, user)
-        for order_exp in (i for i in os.listdir(user_root)):
-            order_root = os.path.join(user_root, order_exp)
-            try:
-                order_id = int(re.search(r'order_(?P<id>\d+)',
-                               order_exp).groupdict()['id'])
-                order = models.Order.objects.get(pk=order_id)
-                completed_on = order.completed_on
-                today = dt.datetime.now(pytz.utc)
-                delta = (today - completed_on).days
-                if (deletion_threshold is not None) and \
-                        (delta > deletion_threshold):
-                    logger.warn('Order {} has been completed for more than {} '
-                                'days. Deleting order items...'.format(
-                                order_id, deletion_threshold))
-                    shutil.rmtree(order_root, ignore_errors=True)
-                else:
-                    logger.warn('Order {} has not passed the {} day '
-                                'threshold yet'.format(order_id,
-                                deletion_threshold))
-            except TypeError:
-                # (dt.datetime - None) raises TypeError
-                # it means the order is not complete yet
-                pass
-            except (ObjectDoesNotExist, AttributeError) as err:
-                logger.warn(err)
+def delete_expired_order_items(self):
+    now = datetime.now(pytz.utc)
+    for order_type in models.OrderType.objects.all():
+        expired = models.OseoFile.objects.filter(
+            available=True, expires_on__lt=now,
+            order_item__batch__order__order_type=order_type
+        )
+        downloaded = models.OseoFile.objects.filter(
+            available=True, downlads__gt=0,
+            order_item__batch__order__order_type=order_type
+        )
+        deletable = []
+        for oseo_file in downloaded:
+            owner = oseo_file.order_item.batch.order.user
+            if owner.delete_downloaded_order_files:
+                deletable.append(oseo_file)
+        deletable.extend(expired)
+        to_delete = list(set(deletable))
+        processor, params = utilities.get_processor(
+            order_type,
+            models.ItemProcessor.PROCESSING_CLEAN_ITEM,
+            logger_type="celery"
+        )
+        try:
+            processor.clean_files(file_urls=[f.url for f in to_delete],
+                                  **params)
+        except Exception as e:
+            logger.error("there has been an error deleting expired "
+                         "orders: {}".format(e))
+            utilities.send_cleaning_error_email(order_type,
+                                                [f.url for f in to_delete],
+                                                str(e))
+        for oseo_file in to_delete:
+            oseo_file.available = False
+            oseo_file.save()
 
 
+# FIXME - This task must be moved somewhere outside of the oseoserver app
 def parse_ftp_log_line(line):
     """
     Parse a line of the FTP transfer log file looking for downloaded items.
@@ -358,23 +345,32 @@ def parse_ftp_log_line(line):
 
 def _package_batch(batch, compression):
     files_to_package = []
-    for item in batch.order_items.all():
-        for oseo_file in item.files.all():
-            files_to_package.append(oseo_file.url)
-        item.files.all().delete()
-    processing_class, params = utilities.get_custom_code(
-        batch.order.order_type,
-        models.ItemProcessor.PROCESSING_PROCESS_ITEM
+    order_type = batch.order.order_type
+    processor, params = utilities.get_processor(
+        order_type,
+        models.ItemProcessor.PROCESSING_PROCESS_ITEM,
+        logger_type="celery"
     )
-    processor = utilities.import_class(processing_class,
-                                       logger_type="pyoseo")
     domain = Site.objects.get_current().domain
-    packed, expiration_date = processor.package_files(
-        compression, domain, file_urls=files_to_package, **params)
-    for item in batch.order_items.all():
-        f = models.OseoFile(url=packed, available=True, order_item=item,
-                            expires_on=expiration_date)
-        f.save()
+    try:
+        for item in batch.order_items.all():
+            for oseo_file in item.files.all():
+                files_to_package.append(oseo_file.url)
+            item.files.all().delete()
+            packed = processor.package_files(compression, domain,
+                                             file_urls=files_to_package,
+                                             **params)
+        expiry_date = datetime.now(pytz.utc) + timedelta(
+            days=order_type.item_availability_days)
+        for item in batch.order_items.all():
+            f = models.OseoFile(url=packed, available=True, order_item=item,
+                                expires_on=expiry_date)
+            f.save()
+    except Exception as e:
+        logger.error("there has been an error packaging the "
+                     "batch {}: {}".format(batch, str(e)))
+        utilities.send_batch_packaging_failed_email(batch, str(e))
+        raise
 
 
 @shared_task(bind=True)
@@ -394,4 +390,3 @@ def test_task(self):
     except ValueError as err:
         logger.error(err)
         utilities.send_mail_to_admins(str(err))
-
