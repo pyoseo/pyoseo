@@ -75,7 +75,7 @@ def show_item(request, user_name, order_id, item_id, item_file_name):
             item_file_name)
         oseo_file.downloads += 1
         oseo_file.save()
-        if all([f.downloaded() for f in order_item.files.all()]):
+        if all([f.downloads > 0 for f in order_item.files.all()]):
             order_item.status = models.CustomizableItem.DOWNLOADED
             order_item.save()
     else:

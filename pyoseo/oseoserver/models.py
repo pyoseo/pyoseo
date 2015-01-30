@@ -634,9 +634,6 @@ class OseoFile(models.Model):
                                                    "order item has been "
                                                    "downloaded.")
 
-    def downloaded(self):
-        return True if self.downloads > 0 else False
-
     def can_be_deleted(self):
         result = False
         now = datetime.now(pytz.utc)
@@ -644,7 +641,7 @@ class OseoFile(models.Model):
             result = True
         else:
             user = self.order_item.batch.order.user
-            if self.downloaded() and user.delete_downloaded_files:
+            if self.downloads > 0 and user.delete_downloaded_files:
                 result = True
         return result
 

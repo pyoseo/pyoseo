@@ -27,9 +27,7 @@ The celery worker can be started with the command:
 #   and communicate with the database over HTTP. This allows the task to
 #   run somewhere else, instead of having it in the same machine
 
-import os
 import re
-import shutil
 import datetime as dt
 from datetime import datetime, timedelta
 
@@ -44,7 +42,7 @@ from celery.utils.log import get_task_logger
 from oseoserver import models
 from oseoserver import utilities
 
-logger = get_task_logger(__name__)
+logger = get_task_logger('.'.join(('celery', __name__)))
 
 
 @shared_task(bind=True)
@@ -123,7 +121,7 @@ def process_online_data_access_item(self, order_item_id):
         processor, params = utilities.get_processor(
             order.order_type,
             models.ItemProcessor.PROCESSING_PROCESS_ITEM,
-            logger_type="celery"
+            logger_type="pyoseo"
         )
         options = order_item.export_options()
         delivery_options = order_item.export_delivery_options()
@@ -194,6 +192,9 @@ def update_product_order_status(self, order_id):
         try:
             _package_batch(batch, order.packaging)
         except Exception as e:
+            order.status = models.CustomizableItem.FAILED
+            order.additional_status_info = str(e)
+            order.save()
             raise
     new_order_status = batch.status()
     if old_order_status != new_order_status or \
@@ -277,7 +278,7 @@ def delete_expired_order_items(self):
         processor, params = utilities.get_processor(
             order_type,
             models.ItemProcessor.PROCESSING_CLEAN_ITEM,
-            logger_type="celery"
+            logger_type="pyoseo"
         )
         try:
             processor.clean_files(file_urls=[f.url for f in to_delete],
@@ -344,33 +345,33 @@ def parse_ftp_log_line(line):
 
 
 def _package_batch(batch, compression):
-    files_to_package = []
     order_type = batch.order.order_type
     processor, params = utilities.get_processor(
         order_type,
         models.ItemProcessor.PROCESSING_PROCESS_ITEM,
-        logger_type="celery"
+        logger_type="pyoseo"
     )
     domain = Site.objects.get_current().domain
+    files_to_package = []
     try:
         for item in batch.order_items.all():
             for oseo_file in item.files.all():
                 files_to_package.append(oseo_file.url)
-            item.files.all().delete()
-            packed = processor.package_files(compression, domain,
-                                             file_urls=files_to_package,
-                                             **params)
-        expiry_date = datetime.now(pytz.utc) + timedelta(
-            days=order_type.item_availability_days)
-        for item in batch.order_items.all():
-            f = models.OseoFile(url=packed, available=True, order_item=item,
-                                expires_on=expiry_date)
-            f.save()
+        packed = processor.package_files(compression, domain,
+                                         file_urls=files_to_package,
+                                         **params)
     except Exception as e:
         logger.error("there has been an error packaging the "
                      "batch {}: {}".format(batch, str(e)))
         utilities.send_batch_packaging_failed_email(batch, str(e))
         raise
+    expiry_date = datetime.now(pytz.utc) + timedelta(
+        days=order_type.item_availability_days)
+    for item in batch.order_items.all():
+        item.files.all().delete()
+        f = models.OseoFile(url=packed, available=True, order_item=item,
+                            expires_on=expiry_date)
+        f.save()
 
 
 @shared_task(bind=True)
@@ -380,13 +381,3 @@ def test_task(self):
     logger.info('logging something from within a task with level: info')
     logger.warning('logging something from within a task with level: warning')
     logger.error('logging something from within a task with level: error')
-    processing_class = getattr(django_settings,
-                               'OSEOSERVER_PROCESSING_CLASS')
-    logger.debug('processing_class: {}'.format(processing_class))
-    p = utilities.import_class(processing_class, under_celery=True)
-    logger.debug('p: {}'.format(p))
-    try:
-        raise ValueError('Error raised on purpose')
-    except ValueError as err:
-        logger.error(err)
-        utilities.send_mail_to_admins(str(err))

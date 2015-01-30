@@ -46,12 +46,8 @@ CELERY_DISABLE_RATE_LIMITS = True
 
 # pyoseo-beat schedule for executing periodic tasks
 CELERYBEAT_SCHEDULE = {
-    'monitor_ftp' : {
-        'task': 'oseoserver.tasks.monitor_ftp_downloads',
-        'schedule': crontab(hour=9, minute=30),  # execute daily at 09:30
-    },
     'clean_old_orders' : {
-        'task': 'oseoserver.tasks.delete_old_orders',
+        'task': 'oseoserver.tasks.delete_expired_order_items',
         'schedule': crontab(hour=10, minute=30),  # execute daily at 10:30
     },
 }

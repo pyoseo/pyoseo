@@ -244,6 +244,13 @@ scheme.
 
       sudo chmod 775 /home/ftpuser
 
+#. Change proftpd's init script in order to workaround `bug #1293416`_. Edit
+   the `/etc/init.d/proftpd` init script, adding a `sleep 2` to line #180.
+   Since the bug report is a bit unclear, a safe choice is to add the sleep
+   command both before and after line #180.
+
+.. _bug #1293416: https://bugs.launchpad.net/ubuntu/+source/proftpd-dfsg/+bug/1293416
+
 #. restart the proftpd daemon
 
    .. code:: bash

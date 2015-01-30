@@ -38761,7 +38761,8 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
 </soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:assertion type="XPath Match" name="XPath Match"><con:configuration><path>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
 declare namespace ns1='http://www.opengis.net/oseo/1.0';
 declare namespace ows='http://www.opengis.net/ows/2.0';
-//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess options and no packaging" searchProperties="true" id="583b63fc-9964-43b1-af0a-4cb6e2d0b4d6"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess options and no packaging" searchProperties="true" id="583b63fc-9964-43b1-af0a-4cb6e2d0b4d6"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
    <soapenv:Header>
       <wsse:Security>
          <wsse:UsernameToken>
@@ -38906,7 +38907,8 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
 </soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:assertion type="XPath Match" name="XPath Match"><con:configuration><path>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
 declare namespace ns1='http://www.opengis.net/oseo/1.0';
 declare namespace ows='http://www.opengis.net/ows/2.0';
-//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess no options packaging" searchProperties="true" id="2e1335ee-0a62-44a8-8b37-be80f16f5de4"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess no options packaging" searchProperties="true" id="2e1335ee-0a62-44a8-8b37-be80f16f5de4"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
    <soapenv:Header>
       <wsse:Security>
          <wsse:UsernameToken>
@@ -38920,7 +38922,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
          <ns:orderSpecification>
             <ns:orderReference>Some random reference</ns:orderReference>
             <ns:orderRemark>A remark mind you</ns:orderRemark>
-            <ns:packaging>${#TestCase#submitPackagingFormat}</ns:packaging>
+            <ns:packaging>${#TestSuite#submitPackagingFormat}</ns:packaging>
             <ns:deliveryOptions>
                <ns:onlineDataAccess>
                   <ns:protocol>${#TestSuite#submitDeliveryProtocol}</ns:protocol>
@@ -39034,4 +39036,152 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
 </soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:assertion type="XPath Match" name="XPath Match"><con:configuration><path>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
 declare namespace ns1='http://www.opengis.net/oseo/1.0';
 declare namespace ows='http://www.opengis.net/ows/2.0';
-//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties><con:property><con:name>submitPackagingFormat</con:name><con:value>zip</con:value></con:property></con:properties></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>650</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>userName</con:name><con:value>ricardogsilva</con:value></con:property><con:property><con:name>submitDeliveryProtocol</con:name><con:value>ftp</con:value></con:property><con:property><con:name>getStatusPresentation</con:name><con:value>brief</con:value></con:property><con:property><con:name>describeResultAccessSubFunction</con:name><con:value>allReady</con:value></con:property></con:properties></con:testSuite><con:endpointStrategy xsi:type="con:DefaultEndpointStrategy" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:endpoint mode="COMPLEMENT" username="ricardogsilva" wssType="PasswordText">http://localhost:8000/oseo/server</con:endpoint></con:endpointStrategy><con:properties/><con:wssContainer/><con:oAuth2ProfileContainer/><con:sensitiveInformation/></con:soapui-project>
+//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess options and packaging" searchProperties="true" id="333dd8ba-c540-4be6-96c5-f7a69922cde3"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>${#TestSuite#userName}</wsse:Username>
+            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:Submit service="OS" version="1.0.0">
+         <ns:orderSpecification>
+            <ns:orderReference>Some random reference</ns:orderReference>
+            <ns:orderRemark>A remark mind you</ns:orderRemark>
+            <ns:packaging>${#TestSuite#submitPackagingFormat}</ns:packaging>
+            <ns:option>
+               <ns:ParameterData>
+                  <ns:encoding>XMLEncoding</ns:encoding>
+                  <ns:values>
+                     <Format>GeoTiff</Format>
+                  </ns:values>
+               </ns:ParameterData>
+            </ns:option>
+            <ns:deliveryOptions>
+               <ns:onlineDataAccess>
+                  <ns:protocol>${#TestSuite#submitDeliveryProtocol}</ns:protocol>
+               </ns:onlineDataAccess>
+            </ns:deliveryOptions>
+            <ns:priority>STANDARD</ns:priority>
+            <ns:orderType>PRODUCT_ORDER</ns:orderType>
+            <ns:orderItem>
+               <ns:itemId>item_01</ns:itemId>
+               <ns:option>
+                  <ns:ParameterData>
+                     <ns:encoding>XMLEncoding</ns:encoding>
+                     <ns:values>
+                        <Format>GeoTiff</Format>
+                        <MapProjection>LAT_LONG</MapProjection>
+                        <RegionOfInterest>Outra</RegionOfInterest>
+                     </ns:values>
+                  </ns:ParameterData>
+               </ns:option>
+               <ns:productId>
+                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_02</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_03</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_04</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_05</ns:itemId>
+               <ns:productId>
+                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+         </ns:orderSpecification>
+         <ns:statusNotification>None</ns:statusNotification>
+      </ns:Submit>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="Submit"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="transfer" name="Property Transfer - order id"><con:settings/><con:config xsi:type="con:PropertyTransfersStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:transfers setNullOnMissingSource="true" transferTextContent="true" failOnError="true" ignoreEmpty="false" transferToAll="false" useXQuery="false" entitize="false" transferChildNodes="false"><con:name>transferOrderId</con:name><con:sourceType>Response</con:sourceType><con:sourceStep>Submit</con:sourceStep><con:sourcePath>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
+declare namespace ns1='http://www.isotc211.org/2005/gts';
+declare namespace ns2='http://www.opengis.net/swes/2.0';
+declare namespace ns3='http://www.isotc211.org/2005/gco';
+declare namespace ns4='http://www.w3.org/2005/08/addressing';
+declare namespace ns5='http://www.w3.org/1999/xlink';
+declare namespace ns6='http://www.opengis.net/ows/2.0';
+declare namespace ns7='http://www.opengis.net/oseo/1.0';
+declare namespace ns8='http://docs.oasis-open.org/wsn/t-1';
+declare namespace ns9='http://www.opengis.net/gml/3.2';
+declare namespace ns10='http://www.isotc211.org/2005/gss';
+declare namespace ns11='http://www.isotc211.org/2005/gsr';
+declare namespace ns12='http://www.opengis.net/swe/2.0';
+declare namespace ns13='http://www.isotc211.org/2005/gmd';
+declare namespace ns14='http://www.opengis.net/ows/1.1';
+//ns7:SubmitAck/ns7:orderId[1]</con:sourcePath><con:targetType>currentOrderId</con:targetType><con:targetStep>#TestSuite#</con:targetStep></con:transfers></con:config></con:testStep><con:testStep type="delay" name="Delay"><con:settings/><con:config><delay>10000</delay></con:config></con:testStep><con:testStep type="request" name="GetStatus - orderId"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>GetStatus</con:operation><con:request name="GetStatus - orderId" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>${#TestSuite#userName}</wsse:Username>
+            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:GetStatus service="OS" version="1.0.0">
+         <ns:orderId>${#TestSuite#currentOrderId}</ns:orderId>
+         <ns:presentation>${#TestSuite#getStatusPresentation}</ns:presentation>
+      </ns:GetStatus>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:assertion type="XPath Match" name="XPath Match"><con:configuration><path>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
+declare namespace ns1='http://www.opengis.net/oseo/1.0';
+declare namespace ows='http://www.opengis.net/ows/2.0';
+//ns1:GetStatusResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="GetStatus"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:testStep type="transfer" name="Property Transfer - order status"><con:settings/><con:config xsi:type="con:PropertyTransfersStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:transfers setNullOnMissingSource="true" transferTextContent="true" failOnError="true" ignoreEmpty="false" transferToAll="false" useXQuery="false" entitize="false" transferChildNodes="false"><con:name>transfer order status</con:name><con:sourceType>Response</con:sourceType><con:sourceStep>GetStatus - orderId</con:sourceStep><con:sourcePath>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
+declare namespace ns1='http://www.isotc211.org/2005/gts';
+declare namespace ns2='http://www.opengis.net/swes/2.0';
+declare namespace ns3='http://www.isotc211.org/2005/gco';
+declare namespace ns4='http://www.w3.org/2005/08/addressing';
+declare namespace ns5='http://www.w3.org/1999/xlink';
+declare namespace ns6='http://www.opengis.net/ows/2.0';
+declare namespace ns7='http://www.opengis.net/oseo/1.0';
+declare namespace ns8='http://docs.oasis-open.org/wsn/t-1';
+declare namespace ns9='http://www.opengis.net/gml/3.2';
+declare namespace ns10='http://www.isotc211.org/2005/gss';
+declare namespace ns11='http://www.isotc211.org/2005/gsr';
+declare namespace ns12='http://www.opengis.net/swe/2.0';
+declare namespace ns13='http://www.isotc211.org/2005/gmd';
+declare namespace ns14='http://www.opengis.net/ows/1.1';
+//ns7:GetStatusResponse/ns7:orderMonitorSpecification/ns7:orderStatusInfo/ns7:status[1]
+</con:sourcePath><con:targetType>currentOrderStatus</con:targetType><con:targetStep>#TestSuite#</con:targetStep><con:targetPath>
+</con:targetPath></con:transfers></con:config></con:testStep><con:testStep type="goto" name="Conditional Goto"><con:settings/><con:config xsi:type="con:GotoStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:condition><con:name>Condition 1</con:name><con:type>XPATH</con:type><con:expression>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
+declare namespace ns1='http://www.opengis.net/oseo/1.0';
+declare namespace ows='http://www.opengis.net/ows/2.0';
+//ns1:GetStatusResponse/ns1:orderMonitorSpecification/ns1:orderStatusInfo/ns1:status[1] = "Accepted" or 
+//ns1:GetStatusResponse/ns1:orderMonitorSpecification/ns1:orderStatusInfo/ns1:status[1] = "InProduction"</con:expression><con:targetStep>Delay</con:targetStep></con:condition></con:config></con:testStep><con:testStep type="request" name="DescribeResultAccess"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>DescribeResultAccess</con:operation><con:request name="DescribeResultAccess" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/server</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>${#TestSuite#userName}</wsse:Username>
+            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns:DescribeResultAccess service="OS" version="1.0.0">
+         <ns:orderId>${#TestSuite#currentOrderId}</ns:orderId>
+         <ns:subFunction>${#TestSuite#describeResultAccessSubFunction}</ns:subFunction>
+      </ns:DescribeResultAccess>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:assertion type="Schema Compliance" name="Schema Compliance"><con:configuration/></con:assertion><con:assertion type="SOAP Fault Assertion" name="Not SOAP Fault"/><con:assertion type="XPath Match" name="XPath Match"><con:configuration><path>declare namespace soap='http://schemas.xmlsoap.org/soap/envelope/';
+declare namespace ns1='http://www.opengis.net/oseo/1.0';
+declare namespace ows='http://www.opengis.net/ows/2.0';
+//ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties><con:property><con:name>currentOrderId</con:name><con:value/></con:property><con:property><con:name>currentOrderstatus</con:name><con:value/></con:property></con:properties></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>728</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>userName</con:name><con:value>ricardogsilva</con:value></con:property><con:property><con:name>submitDeliveryProtocol</con:name><con:value>http</con:value></con:property><con:property><con:name>submitPackagingFormat</con:name><con:value>zip</con:value></con:property><con:property><con:name>getStatusPresentation</con:name><con:value>brief</con:value></con:property><con:property><con:name>describeResultAccessSubFunction</con:name><con:value>allReady</con:value></con:property></con:properties></con:testSuite><con:endpointStrategy xsi:type="con:DefaultEndpointStrategy" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:endpoint mode="COMPLEMENT" username="ricardogsilva" wssType="PasswordText">http://localhost:8000/oseo/server</con:endpoint></con:endpointStrategy><con:properties/><con:wssContainer/><con:oAuth2ProfileContainer/><con:sensitiveInformation/></con:soapui-project>
