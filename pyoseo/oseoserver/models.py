@@ -25,6 +25,8 @@ from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
 
+import managers
+
 
 class AbstractDeliveryAddress(models.Model):
     first_name = models.CharField(max_length=50, blank=True)
@@ -491,6 +493,14 @@ class Order(CustomizableItem):
 
     def __unicode__(self):
         return '{}'.format(self.id)
+
+
+class OrderPendingModeration(Order):
+    objects = managers.OrderPendingModerationManager()
+
+    class Meta:
+        proxy = True
+        verbose_name_plural = "orders pending moderation"
 
 
 

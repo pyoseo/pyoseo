@@ -46,7 +46,7 @@ CELERY_DISABLE_RATE_LIMITS = True
 
 # pyoseo-beat schedule for executing periodic tasks
 CELERYBEAT_SCHEDULE = {
-    'clean_old_orders' : {
+    'delete_expired_order_items' : {
         'task': 'oseoserver.tasks.delete_expired_order_items',
         'schedule': crontab(hour=10, minute=30),  # execute daily at 10:30
     },
@@ -62,6 +62,9 @@ EMAIL_USE_SSL = False
 
 # settings for django-mail-queue
 MAILQUEUE_CELERY = True
+
+# settings for django-sendfile
+SENDFILE_BACKEND = "sendfile.backends.xsendfile"
 
 
 def find_or_create_secret_key():

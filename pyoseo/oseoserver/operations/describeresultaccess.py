@@ -97,6 +97,7 @@ class DescribeResultAccess(OseoOperation):
                 iut.itemAddress = oseo.OnLineAccessAddressType()
                 iut.itemAddress.ResourceAddress = pyxb.BIND()
                 iut.itemAddress.ResourceAddress.URL = oseo_file.url
+                iut.expirationDate = oseo_file.expires_on
                 response.URLs.append(iut)
         return response, status_code, None
 
@@ -130,8 +131,8 @@ class DescribeResultAccess(OseoOperation):
                     if (last_time is None or behaviour == self.ALL_READY) or \
                             (behaviour == self.NEXT_READY and
                              order_item.completed_on >= last_time):
-                        for oseo_file in order_item.files.all():
-                            completed.append((oseo_file, delivery))
+                        for f in order_item.files.filter(available=True):
+                            completed.append((f, delivery))
         if order.packaging == models.Order.ZIP and any(completed):
             completed = list(completed.pop())
         return completed

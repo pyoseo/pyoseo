@@ -3,6 +3,7 @@ from django.core.urlresolvers import reverse
 from django.utils.html import format_html
 
 import models
+from server import OseoServer
 
 
 class ProcessorParameterInline(admin.StackedInline):
@@ -109,6 +110,44 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = ('status_changed_on', 'completed_on',
                        'last_describe_result_access_request',)
     date_hierarchy = 'created_on'
+
+
+@admin.register(models.OrderPendingModeration)
+class PendingOrderAdmin(admin.ModelAdmin):
+    actions = ['approve_order', 'reject_order',]
+
+    def get_queryset(self, request):
+        qs = super(PendingOrderAdmin, self).get_queryset(request)
+        return qs.filter(status=models.CustomizableItem.SUBMITTED)
+
+    def get_actions(self, request):
+        actions = super(PendingOrderAdmin, self).get_actions(request)
+        del actions['delete_selected']
+        if not request.user.is_staff:
+            if 'approve_order' in actions:
+                del actions['approve_order']
+            if 'reject_order' in actions:
+                del actions['reject_order']
+        return actions
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def approve_order(self, request, queryset):
+        server = OseoServer()
+        for order in queryset:
+            server.moderate_order(order, True)
+    approve_order.short_description = "Approve selected orders"
+
+    def reject_order(self, request, queryset):
+        server = OseoServer()
+        for order in queryset:
+            server.moderate_order(order, False, "Testing rejection")
+    reject_order.short_description = "Reject selected orders"
+
 
 @admin.register(models.ProductOrder)
 class ProductOrderAdmin(admin.ModelAdmin):

@@ -27,7 +27,6 @@ class FakeOrderProcessor(object):
     def __init__(self, **kwargs):
         pass
 
-    @staticmethod
     def parse_option(name, value, **kwargs):
         """
 
@@ -42,7 +41,6 @@ class FakeOrderProcessor(object):
         logger.debug("parsed_value: {}".format(parsed_value))
         return parsed_value
 
-    @staticmethod
     def process_item_online_access(identifier, item_id, order_id, user_name,
                                    packaging, options, delivery_options,
                                    **kwargs):
@@ -83,11 +81,34 @@ class FakeOrderProcessor(object):
     def package_files(self, packaging, domain, delete_paths=True,
                       site_name=None, server_port=None, file_urls=[],
                       **kwargs):
+        """
+        Create a packaged archive file with the input file_urls.
+
+        :param packaging:
+        :param domain:
+        :param delete_paths:
+        :param site_name:
+        :param server_port:
+        :param file_urls:
+        :param kwargs:
+        :return:
+        """
+
         output_url = "fake_url_for_the_package"
         return output_url
 
-    @staticmethod
-    def clean_up_item(path, **kwargs):
-        logger.debug("fake clean up of an order item")
-        logger.debug("arguments: {}".format(locals()))
+    def clean_files(self, file_urls=[], **kwargs):
+        """
+        Delete the files that match the input file_urls from the filesystem.
+
+        This method has the responsability of finding the files that are
+        represented by each file_url and deleting them.
+
+        :param file_urls: A sequence containing file URLs
+        :type file_urls: [str]
+        :param kwargs:
+        :return: Nothing
+        """
+
+        pass
 

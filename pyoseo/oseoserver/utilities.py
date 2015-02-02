@@ -21,6 +21,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from mailqueue.models import MailerMessage
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
@@ -52,10 +53,14 @@ def get_processor(order_type, processing_step,
 
 
 def send_moderation_email(order):
+    moderation_url = reverse(
+        "admin:oseoserver_orderpendingmoderation_changelist")
+    msg = ("{} {} is waiting to be moderated\n\nVisit\n\n\t{}\n\nand "
+          "either approve or reject it".format(order.order_type.name,
+                                               order.id, moderation_url))
     send_email(
         "{} {} awaits moderation".format(order.order_type.name, order.id),
-        "{} {} is waiting to be moderated".format(order.order_type.name,
-                                                  order.id),
+        msg,
         User.objects.filter(is_staff=True).exclude(email="")
     )
 

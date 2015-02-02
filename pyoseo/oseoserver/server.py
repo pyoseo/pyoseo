@@ -493,3 +493,31 @@ class OseoServer(object):
     def reprocess_order(self, order_id):
         order = models.Order.objects.get(id=order_id)
         self.dispatch_order(order, force=True)
+
+    def moderate_order(self, order, approved, rejection_details=""):
+        """
+        Decide on approval of an order.
+
+        The OSEO standard does not really define any moderation workflow
+        for orders. As such, none of the defined statuses fits exactly with
+        this process. We are abusing the CANCELLED status for this.
+
+        :param order:
+        :param approved:
+        :param rejection_details:
+        :return:
+        """
+        if approved:
+            order.status = models.CustomizableItem.ACCEPTED
+            order.additional_status_info = ("Order has been approved and is "
+                                            "waiting in the processing queue")
+        else:
+            order.status = models.CustomizableItem.CANCELLED
+            if rejection_details != "":
+                order.additional_status_info = rejection_details
+            else:
+                order.additional_status_info = ("Order request has been "
+                                                "rejected by the "
+                                                "administrators.")
+        order.save()
+        self.dispatch_order(order)

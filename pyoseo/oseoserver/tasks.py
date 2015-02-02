@@ -259,22 +259,27 @@ def monitor_ftp_downloads(self):
 @shared_task(bind=True)
 def delete_expired_order_items(self):
     now = datetime.now(pytz.utc)
-    for order_type in models.OrderType.objects.all():
+    for order_type in models.OrderType.objects.filter(enabled=True):
+        logger.warn("Going over orders of type {}".format(order_type.name))
         expired = models.OseoFile.objects.filter(
             available=True, expires_on__lt=now,
             order_item__batch__order__order_type=order_type
         )
+        logger.info("expired: {}".format(expired))
         downloaded = models.OseoFile.objects.filter(
-            available=True, downlads__gt=0,
+            available=True, downloads__gt=0,
             order_item__batch__order__order_type=order_type
         )
+        logger.info("downloaded: {}".format(downloaded))
         deletable = []
         for oseo_file in downloaded:
             owner = oseo_file.order_item.batch.order.user
             if owner.delete_downloaded_order_files:
                 deletable.append(oseo_file)
         deletable.extend(expired)
+        logger.info("deletable: {}".format(deletable))
         to_delete = list(set(deletable))
+        logger.info("to_delete: {}".format(to_delete))
         processor, params = utilities.get_processor(
             order_type,
             models.ItemProcessor.PROCESSING_CLEAN_ITEM,
