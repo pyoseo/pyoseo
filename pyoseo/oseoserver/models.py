@@ -63,6 +63,7 @@ class AbstractOptionChoice(models.Model):
         return self.value
 
 
+#FIXME - There must be a way to fail a whole batch if one of the items fails
 class Batch(models.Model):
     order = models.ForeignKey("Order", null=True, related_name="batches")
     created_on = models.DateTimeField(auto_now_add=True)

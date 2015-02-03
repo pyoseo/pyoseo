@@ -64,6 +64,7 @@ def send_moderation_email(order):
         User.objects.filter(is_staff=True).exclude(email="")
     )
 
+
 def send_order_failed_email(order, details=None):
     send_email(
         "{} {} failed".format(order.order_type.name, order.id),
@@ -71,6 +72,20 @@ def send_order_failed_email(order, details=None):
             order.order_type.name, order.id, details),
         User.objects.filter(is_staff=True).exclude(email="")
     )
+
+
+def send_item_failed_email(order_item, details=None):
+    title = "Prcessing of order item {} has failed".format(order_item.id)
+    subject =  ("Processing of order item: {} ({}) of batch: {} of order: "
+                "{} has failed\n\n"
+                "The error was:\n\n{}".format(order_item.id,
+                                              order_item.item_id,
+                                              order_item.batch.id,
+                                              order_item.batch.order.id,
+                                              details))
+    send_email(title, subject,
+               User.objects.filter(is_staff=True).exclude(email=""))
+
 
 def send_cleaning_error_email(order_type, file_paths, error):
     details = "\n".join(file_paths)

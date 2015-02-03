@@ -145,7 +145,7 @@ class PendingOrderAdmin(admin.ModelAdmin):
     def reject_order(self, request, queryset):
         server = OseoServer()
         for order in queryset:
-            server.moderate_order(order, False, "Testing rejection")
+            server.moderate_order(order, False)
     reject_order.short_description = "Reject selected orders"
 
 

@@ -131,7 +131,6 @@ def process_online_data_access_item(self, order_item_id):
             domain=Site.objects.get_current().domain,
             **params)
         order_item.additional_status_info = details
-        logger.error("URLS: {}".format(urls))
         if any(urls):
             now = datetime.now(pytz.utc)
             expiry_date = now + timedelta(
@@ -152,6 +151,7 @@ def process_online_data_access_item(self, order_item_id):
         order_item.additional_status_info = str(e)
         logger.error('THERE HAS BEEN AN ERROR: order item {} has failed '
                      'with the error: {}'.format(order_item_id, e))
+        utilities.send_item_failed_email(order_item, e)
     finally:
         order_item.save()
 
