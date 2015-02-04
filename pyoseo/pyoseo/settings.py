@@ -50,6 +50,10 @@ CELERYBEAT_SCHEDULE = {
         'task': 'oseoserver.tasks.delete_expired_order_items',
         'schedule': crontab(hour=10, minute=30),  # execute daily at 10:30
     },
+    'delete_failed_orders' : {
+        'task': 'oseoserver.tasks.delete_failed_orders',
+        'schedule': crontab(hour=11, minute=30),  # execute daily at 11:30
+    },
 }
 
 # mail settings

@@ -72,37 +72,38 @@ class DescribeResultAccess(OseoOperation):
                                    'The client is not authorized to '
                                    'call the operation',
                                    locator='orderId')
-        completed_files = self._get_completed_files(order,
-                                                    request.subFunction)
-        logger.info('completed_files: %s' % completed_files)
+        if order.order_type.name == models.Order.PRODUCT_ORDER:
+            completed_files = self.get_product_order_completed_files(
+                order, request.subFunction)
+        else:
+            raise NotImplementedError
+        logger.info('completed_files: {}'.format(completed_files))
         order.last_describe_result_access_request = dt.datetime.utcnow()
         order.save()
         response = oseo.DescribeResultAccessResponse(status='success')
-        if order.packaging == models.Order.ZIP and any(completed_files):
+
+        item_id = None
+        if len(completed_files) == 1 and order.packaging == models.Order.ZIP:
+            item_id = "Packaged order items"
+        for oseo_file, delivery in completed_files:
+            item = oseo_file.order_item
             iut = oseo.ItemURLType()
-            iut.itemId = "Packaged order items"
+            iut.itemId = item_id if item_id is not None else item.item_id
+            iut.productId = oseo.ProductIdType(
+                identifier=item.identifier,
+                )
+            iut.productId.collectionId = item.collection.collection_id
             iut.itemAddress = oseo.OnLineAccessAddressType()
             iut.itemAddress.ResourceAddress = pyxb.BIND()
-            iut.itemAddress.ResourceAddress.URL = completed_files[0].url
+            iut.itemAddress.ResourceAddress.URL = oseo_file.url
+            iut.expirationDate = oseo_file.expires_on
             response.URLs.append(iut)
-        else:
-            for oseo_file, delivery in completed_files:
-                item = oseo_file.order_item
-                iut = oseo.ItemURLType()
-                iut.itemId = item.item_id
-                iut.productId = oseo.ProductIdType(
-                    identifier=item.identifier,
-                )
-                iut.productId.collectionId = item.collection.collection_id
-                iut.itemAddress = oseo.OnLineAccessAddressType()
-                iut.itemAddress.ResourceAddress = pyxb.BIND()
-                iut.itemAddress.ResourceAddress.URL = oseo_file.url
-                iut.expirationDate = oseo_file.expires_on
-                response.URLs.append(iut)
         return response, status_code, None
 
-    def _get_completed_files(self, order, behaviour):
+    def get_product_order_completed_files(self, order, behaviour):
         """
+        Get the completed files for product orders.
+
         :arg order:
         :type order: oseoserver.models.Order
         :arg behaviour: Either 'allReady' or 'nextReady', as defined in the 
@@ -112,29 +113,40 @@ class DescribeResultAccess(OseoOperation):
         :rtyp: [(models.OrderItem, models.DeliveryOption)]
         """
 
-        if not order.order_type.name == models.Order.PRODUCT_ORDER:
-            raise NotImplementedError
+
         last_time = order.last_describe_result_access_request
-        completed = []
         order_delivery = order.selected_delivery_option.option
-        for batch in order.batches.all():
+        batch = order.batches.get()  # ProductOrder has a single batch
+        batch_status = batch.status()
+        completed = []
+        if batch_status != models.CustomizableItem.COMPLETED:
+            # batch is either still being processed,
+            # failed or already downloaded, so we don't care for it
+            pass
+        else:
+            batch_complete_items = []
             order_items = batch.order_items.all()
-            for order_item in order_items:
+            for oi in order_items:
                 try:
-                    delivery = order_item.selected_delivery_option.option
+                    delivery = oi.selected_delivery_option.option
                 except models.SelectedDeliveryOption.DoesNotExist:
                     delivery = order_delivery
                 if not hasattr(delivery, "onlinedataaccess"):
                     # getStatus only applies to items with onlinedataaccess
                     continue
-                if order_item.status == models.CustomizableItem.COMPLETED:
+                if oi.status == models.CustomizableItem.COMPLETED:
                     if (last_time is None or behaviour == self.ALL_READY) or \
                             (behaviour == self.NEXT_READY and
-                             order_item.completed_on >= last_time):
-                        for f in order_item.files.filter(available=True):
-                            completed.append((f, delivery))
-        if order.packaging == models.Order.ZIP and any(completed):
-            completed = list(completed.pop())
+                                     oi.completed_on >= last_time):
+                        batch_complete_items.append((oi, delivery))
+            if order.packaging == models.Order.ZIP:
+                if len(batch_complete_items) == len(order_items):
+                    # the zip is ready, lets get only a single file
+                    # because they all point to the same URL
+                    completed.append(batch_complete_items[0])
+                else:  # the zip is not ready yet
+                    pass
+            else:  # lets get each file that is complete
+                completed = batch_complete_items
         return completed
-
 

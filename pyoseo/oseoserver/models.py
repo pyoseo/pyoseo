@@ -63,7 +63,6 @@ class AbstractOptionChoice(models.Model):
         return self.value
 
 
-#FIXME - There must be a way to fail a whole batch if one of the items fails
 class Batch(models.Model):
     order = models.ForeignKey("Order", null=True, related_name="batches")
     created_on = models.DateTimeField(auto_now_add=True)
@@ -83,7 +82,11 @@ class Batch(models.Model):
             CustomizableItem.DOWNLOADED: 8,
             }
         item_statuses = set([oi.status for oi in self.order_items.all()])
-        if any(item_statuses):
+        if CustomizableItem.FAILED in item_statuses:
+            status = CustomizableItem.FAILED
+        elif len(item_statuses) == 1:
+            status = item_statuses.pop()
+        elif any(item_statuses):
             status = list(item_statuses)[0]
             for st in item_statuses:
                 if order[st] < order[status]:

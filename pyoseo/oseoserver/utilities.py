@@ -74,6 +74,10 @@ def send_order_failed_email(order, details=None):
     )
 
 
+# There doesn't seem to be any use for this function currently
+# The order takes care of notifying the admins when its status is
+# FAILED. This might change when the Subscriptions and Massive Orders
+# get implemented.
 def send_item_failed_email(order_item, details=None):
     title = "Prcessing of order item {} has failed".format(order_item.id)
     subject =  ("Processing of order item: {} ({}) of batch: {} of order: "

@@ -117,6 +117,8 @@ def process_online_data_access_item(self, order_item_id):
     order_item.additional_status_info = "Item is being processed"
     order_item.save()
     try:
+        if order_item.item_id == "item_01":
+            raise IOError("Some fake error")
         order = order_item.batch.order
         processor, params = utilities.get_processor(
             order.order_type,
@@ -151,7 +153,6 @@ def process_online_data_access_item(self, order_item_id):
         order_item.additional_status_info = str(e)
         logger.error('THERE HAS BEEN AN ERROR: order item {} has failed '
                      'with the error: {}'.format(order_item_id, e))
-        utilities.send_item_failed_email(order_item, e)
     finally:
         order_item.save()
 
@@ -222,40 +223,6 @@ def update_product_order_status(self, order_id):
         order.save()
 
 
-# FIXME - This task must be moved somewhere outside of the oseoserver app
-@shared_task(bind=True)
-def monitor_ftp_downloads(self):
-    """
-    Monitor FTP downloads
-
-    This function will parse an xferlog file from the FTP server.
-    Read more about xferlog file format by typing `man xferlog` at a
-    terminal.
-
-    The way this function should be run is by adding it in the
-    :data:`~pyoseo.settings.CELERYBEAT_SCHEDULE` setting so that it 
-    runs once per day. It will try to analyze the log file from the previous 
-    day, in order to not miss any downloads. This implies that the FTP 
-    server's logs are always rotated on a daily basis, even if they are empty.
-    As such, the logrotate daemon should be properly configured, as indicated 
-    in the :ref:`proftpd-installation-label` installation instructions.
-    """
-
-    ftp_log_file = '/var/log/proftpd/xferlog.1' # analyzing previous day log
-    #ftp_log_file = '/var/log/proftpd/xferlog'
-    try:
-        with open(ftp_log_file) as fh:
-            for line in fh:
-                order_item, download_dt = parse_ftp_log_line(line)
-                if order_item is not None:
-                    order_item.downloads += 1
-                    order_item.status = models.CustomizableItem.DOWNLOADED
-                    order_item.save()
-    except IOError:
-        pass # the log file does not exist
-
-
-# TODO - Test this task out
 @shared_task(bind=True)
 def delete_expired_order_items(self):
     now = datetime.now(pytz.utc)
@@ -285,68 +252,31 @@ def delete_expired_order_items(self):
             models.ItemProcessor.PROCESSING_CLEAN_ITEM,
             logger_type="pyoseo"
         )
+        unique_urls = list(set([f.url for f in to_delete]))
+        logger.info("unique_urls: {}".format(unique_urls))
         try:
-            processor.clean_files(file_urls=[f.url for f in to_delete],
+            processor.clean_files(file_urls=unique_urls,
                                   **params)
         except Exception as e:
             logger.error("there has been an error deleting expired "
                          "orders: {}".format(e))
-            utilities.send_cleaning_error_email(order_type,
-                                                [f.url for f in to_delete],
+            utilities.send_cleaning_error_email(order_type, unique_urls,
                                                 str(e))
         for oseo_file in to_delete:
             oseo_file.available = False
             oseo_file.save()
 
 
-# FIXME - This task must be moved somewhere outside of the oseoserver app
-def parse_ftp_log_line(line):
-    """
-    Parse a line of the FTP transfer log file looking for downloaded items.
-
-    :arg line: One of the lines of the FTP's server transfer log
-    :type line: str
-    :returns: the order item being requested in the line and the time when 
-              the download was performed
-    :rtype: (oseoserver.models.OrderItem, datetime.datetime)
-    """
-
-    # Do not uncomment this line except for debugging purposes, as it
-    # produces a lot of output
-    #logger.debug('line: {}'.format(line))
-    ftp_root = getattr(
-        django_settings,
-        'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR',
-        None
-    )
-    info = line.rsplit(' ', 13)
-    file_name = info[4]
-    direction = info[7]
-    completion_status = info[13]
-    is_pyoseo_transfer = file_name.startswith(ftp_root)
-    is_outgoing = True if direction == 'o' else False
-    is_completed = True if completion_status.strip() == 'c' else False
-    result = None, None
-    if is_pyoseo_transfer and is_outgoing and is_completed:
-        print('this is a pyoseo transfer')
-        sub_path = file_name.partition(ftp_root)[-1][1:]
-        ftp_user, order_id, file_name = sub_path.split('/')
-        try:
-            order = int(re.search(r'order_(?P<id>\d+)', 
-                        order_id).groupdict()['id'])
-        except AttributeError:
-            order = None
-        current_time = dt.datetime.strptime(info[0],
-                                            '%a %b %d %H:%M:%S %Y')
-        current_time = pytz.timezone('UTC').localize(current_time)
-        try:
-            oi = models.OrderItem.objects.get(batch__order__pk=order,
-                                              file_name=file_name)
-        except (ObjectDoesNotExist, MultipleObjectsReturned) as err:
-            logger.warning(err)
-            oi = None
-        result = oi, current_time
-    return result
+# TODO - Implement the actual deletion of failed orders
+def delete_failed_orders(self):
+    for order in models.Order.objects.filter(
+            status=models.CustomizableItem.FAILED):
+        for batch in order.batches.all():
+            if batch.status() == models.CustomizableItem.FAILED:
+                for f in models.OseoFile.objects.filter(
+                        order_item__batch=batch):
+                    logger.info("would delete file {} if this was "
+                                "implemented...".format(f))
 
 
 def _package_batch(batch, compression):
