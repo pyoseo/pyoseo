@@ -110,7 +110,7 @@ class DescribeResultAccess(OseoOperation):
                         OSEO specification
         :type behaviour: str
         :return: a list with the completed order items for this order
-        :rtyp: [(models.OrderItem, models.DeliveryOption)]
+        :rtype: [(models.OseoFile, models.DeliveryOption)]
         """
 
 
@@ -138,7 +138,8 @@ class DescribeResultAccess(OseoOperation):
                     if (last_time is None or behaviour == self.ALL_READY) or \
                             (behaviour == self.NEXT_READY and
                                      oi.completed_on >= last_time):
-                        batch_complete_items.append((oi, delivery))
+                        for f in oi.files.filter(available=True):
+                            batch_complete_items.append((f, delivery))
             if order.packaging == models.Order.ZIP:
                 if len(batch_complete_items) == len(order_items):
                     # the zip is ready, lets get only a single file

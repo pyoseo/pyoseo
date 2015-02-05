@@ -117,8 +117,9 @@ def process_online_data_access_item(self, order_item_id):
     order_item.additional_status_info = "Item is being processed"
     order_item.save()
     try:
-        if order_item.item_id == "item_01":
-            raise IOError("Some fake error")
+        # for testing purposes only
+        #if order_item.item_id == "item_01":
+        #    raise IOError("Some fake error")
         order = order_item.batch.order
         processor, params = utilities.get_processor(
             order.order_type,
@@ -225,58 +226,75 @@ def update_product_order_status(self, order_id):
 
 @shared_task(bind=True)
 def delete_expired_order_items(self):
-    now = datetime.now(pytz.utc)
-    for order_type in models.OrderType.objects.filter(enabled=True):
-        logger.warn("Going over orders of type {}".format(order_type.name))
-        expired = models.OseoFile.objects.filter(
-            available=True, expires_on__lt=now,
-            order_item__batch__order__order_type=order_type
-        )
-        logger.info("expired: {}".format(expired))
-        downloaded = models.OseoFile.objects.filter(
-            available=True, downloads__gt=0,
-            order_item__batch__order__order_type=order_type
-        )
-        logger.info("downloaded: {}".format(downloaded))
-        deletable = []
-        for oseo_file in downloaded:
-            owner = oseo_file.order_item.batch.order.user
-            if owner.delete_downloaded_order_files:
-                deletable.append(oseo_file)
-        deletable.extend(expired)
-        logger.info("deletable: {}".format(deletable))
-        to_delete = list(set(deletable))
-        logger.info("to_delete: {}".format(to_delete))
-        processor, params = utilities.get_processor(
-            order_type,
-            models.ItemProcessor.PROCESSING_CLEAN_ITEM,
-            logger_type="pyoseo"
-        )
-        unique_urls = list(set([f.url for f in to_delete]))
-        logger.info("unique_urls: {}".format(unique_urls))
-        try:
-            processor.clean_files(file_urls=unique_urls,
-                                  **params)
-        except Exception as e:
-            logger.error("there has been an error deleting expired "
-                         "orders: {}".format(e))
-            utilities.send_cleaning_error_email(order_type, unique_urls,
-                                                str(e))
-        for oseo_file in to_delete:
-            oseo_file.available = False
-            oseo_file.save()
+    """
+    Go over all of the batches that have files that are available and
+    delete the ones that have been expired.
+
+    :return:
+    """
+
+    for ot in models.OrderType.objects.filter(enabled=True):
+        logger.warn("Going over orders of type {}".format(ot.name))
+        g = []
+        for batch in models.Batch.objects.filter(order__order_type=ot).filter(
+                order_items__files__available=True).distinct():
+            g.append(delete_batch.subtask((batch.id,)))
+        job = group(g)
+        job.apply_async()
 
 
-# TODO - Implement the actual deletion of failed orders
+@shared_task(bind=True)
+def delete_batch(self, batch_id, expired_files_only=True):
+    """
+    Delete all of the files associated with a batch
+
+    :param batch_id:
+    :return:
+    """
+
+    batch = models.Batch.objects.get(id=batch_id)
+    if expired_files_only:
+        to_delete = batch.expired_files()
+    else:  # we can delete all of the batch's associated files
+        to_delete = models.OseoFile.objects.filter(order_item__batch=batch)
+    logger.info("to_delete: {}".format(to_delete))
+    order_type = batch.order.order_type
+    processor, params = utilities.get_processor(
+        order_type,
+        models.ItemProcessor.PROCESSING_CLEAN_ITEM,
+        logger_type="pyoseo"
+    )
+    unique_urls = list(set([f.url for f in to_delete]))
+    logger.info("unique_urls: {}".format(unique_urls))
+    try:
+        processor.clean_files(file_urls=unique_urls,
+                              **params)
+    except Exception as e:
+        logger.error("there has been an error deleting "
+                     "batch {} ".format(batch))
+        utilities.send_cleaning_error_email(order_type, unique_urls,
+                                            str(e))
+    for oseo_file in to_delete:
+        oseo_file.available = False
+        oseo_file.save()
+
+
+
+# TODO - Test this out
+@shared_task(bind=True)
 def delete_failed_orders(self):
+    g = []
     for order in models.Order.objects.filter(
             status=models.CustomizableItem.FAILED):
-        for batch in order.batches.all():
-            if batch.status() == models.CustomizableItem.FAILED:
-                for f in models.OseoFile.objects.filter(
-                        order_item__batch=batch):
-                    logger.info("would delete file {} if this was "
-                                "implemented...".format(f))
+        if order.order_type.name == models.Order.PRODUCT_ORDER:
+            batch = order.batches.get()
+            g.append(delete_batch.subtask((batch.id,),
+                                          {"expired_files_only": False}))
+        else:
+            logger.warn("Deleting orders of type {} is not implemented "
+                        "yet".format(order.order_type.name))
+    job = group(g)
+    job.apply_async()
 
 
 def _package_batch(batch, compression):
