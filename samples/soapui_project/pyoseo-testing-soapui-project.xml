@@ -38639,7 +38639,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38709,7 +38709,7 @@ declare namespace ns14='http://www.opengis.net/ows/1.1';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38764,7 +38764,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38783,7 +38783,7 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38871,7 +38871,7 @@ declare namespace ns14='http://www.opengis.net/ows/1.1';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38911,7 +38911,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -38930,7 +38930,7 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39001,7 +39001,7 @@ declare namespace ns14='http://www.opengis.net/ows/1.1';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39041,7 +39041,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39060,7 +39060,7 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO" domain="VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39149,7 +39149,7 @@ declare namespace ns14='http://www.opengis.net/ows/1.1';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39189,7 +39189,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
       <wsse:Security>
          <wsse:UsernameToken>
             <wsse:Username>${#TestSuite#userName}</wsse:Username>
-            <wsse:Password type="BBBB#VITO">CCCC</wsse:Password>
+            <wsse:Password domain="VITO">CCCC</wsse:Password>
          </wsse:UsernameToken>
       </wsse:Security>
    </soapenv:Header>
@@ -39203,4 +39203,4 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
 declare namespace ns1='http://www.opengis.net/oseo/1.0';
 declare namespace ows='http://www.opengis.net/ows/2.0';
 //ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
-testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>866</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>additionalStatusInfo</con:name><con:value xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/></con:property><con:property><con:name>userName</con:name><con:value>ricardogsilva</con:value></con:property><con:property><con:name>submitDeliveryProtocol</con:name><con:value>http</con:value></con:property><con:property><con:name>submitPackagingFormat</con:name><con:value>zip</con:value></con:property><con:property><con:name>getStatusPresentation</con:name><con:value>brief</con:value></con:property><con:property><con:name>describeResultAccessSubFunction</con:name><con:value>allReady</con:value></con:property></con:properties></con:testSuite><con:endpointStrategy xsi:type="con:DefaultEndpointStrategy" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:endpoint mode="COMPLEMENT" username="ricardogsilva" wssType="PasswordText">http://localhost:8000/oseo/server</con:endpoint></con:endpointStrategy><con:properties/><con:wssContainer/><con:oAuth2ProfileContainer/><con:sensitiveInformation/></con:soapui-project>
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>926</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>additionalStatusInfo</con:name><con:value xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/></con:property><con:property><con:name>userName</con:name><con:value>ricardogsilva</con:value></con:property><con:property><con:name>submitDeliveryProtocol</con:name><con:value>ftp</con:value></con:property><con:property><con:name>submitPackagingFormat</con:name><con:value>zip</con:value></con:property><con:property><con:name>getStatusPresentation</con:name><con:value>brief</con:value></con:property><con:property><con:name>describeResultAccessSubFunction</con:name><con:value>allReady</con:value></con:property></con:properties></con:testSuite><con:endpointStrategy xsi:type="con:DefaultEndpointStrategy" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:endpoint mode="COMPLEMENT" username="ricardogsilva" wssType="PasswordText">http://localhost:8000/oseo/server</con:endpoint></con:endpointStrategy><con:properties/><con:wssContainer/><con:oAuth2ProfileContainer/><con:sensitiveInformation/></con:soapui-project>

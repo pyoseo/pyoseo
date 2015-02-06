@@ -149,7 +149,3 @@ class OseoError(PyOseoError):
 class InvalidSettingsError(PyOseoError):
     pass
 
-
-class AuthenticationError(PyOseoError):
-    pass
-

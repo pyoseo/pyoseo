@@ -279,8 +279,6 @@ def delete_batch(self, batch_id, expired_files_only=True):
         oseo_file.save()
 
 
-
-# TODO - Test this out
 @shared_task(bind=True)
 def delete_failed_orders(self):
     g = []

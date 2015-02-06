@@ -15,3 +15,4 @@ docs/_build/*
 *.bak.*
 secret_key.py
 .idea/*
+celerybeat-schedule

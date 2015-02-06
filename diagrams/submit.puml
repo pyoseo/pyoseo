@@ -22,7 +22,6 @@ class Submit {
    {static}validate_selected_option()
    -validate_delivery_options()
    -validate_global_delivery_options()
-   +configure_delivery()
    -add_ftp_user()
    -get_order_type()
    +validate_status_notification()

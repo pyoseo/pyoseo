@@ -262,10 +262,11 @@ class OseoServer(object):
             authenticated = instance.authenticate_request(user_name, password,
                                                           **extra)
             if not authenticated:
-                raise errors.AuthenticationError()
+                text = "Invalid or missing identity information"
+                raise errors.OseoError("AuthenticationFailed", text,
+                                       locator="identity_token")
         except errors.OseoError:
-            # this error is handled by the calling method
-            raise
+            raise  # this error is handled by the calling method
         except Exception as e:
             # other errors are re-raised as InvalidSettings
             logger.error('exception class: {}'.format(

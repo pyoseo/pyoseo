@@ -557,62 +557,6 @@ class Submit(OseoOperation):
                 requested_order_spec, order_config)
         return delivery_options
 
-    # FIXME - DEPRECATED
-    # TODO - This method should be external to pyoseo
-    def configure_delivery(self, order, user):
-        """
-        Perform delivery related operations.
-
-        This method will determine the requested delivery protocol and
-        perform the needed operations. For example, when an order defines
-        online data access through the FTP protocol, this method ensures that
-        the FTP account for the user is created.
-        """
-
-        create_ftp_account = False
-        try:
-            gdo = order.selected_delivery_option.group_delivery_option
-            gdo_do = gdo.delivery_option
-            requested_protocol = gdo_do.onlinedataaccess.protocol
-            if requested_protocol == models.OnlineDataAccess.FTP:
-                create_ftp_account = True
-        except ObjectDoesNotExist:
-            pass
-        logger.debug('create_ftp_account: {}'.format(create_ftp_account))
-        if create_ftp_account:
-            user_name = user.user.username
-            self._add_ftp_user(user_name)
-
-    # FIXME - DEPRECATED
-    # TODO - This method should be external to pyoseo
-    def _add_ftp_user(self, user):
-        """
-        Create a new FTP user.
-
-        These FTP users are virtual and their creation relies on the ftp
-        server being already correctly set up.
-
-        :arg user: the name of the user that is to be added
-        :type user: str
-        """
-
-        ftp_service_root = getattr(
-            django_settings,
-            'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR'
-        )
-        user_home = os.path.join(ftp_service_root, user)
-        try:
-            os.makedirs(user_home)
-            # python's equivalent to chmod 755 user_home
-            os.chmod(user_home, stat.S_IRWXU | stat.S_IRGRP |
-                     stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-        except OSError as err:
-            if err.errno == 17:
-                logger.debug('user home already exists')
-                pass
-            else:
-                raise
-
     def _get_order_type(self, order_specification):
         """
         Return the order type for the input order specification.

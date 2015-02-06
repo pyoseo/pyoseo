@@ -185,8 +185,7 @@ class GetStatus(OseoOperation):
                     batch = r.batches.get()
                     for oi in batch.order_items.all():
                         sit = oseo.CommonOrderStatusItemType()
-                        # TODO
-                        # add the other optional elements
+                        # TODO - add the other optional elements
                         sit.itemId = str(oi.item_id)
                         # oi.identifier is guaranteed to be non empty for
                         # normal product orders
