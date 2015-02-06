@@ -20,6 +20,8 @@ from django.core.exceptions import ObjectDoesNotExist
 import pyxb
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 
+from oseoserver import models
+
 class OseoOperation(object):
     """
     This is the base class for OSEO operations.
@@ -27,41 +29,15 @@ class OseoOperation(object):
     It should not be instantiated directly
     """
 
-    NAME = None  # to be reimplemented in child classes
-
-    def _get_delivery_options(self, db_item):
+    def _user_is_authorized(self, user, order):
         """
-        Return the delivery options for an input database item.
-
-        :arg db_item: the database record model that has the delivery options
-        :type db_item: pyoseo.models.CustomizableItem
-        :return: A pyxb object with the delivery options
+        Test if a user is allowed to check on the status of an order
         """
 
-        try:
-            do = db_item.selected_delivery_option
-            dot = oseo.DeliveryOptionsType()
-            try:
-                oda = do.group_delivery_option.delivery_option.onlinedataaccess
-                dot.onlineDataAccess = pyxb.BIND()
-                dot.onlineDataAccess.protocol = oda.protocol
-            except ObjectDoesNotExist:
-                try:
-                    odd = do.group_delivery_option.delivery_option.onlinedatadelivery
-                    dot.onlineDataDelivery = pyxb.BIND()
-                    dot.onlineDataDelivery.protocol = odd.protocol
-                except ObjectDoesNotExist:
-                    md = do.group_delivery_option.delivery_option.mediadelivery
-                    dot.mediaDelivery = pyxb.BIND()
-                    dot.mediaDelivery.packageMedium = md.package_medium
-                    dot.mediaDelivery.shippingInstructions = self._n(
-                            md.shipping_instructions)
-            dot.numberOfCopies = self._n(do.copies)
-            dot.productAnnotation = self._n(do.annotation)
-            dot.specialInstructions = self._n(do.special_instructions)
-        except ObjectDoesNotExist:
-            dot = None
-        return dot
+        result = False
+        if order.user == user:
+            result = True
+        return result
 
     def _c(self, value):
         """

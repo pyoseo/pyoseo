@@ -1,0 +1,41 @@
+'An activity diagram showing order processing workflow
+
+@startuml
+title Processing orders of type "ProdutOrder"
+|oseoserver|
+start
+:extract order items from single batch;
+repeat
+    :get item options;
+    :get item delivery options;
+    :create custom item processing object;
+    |custom processing object|
+        :fetch item;
+        :apply options;
+        :apply delivery options;
+        :return file URLs;
+        note right
+            Custom processing classes must
+            return a list with the URLs where
+            the processed items will be available.
+        end note
+|oseoserver|
+    repeat
+        :create OseoFile record;
+        :set URL;
+        :set availability to True;
+    repeat while (each resulting URL)
+repeat while (each order item)
+if (packaging?) then (no)
+else (yes)
+|custom processing object|
+    :create compressed package;
+|oseoserver|
+    repeat
+        :delete previous OseoFile records;
+        :create single OseoFile record;
+        :update OseoFile URL;
+    repeat while(each orderItem of the batch)
+endif
+stop
+@enduml

@@ -5,6 +5,8 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     url(r'^oseo/', include('oseoserver.urls')),
-    url(r'^products/', include('giosystem_webenabler.urls')),
+    url(r'^grappelli/', include('grappelli.urls')),
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^activity/', include('actstream.urls')),
+    url(r'^orders/', include('giosystemdownloads.urls')),
 )

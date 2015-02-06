@@ -1,0 +1,42 @@
+[
+{
+    "fields": {
+        "automatic_approval": false,
+        "enabled": true,
+        "name": "PRODUCT_ORDER",
+        "notify_creation": true
+    },
+    "model": "oseoserver.ordertype",
+    "pk": 1
+},
+{
+    "fields": {
+        "automatic_approval": false,
+        "enabled": false,
+        "name": "MASSIVE_ORDER",
+        "notify_creation": true
+    },
+    "model": "oseoserver.ordertype",
+    "pk": 2
+},
+{
+    "fields": {
+        "automatic_approval": false,
+        "enabled": false,
+        "name": "SUBSCRIPTION_ORDER",
+        "notify_creation": true
+    },
+    "model": "oseoserver.ordertype",
+    "pk": 3
+},
+{
+    "fields": {
+        "automatic_approval": false,
+        "enabled": false,
+        "name": "TASKING_ORDER",
+        "notify_creation": true
+    },
+    "model": "oseoserver.ordertype",
+    "pk": 4
+}
+]

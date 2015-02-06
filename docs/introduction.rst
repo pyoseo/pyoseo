@@ -56,6 +56,7 @@ by pyoseo and **must** be implemented independently:
 
 * Authentication framework. Check the :doc:`customauth` page for more details;
 * Order processing and delivery modules. Check the :doc:`customprocessing` page
+* Order options parsing. Check the :doc:`customoptions` page
   for more details.
 
 Implementation

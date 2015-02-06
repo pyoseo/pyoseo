@@ -1,6 +1,6 @@
 # Copyright 2014 Ricardo Garcia Silva
 #
-#   Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
 #
@@ -18,555 +18,593 @@ Implements the OSEO Submit operation
 
 import os
 import stat
-import datetime as dt
 import logging
 
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings as django_settings
+from pyxb import BIND
 import pyxb.bundles.opengis.oseo_1_0 as oseo
-import pytz
+import pyxb.bundles.opengis.csw_2_0_2 as csw
+import pyxb.bundles.opengis.iso19139.v20070417.gmd as gmd
+import pyxb.bundles.opengis.iso19139.v20070417.gco as gco
+from lxml import etree
+import requests
 
 from oseoserver import models
-from oseoserver import tasks
 from oseoserver import errors
+from oseoserver import utilities
+from oseoserver.server import OseoServer
 from oseoserver.operations.base import OseoOperation
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
+
 class Submit(OseoOperation):
 
     @transaction.atomic
-    def __call__(self, request, user, user_password=None, **kwargs):
+    def __call__(self, request, user):
         """
         Implements the OSEO Submit operation.
-
-        * save order details in the database
-        * generate the appropriate response
-        * if it is a normal order, send the task to celery
-        * if it is a subscription or a massive order, send an email to admins
 
         :arg request: The instance with the request parameters
         :type request: pyxb.bundles.opengis.raw.oseo.GetStatusRequestType
         :arg user: User making the request
         :type user: oseoserver.models.OseoUser
-        :arg user_password: Password of the user making the request
-        :type user_password: str
         :return: The XML response object and the HTTP status code
         :rtype: tuple(str, int)
         """
 
         status_code = 200
+        status_notification = self.validate_status_notification(request)
         if request.orderSpecification is not None:
-            # order specification type of Submit
-            ord_spec = request.orderSpecification
-            creation_date = dt.datetime.now(pytz.utc)
-            order = models.Order(
-                created_on=creation_date,
-                status_changed_on=creation_date,
-                remark=self._c(ord_spec.orderRemark),
-                reference=self._c(ord_spec.orderReference),
-                packaging=self._c(ord_spec.packaging),
-                priority=self._c(ord_spec.priority)
-            )
-            if ord_spec.orderType == models.OrderType.PRODUCT_ORDER:
-                ref = self._c(ord_spec.orderReference)
-                massive_order_reference = getattr(
-                    django_settings,
-                    'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
-                    None
-                )
-
-                if massive_order_reference is not None and \
-                        ref == massive_order_reference:
-                    order.order_type = models.OrderType.objects.get(
-                            name=models.OrderType.MASSIVE_ORDER)
-                    order.status = models.CustomizableItem.SUBMITTED
-                else:
-                    order.order_type = models.OrderType.objects.get(
-                            name=models.OrderType.PRODUCT_ORDER)
-                    order.status = models.CustomizableItem.ACCEPTED
-            order.user = user
-            #  not very nice but we will deal with option groups some other day
-            order.option_group = models.OptionGroup.objects.get(id=1)
-            order.save()
-            self.parse_order_delivery_method(ord_spec, order)
-            self.configure_delivery(order, user)
-            # add options
-            if ord_spec.invoiceAddress is not None:
-                ia = ord_spec.invoiceAddress
-                order.invoice_address = models.InvoiceAddress(
-                    first_name=self._c(ia.mailAddress.firstName),
-                    last_name=self._c(ia.mailAddress.lastName),
-                    company_ref=self._c(ia.mailAddress.companyRef),
-                    street_address=self._c(
-                        ia.mailAddress.postalAddress.streetAddress),
-                    city=self._c(ia.mailAddress.postalAddress.city),
-                    state=self._c(ia.mailAddress.postalAddress.state),
-                    postal_code=self._c(
-                        ia.mailAddress.postalAddress.postalCode),
-                    country=self._c(ia.mailAddress.postalAddress.country),
-                    post_box=self._c(ia.mailAddress.postalAddress.postBox),
-                    telephone=self._c(ia.mailAddress.telephoneNumer),
-                    fax=self._c(ia.mailAddress.facsimileTelephoneNumbe),
-                )
-            if order.order_type.name == models.OrderType.PRODUCT_ORDER:
-                self.create_normal_order_batch(ord_spec, order)
-                tasks.process_normal_order.apply_async((order.id,))
-            elif order.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
-                # do not create any batch yet
-                # batches will be created on demand, whenever new products
-                # come out of the processing lines
-                raise errors.SubmitSubscriptionError('Submission of '
-                                                     'subscription orders is '
-                                                     'not implemented')
-            elif order.order_type.name == models.OrderType.MASSIVE_ORDER:
-                self.create_massive_order_batches()
+            order_spec = self.process_order_specification(
+                request.orderSpecification, user)
         else:
             raise errors.SubmitWithQuotationError('Submit with quotationId is '
                                                   'not implemented.')
+        default_status = models.Order.SUBMITTED
+        additional_status_info = ("Order is awaiting approval")
+        if order_spec["order_type"].automatic_approval:
+            default_status = models.Order.ACCEPTED
+            additional_status_info = ("Order is placed in processing queue")
+        order = self.create_order(order_spec, user, status_notification,
+                                  default_status, additional_status_info)
         response = oseo.SubmitAck(status='success')
         response.orderId = str(order.id)
-        return response, status_code
+        response.orderReference = self._n(order.reference)
+        return response, status_code, {"order": order}
 
-    def create_normal_order_batch(self, order_specification, order):
+    def process_order_specification(self, order_specification, user):
         """
-        Create the order item batch for a normal order.
+        Validate and extract the order specification from the request
 
-        Normal orders are composed of a single batch with all of the ordered
-        items inside it.
+        :arg order_specification:
+        :type order_specification:
+        :arg user:
+        :type user:
 
-        :arg order_specification: the OSEO order specification
-        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        :arg order: the order record that is being created in the database
-        :type order: oseoserver.models.Order
+        :return:
+        :rtype: dict
         """
 
-        batch = models.Batch(order=order)
-        batch.save()
+        spec = {
+            "order_type": self._get_order_type(order_specification),
+            "order_item": [],
+        }
+        if len(order_specification.orderItem) > models.Order.MAX_ORDER_ITEMS:
+            raise errors.InvalidOrderError(
+                "Maximum number of order items is {}".format(
+                    models.Order.MAX_ORDER_ITEMS)
+            )
         for oi in order_specification.orderItem:
-            order_item = models.OrderItem(
-                item_id=oi.itemId,
-                status=models.CustomizableItem.ACCEPTED,
-                created_on=order.created_on,
-                status_changed_on=order.created_on,
-                remark=self._c(oi.orderItemRemark),
-                option_group=order.option_group
+            item = self.validate_order_item(oi, spec["order_type"],
+                                            user)
+            spec["order_item"].append(item)
+        spec["requested_order_configurations"] = []
+        for col in set([i["collection"] for i in spec["order_item"]]):
+            order_config = self._get_order_configuration(
+                col, spec["order_type"])
+            spec["requested_order_configurations"].append(order_config)
+        spec["order_reference"] = self._c(order_specification.orderReference)
+        spec["order_remark"] = self._c(order_specification.orderRemark)
+        spec["packaging"] = self._validate_packaging(
+            order_specification.packaging)
+        spec["priority"] = self._c(order_specification.priority)
+        spec["delivery_information"] = self.get_delivery_information(
+            order_specification.deliveryInformation)
+        spec["invoice_address"] = self.get_invoice_address(
+            order_specification.invoiceAddress)
+        try:
+            spec["option"] = self._validate_global_options(
+                order_specification,
+                spec["order_type"],
+                spec["requested_order_configurations"]
             )
-            # add order_item options
-            # add order_item scene selection
-            if oi.deliveryOptions is not None:
-                d_opts = self._set_delivery_options(
-                    oi.deliveryOptions,
-                    order.order_type.name
-                )
-                order_item.deliveryoption = d_opts
-            # add order_item payment
-            order_item.identifier = self._c(oi.productId.identifier)
-            order_item.collection_id = self._c(oi.productId.collectionId)
-            batch.order_items.add(order_item)
-            order_item.save()
+            spec["delivery_options"] = self._validate_global_delivery_options(
+                order_specification, spec["requested_order_configurations"])
+        except errors.InvalidOptionError as e:
+            raise errors.InvalidGlobalOptionError(e.option, e.order_config)
+        except errors.InvalidOptionValueError as e:
+            raise errors.InvalidGlobalOptionValueError(e.option, e.value,
+                                                       e.order_config)
+        except errors.InvalidDeliveryOptionError as e:
+            logger.debug(e)
+            raise errors.InvalidGlobalDeliveryOptionError()
+        return spec
+
+    def create_order(self, order_spec, user, status_notification, status,
+                     additional_status_info):
+        """
+        Persist the order specification in the database.
+
+        :param order_spec:
+        :param user:
+        :param status_notification:
+        :param status:
+        :return:
+        """
+
+        general_params = {
+            "order_type": order_spec["order_type"],
+            "status": status,
+            "additional_status_info": additional_status_info,
+            "remark": order_spec["order_remark"],
+            "user": user,
+            "reference": order_spec["order_reference"],
+            "packaging": order_spec["packaging"],
+            "priority": order_spec["priority"],
+            "status_notification": status_notification,
+        }
+        if order_spec["order_type"].name == models.Order.PRODUCT_ORDER:
+            order = models.ProductOrder(**general_params)
+        elif order_spec["order_type"].name == models.Order.MASSIVE_ORDER:
+            order = models.MassiveOrder(**general_params)
+        elif order_spec["order_type"].name == models.Order.SUBSCRIPTION_ORDER:
+            order = models.SubscriptionOrder(**general_params)
+        else:
+            order = models.TaskingOrder(**general_params)
         order.save()
-
-    def create_massive_order_batches(self):
-        """
-        break the order down into multiple batches
-        """
-
-        raise errors.SubmitMassiveOrderError('Submission of massive orders is '
-                                             'not implemented')
-
-    def parse_order_delivery_method(self, order_specification, order):
-        """
-        Validate and parse the requested delivery method for an order.
-
-        One order can have one of three types of delivery:
-
-        * online access
-
-          This option means that the order will be available at our server
-          for the user to download. We can use one of several protocols (HTTP,
-          FTP, ...) as implementations become available.
-
-          The available implementations are stored as records of the
-          oseoserver.models.OnlineDataAccess model, but they can be restricted
-          to certain OptionGroups and further restricted to certain Order
-          types. This means that altough the server may support online data 
-          access with the FTP protocol, it is possible to restrict it so that
-          it is only available for orders of type 'SUBSCRIPTION_ORDER' and
-          only if the orders belong to the 'pyoseo options' option group.
-
-        * online delivery
-
-          This option means that we will actively deliver the ordered items to
-          some server specified by the user, using a specific protocol (such as
-          FTP) and with credentials supplied by the user
-
-        * mail delivery
-
-          This option means that we will deliver a physical medium to the user,
-          which will be shipped by normal mail, according to the user specified
-          instructions and address.
-
-        :arg order_specification: the OSEO order specification
-        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        :arg order: the order record that is being created in the database
-        :type order: oseoserver.models.Order
-        """
-
-        a = [d.delivery_option for d in \
-                order.order_type.deliveryoptionordertype_set.all()]
-        b = [d.delivery_option for d in \
-                order.option_group.groupdeliveryoption_set.all()]
-        available_delivery_options = [d.child_instance() for d in a if d in b]
-        dop = order_specification.deliveryOptions
-        if dop is not None:  # we can have any of the three options
-            if dop.onlineDataAccess is not None:
-                requested_type = models.OnlineDataAccess
-            elif dop.onlineDataDelivery is not None:
-                requested_type = models.OnlineDataDelivery
-            else:
-                requested_type = models.MediaDelivery
-        else:  # we can have either online delivery or mail delivery
-            delivery_information = order_specification.deliveryInformation
-            if delivery_information is not None:
-                if any(list(delivery_information.onlineAddress)):
-                    requested_type = models.OnlineDataDelivery
-                elif order_specification.mailAddress is not None:
-                    requested_type = models.MediaDelivery
-                else:
-                    raise errors.InvalidOrderDeliveryMethodError(
-                        'No valid delivery method found'
-                    )
-            else:
-                raise errors.InvalidOrderDeliveryMethodError(
-                    'No valid delivery method found'
-                )
-        if requested_type in [a.__class__ for a in available_delivery_options]:
-            # the requested delivery method is allowed for this order
-            if requested_type == models.OnlineDataAccess:
-                self._add_online_data_access_data(order, order_specification,
-                                                  available_delivery_options)
-            elif requested_type == models.OnlineDataDelivery:
-                self._add_online_data_access_data(order, order_specification,
-                                                  available_delivery_options)
-            else:
-                self._add_media_delivery_data(order, order_specification)
-        else:
-            raise errors.InvalidOrderDeliveryMethodError(
-                'The chosen delivery method is not allowed'
-            )
-
-    def configure_delivery(self, order, user):
-        """
-        Perform delivery related operations.
-
-        This method will determine the requested delivery protocol and
-        perform the needed operations. For example, when an order defines
-        online data access through the FTP protocol, this method ensures that
-        the FTP account for the user is created.
-        """
-
-        create_ftp_account = False
-        try:
-            gdo = order.selected_delivery_option.group_delivery_option
-            gdo_do = gdo.delivery_option
-            requested_protocol = gdo_do.onlinedataaccess.protocol
-            if requested_protocol == models.OnlineDataAccess.FTP:
-                create_ftp_account = True
-        except ObjectDoesNotExist:
-            pass
-        logger.debug('create_ftp_account: {}'.format(create_ftp_account))
-        if create_ftp_account:
-            user_name = user.user.username
-            self._add_ftp_user(user_name)
-
-    def _add_ftp_user(self, user):
-        """
-        Create a new FTP user.
-
-        These FTP users are virtual and their creation relies on the ftp
-        server being already correctly set up.
-
-        :arg user: the name of the user that is to be added
-        :type user: str
-        """
-
-        ftp_service_root = getattr(
-            django_settings,
-            'OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR'
-        )
-        user_home = os.path.join(ftp_service_root, user)
-        try:
-            os.makedirs(user_home)
-            # python's equivalent to chmod 755 user_home
-            os.chmod(user_home, stat.S_IRWXU | stat.S_IRGRP | 
-                     stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-        except OSError as err:
-            if err.errno == 17:
-                logger.debug('user home already exists')
-                pass
-            else:
-                raise
-
-    def _add_online_data_access_data(self, order, order_specification,
-                                     available_options):
-        """
-        Validate the requested protocol and add the requested online access
-        definition to the order being processed.
-
-        :arg order:
-        :type order: oseoserver.models.Order
-        :arg order_specification:
-        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        :arg available_options:
-        :type available_options: list
-        """
-
-        delivery_options = order_specification.deliveryOptions
-        protocols = [i.protocol for i in available_options if isinstance(i,
-                     models.OnlineDataAccess)]
-        req_protocol = self._c(delivery_options.onlineDataAccess.protocol)
-        if req_protocol in protocols:
-            sdo = self._create_selected_delivery_option(delivery_options)
-            logger.debug('sdo: %s' % sdo)
-            del_opt = models.OnlineDataAccess.objects.get(
-                                                protocol=req_protocol)
-            option_group = order.option_group
-            logger.debug('del_opt: %s' % del_opt)
-            logger.debug('type(del_opt): %s' % type(del_opt))
-            logger.debug('option_group: %s' % option_group)
-            logger.debug('type(option_group): %s' % type(option_group))
-            gdo = models.GroupDeliveryOption.objects.get(
-                option_group=option_group,
-                delivery_option=del_opt
-            )
-            sdo.group_delivery_option = gdo
-            order.selected_delivery_option = sdo
-            sdo.save()
-            order.save()
-        else:
-            # the requested protocol is not allowed
-            raise errors.OnlineDataAccessInvalidProtocol('The requested '
-                                                         'protocol is invalid')
-
-    def _add_online_data_delivery_data(self, order, order_specification,
-                                       available_options):
-        """
-        :arg order:
-        :type order: oseoserver.models.Order
-        :arg order_specification:
-        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        :arg available_options:
-        :type available_options: list
-        """
-
-        delivery_options = order_specification.deliveryOptions
-        if delivery_options is not None:
-            sdo = self._create_selected_delivery_option(delivery_options)
-            req_protocol = self._c(delivery_options.onlineDataDelivery.protocol)
-        else:
-            sdo = models.SelectedDeliveryOption()
-            try:
-                # fall back to the protocol defined in the deliveryInformation 
-                # section, if there is one
-                d = order_specification.deliveryInformation
-                oa = d.onlineAddress[0]
-                req_protocol = self._c(oa.protocol)
-            except AttributeError, IndexError:
-                raise errors.InvalidOrderDeliveryMethodError(
-                    'The requested order delivery method is not valid'
-                )
-        protocols = [i.protocol for i in available_options if isinstance(i,
-                     models.OnlineDataDelivery)]
-        if req_protocol in protocols:
-            ordered_delivery_info = order_specification.deliveryInformation
-            if ordered_delivery_info is not None:
-                delivery_info = models.DeliveryInformation()
-                order.delivery_information = delivery_info
-                delivery_info.save()
-                for online_address in ordered_delivery_info.onlineAddress:
-                    oa = models.OnlineAddress(
-                        protocol=self._c(online_address.protocol),
-                        server_address=self._c(online_address.serverAddress),
-                        user_name=self._c(online_address.userName),
-                        user_password=self._c(online_address.userPassword),
-                        path=self._c(online_address.path)
-                    )
-                    oa.delivery_information = delivery_info
-                    oa.save()
-            else:
-                raise errors.InvalidOrderDeliveryMethodError(
-                    'The delivery method is not correctly specified'
-                )
-            del_opt = models.OnlineDataDelivery(protocol=req_protocol)
-            option_group = order.option_group
-            gdo = models.GroupDeliveryOption.objects.get(
-                option_group=option_group,
-                delivery_option=del_opt
-            )
-            sdo.group_delivery_option = gdo
-            order.selected_delivery_option = sdo
-            order.save()
-        else:
-            raise errors.OnlineDataDeliveryInvalidProtocol('The requested '
-                                                         'protocol is invalid')
-
-    def _add_media_delivery_data(self, order, order_specification):
-        """
-        :arg order:
-        :type order: oseoserver.models.Order
-        :arg order_specification:
-        :type order_specification: pyxb.bundles.opengis.oseo.OrderSpecification
-        """
-
-        ordered_delivery_info = order_specification.deliveryInformation
-        if ordered_delivery_info is not None:
-            address = ordered_delivery_info.mailAddress
-            delivery_info = models.DeliveryInformation(
-                first_name=self._c(address.firstName),
-                last_name=self._c(address.lastName),
-                company_ref=self._c(address.companyRef),
-                street_address=self._c(address.postalAddress.streetAddress),
-                city=self._c(address.postalAddress.city),
-                state=self._c(address.postalAddress.state),
-                postal_code=self._c(address.postalAddress.postalCode),
-                country=self._c(address.postalAddress.country),
-                post_box=self._c(address.postalAddress.postBox),
-                telephone=self._c(address.telephoneNumber),
-                fax=self._c(address.facsimileTelephoneNumber)
-            )
+        if order_spec["invoice_address"] is not None:
+            invoice = models.InvoiceAddress()
+            order.invoice_address = invoice
+        # TODO Implement the code for when orders do have invoice address
+        if order_spec["delivery_information"] is not None:
+            delivery_info = models.DeliveryInformation()
             order.delivery_information = delivery_info
-            delivery_info.save()
+        # TODO Implement the code for when orders do have delivery information
+        for k, v in order_spec["option"].iteritems():
+            option = models.Option.objects.get(name=k)
+            order.selected_options.add(models.SelectedOption(option=option,
+                                                             value=v))
+        delivery = order_spec["delivery_options"]
+        if delivery is not None:
+            copies = 1 if delivery["copies"] is None else delivery["copies"]
+            sdo = models.SelectedDeliveryOption(
+                customizable_item=order,
+                annotation=delivery["annotation"],
+                copies=copies,
+                special_instructions=delivery["special_instructions"],
+                option=delivery["type"]
+            )
+            sdo.save()
+        order.save()
+        if order.order_type.name == models.Order.PRODUCT_ORDER:
+            batch = order.create_batch(order.status,
+                                       *order_spec["order_item"])
+        return order
 
-            delivery_options = order_specification.deliveryOptions
-            if delivery_options is not None:
-                sdo = self._create_selected_delivery_option(delivery_options)
-                package_medium = self._c(
-                        delivery_options.mediaDelivery.packageMedium)
-                shipping_instructions = self._c(
-                        delivery_options.mediaDelivery.shippingInstructions)
-            else:
-                sdo = models.SelectedDeliveryOption()
-                package_medium = ''
-                shipping_instructions = ''
-            del_opt = models.MediaDelivery(
-                package_medium=package_medium,
-                shipping_instructions=shipping_instructions
-            )
-            option_group = order.option_group
-            gdo = models.GroupDeliveryOption.objects.get(
-                option_group=option_group,
-                delivery_option=del_opt
-            )
-            sdo.group_delivery_option = gdo
-            order.selected_delivery_option = sdo
-            order.save()
+    def get_delivery_information(self, requested_delivery_info):
+        if requested_delivery_info is not None:
+            info = dict()
+            requested_mail_info = requested_delivery_info.mailAddress
+            requested_online_info = requested_delivery_info.onlineAddress
+            if requested_mail_info is not None:
+                info["mail_address"] = self._get_delivery_address(
+                    requested_mail_info)
+            if len(requested_online_info) > 0:
+                info["online_address"] = []
+                for online_address in requested_online_info:
+                    info["online_address"].append({
+                        "protocol": self._c(online_address.protocol),
+                        "server_address": self._c(
+                            online_address.serverAddress),
+                        "user_name": self._c(online_address.userName),
+                        "user_password": self._c(online_address.userPassword),
+                        "path": self._c(online_address.path),
+                    })
         else:
-            raise errors.InvalidOrderDeliveryMethodError(
-                'The delivery method is not correctly specified'
-            )
+            info = None
+        return info
 
-    def _create_selected_delivery_option(self, delivery_options):
-        sdo = models.SelectedDeliveryOption(
-            copies=delivery_options.numberOfCopies,
-            annotation=self._c(delivery_options.productAnnotation),
-            special_instructions=self._c(delivery_options.specialInstructions),
+    def get_invoice_address(self, requested_invoice_address):
+        if requested_invoice_address is not None:
+            invoice = self._get_delivery_address(requested_invoice_address)
+        else:
+            invoice = None
+        return invoice
+
+    def _get_delivery_address(self, delivery_address_type):
+        address = {
+            "first_name": self._c(delivery_address_type.firstName),
+            "last_name": self._c(delivery_address_type.lastName),
+            "company_ref": self._c(delivery_address_type.companyRef),
+            "telephone_number": self._c(
+                delivery_address_type.telephoneNumber),
+            "facsimile_telephone_number": self._c(
+                delivery_address_type.facsimileTelephoneNumber),
+        }
+        postal_address = delivery_address_type.postalAddress
+        if postal_address is not None:
+            address["postal_address"] = {
+                "street_address": self._c(
+                    postal_address.streetAddress),
+                "city": self._c(postal_address.city),
+                "state": self._c(postal_address.state),
+                "postal_code": self._c(postal_address.postalCode),
+                "country": self._c(postal_address.country),
+                "post_box": self._c(postal_address.postBox),
+                }
+        return address
+
+    def get_collection_id(self, item_id, user_group):
+        """
+        Search all of the defined catalogue endpoints and determine
+        the collection for the specified item.
+
+        This method is used when the requested order item does not provide the
+        optional 'collectionId' element.
+
+        :param item_id: The identifier of the requested item in the CSW
+            catalogue
+        :type item_id: string
+        :param user_group: The group to which the user making the request
+            belongs
+        :type user_group: models.OseoGroup
+        :return:
+        """
+
+        request_headers = {
+            "Content-Type": "application/xml"
+        }
+        ns = {
+            "gmd": gmd.Namespace.uri(),
+            "gco": gco.Namespace.uri(),
+            }
+        req = csw.GetRecordById(
+            service="CSW",
+            version="2.0.2",
+            ElementSetName="summary",
+            outputSchema=ns["gmd"],
+            Id=[BIND(item_id)]
         )
-        return sdo
+        query_path = ("gmd:MD_Metadata/gmd:parentIdentifier/"
+                      "gco:CharacterString/text()")
+        collections = models.Collection.objects.filter(
+            authorized_groups=user_group)
+        endpoints = list(set([c.catalogue_endpoint for c in collections]))
+        collection_id = None
+        current = 0
+        while collection_id is None and current < len(endpoints):
+            url = endpoints[current]
+            response = requests.post(url, data=req.toxml(),
+                                     headers=request_headers)
+            if response.status_code != 200:
+                continue
+            r = etree.fromstring(response.text.encode(OseoServer.ENCODING))
+            id_container = r.xpath(query_path, namespaces=ns)
+            collection_id = id_container[0] if len(id_container) == 1 else None
+            current += 1
+        return collection_id
 
-    def _set_delivery_options(self, options, order_type):
+    def validate_order_item(self, requested_item, order_type, user):
         """
-        Create a database record with the input delivery options.
 
-        :arg options: The oseo deliveryOptions
-        :type options: pyxb.bundles.opengis.oseo.DeliveryOptionsType
-        :arg order_type: The type of order being requested
-        :type order_type: str
-        :return: pyoseo.models.SelectedDeliveryOption
+        :param requested_item: The pyxb instance with the requested item
+        :type requested_item: oseo.CommonOrderItemType
+        :param order_type: The order type in use
+        :type order_type: models.OrderType
+        :param user: the user that has placed the order
+        :type user: models.OseoUser
+        :return:
         """
 
-        possibly_null = [
-            options.onlineDataAccess,
-            options.onlineDataDelivery,
-            options.mediaDelivery.packageMedium if \
-                    options.mediaDelivery is not None else None,
-            options.mediaDelivery.shippingInstructions if \
-                    options.mediaDelivery is not None else None,
-            options.numberOfCopies,
-            options.productAnnotation,
-            options.specialInstructions]
-        if any(possibly_null):
+        item = {
+            "item_id": requested_item.itemId,
+            "product_order_options_id": self._c(
+                requested_item.productOrderOptionsId),
+            "order_item_remark": self._c(requested_item.orderItemRemark)
+        }
+        if order_type.name in (models.Order.PRODUCT_ORDER,
+                               models.Order.MASSIVE_ORDER):
+            identifier, collection = self._validate_product_order_item(
+                requested_item, user)
+            item["identifier"] = identifier
+        elif order_type.name == models.Order.SUBSCRIPTION_ORDER:
+            collection = self._validate_subscription_order_item(
+                requested_item, user)
+        else:  # TASKING_ORDER
+            tasking_id, collection = self._validate_tasking_order_item(
+                requested_item, user)
+            item["tasking_id"] = tasking_id
+        item["collection"] = collection
+        order_config = self._get_order_configuration(collection, order_type)
+        item["option"] = self._validate_requested_options(
+            requested_item,
+            order_type,
+            order_config
+        )
+        item["delivery_options"] = self._validate_delivery_options(
+            requested_item, order_config)
+        item["scene_selection"] = dict()  # not implemented yet
+        item["payment"] = None  # not implemented yet
+        # extensions to the CommonOrderItemType are not implemented yet
+        return item
+
+    def _validate_product_order_item(self, requested_item, user):
+        identifier = self._c(requested_item.productId.identifier)
+        col_id = requested_item.productId.collectionId
+        if col_id is None:
+            col_id = self.get_collection_id(identifier,
+                                            user.oseo_group)
+        collection = self._validate_requested_collection(col_id,
+                                                         user.oseo_group)
+        return identifier, collection
+
+    def _validate_subscription_order_item(self, requested_item, user):
+        col_id = requested_item.subscriptionId.collectionId
+        collection = self._validate_requested_collection(col_id,
+                                                         user.oseo_group)
+        return collection
+
+    def _validate_tasking_order_item(self, requested_item, user):
+        tasking_id = requested_item.taskingRequestId
+        # TODO: find a way to retrieve the collection
+        # TODO: validate the tasking_id
+        collection = None
+        return tasking_id, collection
+
+    def _get_order_configuration(self, collection, order_type):
+        """
+
+        :param collection:
+        :param order_type:
+        :type order_type: models.OrderType
+        :return:
+        """
+
+        logger.info("collection: {}".format(collection))
+        if order_type.name == models.Order.PRODUCT_ORDER:
+            config = collection.productorderconfiguration
+        elif order_type.name == models.Order.MASSIVE_ORDER:
+            config = collection.massiveorderconfiguration
+        elif order_type.name == models.Order.SUBSCRIPTION_ORDER:
+            config = collection.subscriptionorderconfiguration
+        else:  # tasking order
+            config = collection.taskingorderconfiguration
+        if not config.enabled:
+            raise errors.InvalidCollectionError(collection.name,
+                                                order_type.name)
+        return config
+
+    def _validate_requested_collection(self, collection_id, group):
+        try:
+            collection = models.Collection.objects.get(
+                collection_id=collection_id)
+            if not collection.allows_group(group):
+                raise errors.UnAuthorizedOrder(
+                    "user's group is not authorized to order {} "
+                    "products".format(collection.name)
+                )
+        except models.Collection.DoesNotExist:
+            raise errors.InvalidCollectionError(
+                "Collection {} does not exist".format(collection_id))
+        return collection
+
+    def _validate_requested_options(self, requested_item, order_type,
+                                    order_config):
+        """
+
+        :param requested_item:
+        :type requested_item:
+        :param order_type:
+        :type order_type: models.OrderType
+        :param order_config:
+        :type order_config:
+        :return:
+        """
+
+        valid_options = dict()
+        for option in requested_item.option:
+            values = option.ParameterData.values
+            encoding = option.ParameterData.encoding
+            # since values is an xsd:anyType, we will not do schema
+            # validation on it
+            values_tree = etree.fromstring(values.toxml(OseoServer.ENCODING))
+            for value in values_tree:
+                option_name = etree.QName(value).localname
+                option_value = self._validate_selected_option(
+                    option_name, value, order_type, order_config)
+                valid_options[option_name] = option_value
+        return valid_options
+
+    def _validate_global_options(self, requested_order_spec,
+                                 order_type,
+                                 ordered_order_configs):
+        for order_config in ordered_order_configs:
+            options = self._validate_requested_options(requested_order_spec,
+                                                       order_type,
+                                                       order_config)
+        return options
+
+    def _validate_selected_option(self, name, value, order_type, order_config):
+        """
+        Validate a selected option choice.
+
+        The validation process first tries to extract the option's value as
+        a simple text and matches it with the available choices for the
+        option. If a match cannot be made, the collection's custom processing
+        class is instantiated and used to parse the option into a text based
+        format. This parsed value is again matched against the available
+        choices.
+
+        :param name: The name of the option
+        :type name: string
+        :param value:
+        :type value:
+        :param order_type:
+        :type order_type:
+        :param order_config:
+        :type order_config:
+        :return:
+        :rtype:
+        """
+
+        logger_type = "pyoseo"
+        try:
+            option = order_config.options.get(name=name)
+            choices = [c.value for c in option.choices.all()]
+            if len(choices) > 0:
+                naive_value = value.text
+                if naive_value in choices:
+                    result = naive_value
+                else:
+                    processing_class, params = utilities.get_custom_code(
+                        order_type,
+                        models.ItemProcessor.PROCESSING_PARSE_OPTION
+                    )
+                    handler = utilities.import_class(processing_class,
+                                                     logger_type=logger_type)
+                    parsed_value = handler.parse_option(name, value, **params)
+                    if parsed_value in choices:
+                        result = parsed_value
+                    else:
+                        raise errors.InvalidOptionValueError(name,
+                                                             parsed_value,
+                                                             order_config)
+            else:
+                processing_class, params = utilities.get_custom_code(
+                    order_type,
+                    models.ItemProcessor.PROCESSING_PARSE_OPTION
+                )
+                handler = utilities.import_class(processing_class,
+                                                 logger_type=logger_type)
+                result = handler.parse_option(name, value, **params)
+        except models.Option.DoesNotExist:
+            raise errors.InvalidOptionError(name, order_config)
+        except errors.InvalidOptionValueError:
+            raise
+        except Exception as e:
+            raise errors.CustomOptionParsingError(*e.args)
+        return result
+
+    def _validate_delivery_options(self, requested_item, order_config):
+        """
+        Validate the requested delivery options for an item.
+
+        The input requested_item can be an order or an order item
+
+        :param requested_item: oseo.Order or oseo.OrderItem
+        :param order_config: models.rderConfiguration
+        :return: The requested delivery options
+        :rtype: dict()
+        """
+
+        delivery = None
+        dop = requested_item.deliveryOptions
+        if dop is not None:
+            delivery = dict()
             try:
-                num_copies = options.numberOfCopies
-            except TypeError:
-                num_copies = None
-            del_option = models.SelectedDeliveryOption(
-                copies=num_copies,
-                annotation=self._c(options.productAnnotation),
-                special_instructions=self._c(options.specialInstructions)
+                if dop.onlineDataAccess is not None:
+                    p = dop.onlineDataAccess.protocol
+                    delivery["type"] = order_config.delivery_options.get(
+                        onlinedataaccess__protocol=p)
+                elif dop.onlineDataDelivery is not None:
+                    p = dop.onlineDataAccess.protocol
+                    delivery["type"] = order_config.delivery_options.get(
+                        onlinedatadelivery__protocol=p)
+                else:
+                    p = dop.mediaDelivery.packageMedium,
+                    s = dop.mediaDelivery.shippingInstructions,
+                    delivery["type"] = order_config.delivery_options.get(
+                        mediadelivery__package_medium=p,
+                        mediadelivery__shipping_instructions=s)
+            except models.DeliveryOption.DoesNotExist:
+                raise errors.InvalidDeliveryOptionError()
+            copies = dop.numberOfCopies
+            delivery["copies"] = int(copies) if copies is not None else copies
+            delivery["annotation"] = self._c(dop.productAnnotation)
+            delivery["special_instructions"] = self._c(dop.specialInstructions)
+        return delivery
+
+    def _validate_global_delivery_options(self, requested_order_spec,
+                                          ordered_order_configs):
+        """
+        Validate global order delivery options.
+
+        PyOSEO only accepts global options that are valid for each of the
+        order items contained in the order. As such, the requested
+        delivery options must be valid according to all of order
+        configurations of the ordered collections.
+
+        :param requested_order_spec:
+        :param ordered_order_configs:
+        :return:
+        """
+
+        for order_config in ordered_order_configs:
+            delivery_options = self._validate_delivery_options(
+                requested_order_spec, order_config)
+        return delivery_options
+
+    def _get_order_type(self, order_specification):
+        """
+        Return the order type for the input order specification.
+
+        Usually the order type can be extracted directly from the order
+        specification, as the OSEO standard defines only PRODUCT ORDER,
+        SUBSCRIPTION ORDER and TASKING ORDER. We are adding a fourth type,
+        MASSIVE ORDER, which is based on the existence of a special reference
+        on orders of type PRODUCT ORDER.
+
+        :param order_specification:
+        :type order_specification: oseo.Submit
+        :return:
+        :rtype: models.OrderType
+        """
+
+        order_type = models.OrderType.objects.get(
+            name=order_specification.orderType)
+        if order_type.name == "PRODUCT_ORDER":
+            ref = self._c(order_specification.orderReference)
+            massive_reference = getattr(
+                django_settings,
+                'OSEOSERVER_MASSIVE_ORDER_REFERENCE',
+                None
             )
-            if options.onlineDataAccess is not None:
-                protocol = options.onlineDataAccess.protocol
-                if self._validate_online_data_access_protocol(protocol,
-                        order_type):
-                    oda = models.OnlineDataAccess(protocol=protocol)
-                    del_option.onlinedataaccess = oda
-                else:
-                    pass # raise some sort of error
-            elif options.onlineDataDelivery is not None:
-                protocol = options.onlineDataDelivery.protocol
-                if self._validate_online_data_delivery_protocol(protocol,
-                        order_type):
-                    odd = models.OnlineDataDelivery(protocol=protocol)
-                    del_option.onlinedatadelivery = odd
-                else:
-                    pass # raise some sort of error
-            elif options.mediaDelivery is not None:
-                medium = options.mediaDelivery.packageMedium
-                if self._validate_media_delivery(medium, order_type):
-                    md = models.MediaDelivery(package_medium=medium)
-                    md.shipping_instructions = self._c(
-                            options.mediaDelivery.shippingInstructions)
-                    del_option.mediadelivery = md
-                else:
-                    pass  # raise some sort of error
-        else:
-            del_option = None
-        return del_option
+            if massive_reference is not None and ref == massive_reference:
+                order_type = models.OrderType.objects.get(
+                    name="MASSIVE_ORDER")
+        if not order_type.enabled:
+            raise errors.InvalidOrderTypeError(order_type.name)
+        return order_type
 
-    def _validate_online_data_access_protocol(self, protocol, order_type):
-        available_protocols = []
-        for dot in models.DeliveryOptionOrderType.objects.all():
-            if hasattr(dot.delivery_option, 'onlinedataaccess') and \
-                    dot.order_type.name == order_type:
-                p = dot.delivery_option.onlinedataaccess.protocol
-                available_protocols.append(p)
-        result = False
-        if protocol in available_protocols:
-            result = True
-        return result
+    def validate_status_notification(self, request):
+        """
+        Check that the requested status notification is supported.
 
-    def _validate_online_data_delivery_protocol(self, protocol, order_type):
-        available_protocols = []
-        for dot in models.DeliveryOptionOrderType.objects.all():
-            if hasattr(dot.delivery_option, 'onlinedatadelivery') and \
-                    dot.order_type.name == order_type:
-                p = dot.delivery_option.onlinedatadelivery.protocol
-                available_protocols.append(p)
-        result = False
-        if protocol in available_protocols:
-            result = True
-        return result
+        :param request:
+        :return:
+        """
 
-    def _validate_media_delivery(self, package_medium, order_type):
-        available_media = []
-        for dot in models.DeliveryOptionOrderType.objects.all():
-            if hasattr(dot.delivery_option, 'mediadelivery') and \
-                    dot.order_type.name == order_type:
-                m = dot.delivery_option.mediadelivery.package_medium
-                available_media.append(m)
-        result = False
-        if package_medium in available_media:
-            result = True
-        return result
+        if request.statusNotification != models.Order.NONE:
+            raise NotImplementedError('Status notifications are '
+                                      'not supported')
+        return request.statusNotification
+
+    def _validate_packaging(self, requested_packaging):
+        packaging = self._c(requested_packaging)
+        choices = [c[0] for c in models.Order.PACKAGING_CHOICES]
+        if packaging != "" and packaging not in choices:
+            raise errors.InvalidPackagingError(packaging)
+        return packaging

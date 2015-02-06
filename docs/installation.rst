@@ -10,17 +10,35 @@ Installing pyoseo requires following these instructions:
    .. code:: bash
 
       sudo apt-get install apache2 rabbitmq-server redis-server python-dev \
-          python-virtualenv
+          python-virtualenv python-virtualenvwrapper
 
-#. Decide on a directory to host your server, create a virtualenv and activate
-   it
+#. Configure virtualenvwrapper. Choose a directory to hold your python
+   virtualenvs (here we suggest ~/venvs) and another for your code. Finally
+   add some extra lines to your bashrc, in order to setup virtualenvwrapper.
 
    .. code:: bash
 
-      mkdir -p ~/giosystem
-      cd ~/giosystem
-      virtualenv venv
-      source venv/bin/activate
+      mkdir ~/venvs
+      mkdir ~/dev
+      echo 'export WORKON_HOME=$HOME/.venvs' >> ~/.bashrc
+      echo 'export PROJECT_HOME=$HOME/dev' >> ~/.bashrc
+      echo 'export PIP_DOWNLOAD_CACHE=$HOME/.pip-downloads' >> ~/.bashrc
+      echo 'source /usr/local/bin/virtualenvwrapper.sh' >> ~/.bashrc
+
+#. Reload your `.bashrc`
+
+   .. code:: bash
+
+      source ~/.bashrc
+
+#. Create a virtualenv for pyoseo. The first time you create it, it gets
+   automatically activated (When you want to work on it later on, remember
+   to activate it yourself)
+
+   .. code:: bash
+
+   mkvirtualenv pyoseo
+   # workon pyoseo
 
 #. Install the Pyxb python package. Pyoseo requires that the OGC schemas be
    compiled with pyxb. This requires editing some pyxb scripts before
@@ -29,17 +47,19 @@ Installing pyoseo requires following these instructions:
    .. code:: bash
 
       pip install --no-install pyxb
-      cd venv/build/pyxb
+      cd $VIRTUAL_ENV/build/pyxb
       export PYXB_ROOT=$(pwd)
       pyxb/bundles/opengis/scripts/genbind
       pip install --no-download pyxb
       cd -
 
-#. install pyoseo itself, using pip:
+#. install pyoseo itself, using a combination of git and pip:
 
    .. code:: bash
 
-      pip install --editable git+https://github.com/ricardogsilva/pyoseo.git#egg=pyoseo
+      cd $PROJECT_HOME
+      git clone https://github.com/ricardogsilva/pyoseo.git
+      pip install --editable pyoseo
 
 #. Create a settings_local.py file with your local settings, including
    sensitive data
@@ -58,24 +78,26 @@ Installing pyoseo requires following these instructions:
       ALLOWED_HOSTS = ['.<yourdomainname>',]
       OSEOSERVER_AUTHENTICATION_CLASS = 'python.path.to.auth.class'
       OSEOSERVER_PROCESSING_CLASS = 'python.path.to.order.processing.class'
+      OSEOSERVER_OPTIONS_CLASS = 'python.path.to.options.class'
 
    Add any other settings that you may need, for example, for the
    authentication module
 
-#. Create the django database structure, choosing to create a superuser for
-   django administration when prompted
+#. Create the django database structure and also a superuser for the django
+   administration backend
 
    .. code:: bash
 
-      cd ..
-      #python manage.py syncdb
+      cd $PROJECT_HOME/pyoseo/pyoseo
       python manage.py migrate
+      python manage.py createsuperuser
 
-#. Populate the django database with some initial fixture data
+#. Setup the default pyoseo values by running the `pyoseodefaults` management
+   script.
 
    .. code:: bash
 
-      python manage.py loaddata oseoserver/fixtures/default_data.json
+      python manage.py pyoseodefaults
 
 #. Run the collectstatic command in order to copy the admin backend's assets to
    the proper directory
@@ -221,6 +243,13 @@ scheme.
    .. code:: bash
 
       sudo chmod 775 /home/ftpuser
+
+#. Change proftpd's init script in order to workaround `bug #1293416`_. Edit
+   the `/etc/init.d/proftpd` init script, adding a `sleep 2` to line #180.
+   Since the bug report is a bit unclear, a safe choice is to add the sleep
+   command both before and after line #180.
+
+.. _bug #1293416: https://bugs.launchpad.net/ubuntu/+source/proftpd-dfsg/+bug/1293416
 
 #. restart the proftpd daemon
 

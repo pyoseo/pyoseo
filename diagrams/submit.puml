@@ -1,0 +1,33 @@
+@startuml
+
+class Submit {
+   +call()
+   -get_initial_order_status()
+   +process_order_specification()
+   +create_order()
+   +create_order_batch()
+   +get_delivery_information()
+   +get_invoice_address()
+   -get_delivery_address()
+   {static}get_collection_id()
+   +dispatch_order()
+   +validate_order_item()
+   -validate_product_order_item()
+   -validate_subscription_order_item()
+   -validate_tasking_order_item()
+   -get_order_configuration()
+   -validate_requested_collection()
+   -validate_requested_options()
+   -validate_global_options()
+   {static}validate_selected_option()
+   -validate_delivery_options()
+   -validate_global_delivery_options()
+   -add_ftp_user()
+   -get_order_type()
+   +validate_status_notification()
+}
+
+hide empty attributes
+hide empty methods
+
+@enduml

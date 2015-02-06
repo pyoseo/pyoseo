@@ -1,4 +1,4 @@
-# Copyright 2014 Ricardo Garcia Silva
+# Copyright 2015 Ricardo Garcia Silva
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,14 +23,14 @@ that preform each OSEO operation.
    result, status_code, response_headers = s.process_request(request)
 """
 
-#Creating the ParameterData element:
+# Creating the ParameterData element:
 #
-#* create an appropriate XML Schema Definition file (xsd)
-#* generate pyxb bindings for the XML schema with:
+# * create an appropriate XML Schema Definition file (xsd)
+# * generate pyxb bindings for the XML schema with:
 #
 #  pyxbgen --schema-location=pyoseo.xsd --module=pyoseo_schema
 #
-#* in ipython
+# * in ipython
 #
 #  import pyxb.binding.datatypes as xsd
 #  import pyxb.bundles.opengis.oseo as oseo
@@ -50,10 +50,16 @@ from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 import pyxb.bundles.opengis.oseo_1_0 as oseo
 import pyxb.bundles.opengis.ows as ows_bindings
+import pyxb
+from mailqueue.models import MailerMessage
+from django.contrib.auth.models import User
+from django.conf import settings
 
+from oseoserver import tasks
 import models
 import errors
 import utilities
+from auth.usernametoken import UsernameTokenAuthentication
 
 logger = logging.getLogger('.'.join(('pyoseo', __name__)))
 
@@ -62,7 +68,7 @@ class OseoServer(object):
     """
     Handle requests that come from Django and process them.
 
-    This class performs some pre-procesing of requests, such as schema
+    This class performs some pre-processing of requests, such as schema
     validation and user authentication. It then offloads the actual processing
     of requests to specialized OSEO operation classes. After the request has
     been processed, there is also some post-processing stuff, such as wrapping
@@ -77,8 +83,18 @@ class OseoServer(object):
     DEFAULT_USER_NAME = 'oseoserver_user'
     """Used for anonymous servers"""
 
-    _oseo_version = "1.0.0"
-    _encoding = "utf-8"
+    OSEO_VERSION = "1.0.0"
+
+    MAX_ORDER_ITEMS = 200  # this could be moved to the admin
+    """Maximum number of products that can be ordered at a time"""
+
+    STATUS_NOTIFICATIONS = {
+        models.Order.NONE: None,
+        models.Order.FINAL: None,
+        models.Order.ALL: None
+    }
+
+    ENCODING = "utf-8"
     _namespaces = {
         "soap": "http://www.w3.org/2003/05/soap-envelope",
         "soap1.1": "http://schemas.xmlsoap.org/soap/envelope/",
@@ -90,16 +106,19 @@ class OseoServer(object):
         "AuthorizationFailed": "client",
         "AuthenticationFailed": "client",
         "InvalidOrderIdentifier": "client",
+        "NoApplicableCode": "client",
         "UnsupportedCollection": "client",
+        "InvalidParameterValue": "client",
     }
-    _OPERATION_CLASSES = {
-        "GetStatusRequestType": "oseoserver.operations.getstatus.GetStatus",
-        "SubmitOrderRequestType": "oseoserver.operations.submit.Submit",
-        "DescribeResultAccessRequestType": "oseoserver.operations."
-                                           "describeresultaccess."
-                                           "DescribeResultAccess",
-        "OrderOptionsRequestType": "oseoserver.operations.getoptions."
-                                   "GetOptions",
+
+    OPERATION_CLASSES = {
+        "GetCapabilities": "oseoserver.operations.getcapabilities."
+                           "GetCapabilities",
+        "Submit": "oseoserver.operations.submit.Submit",
+        "DescribeResultAccess": "oseoserver.operations.describeresultaccess."
+                                "DescribeResultAccess",
+        "GetOptions": "oseoserver.operations.getoptions.GetOptions",
+        "GetStatus": "oseoserver.operations.getstatus.GetStatus",
     }
 
     def process_request(self, request_data):
@@ -134,15 +153,16 @@ class OseoServer(object):
             data = element
             response_headers['Content-Type'] = 'application/xml'
         try:
+            user = self.authenticate_request(element, soap_version)
             schema_instance = self.parse_xml(data)
-            operation = self._get_operation(schema_instance.__class__.__name__)
-            user, password = self.authenticate_request(element, soap_version)
-            response, status_code = operation(schema_instance, user,
-                                              user_password=password)
+            operation, op_name = self._get_operation(schema_instance)
+            response, status_code, info = operation(schema_instance, user)
+            if op_name == "Submit":
+                self.dispatch_order(info["order"])
             if soap_version is not None:
                 result = self._wrap_soap(response, soap_version)
             else:
-                result = response.toxml(encoding=self._encoding)
+                result = response.toxml(encoding=self.ENCODING)
         except errors.OseoError as err:
             if err.code == 'AuthorizationFailed':
                 status_code = 401
@@ -153,74 +173,128 @@ class OseoServer(object):
             result = self.create_exception_report(err.code, err.text,
                                                   soap_version,
                                                   locator=err.locator)
-        except errors.NonSoapRequestError as err:
+        except errors.InvalidPackagingError as e:
             status_code = 400
-            result = err
-        except errors.InvalidSettingsError as err:
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                "Invalid packaging value: {}".format(e),
+                soap_version)
+        except (errors.InvalidOptionError,
+                errors.InvalidOptionValueError,
+                errors.InvalidGlobalOptionError,
+                errors.InvalidGlobalOptionValueError) as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "InvalidParameterValue",
+                "Invalid value for parameter",
+                soap_version,
+                e.option)
+        except errors.NonSoapRequestError as e:
+            status_code = 400
+            result = e
+        except errors.InvalidSettingsError as e:
             status_code = 500
-            result = err
+            result = e
+        except pyxb.UnrecognizedDOMRootNodeError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                "Unsupported operation: {}".format(e.node.tagName),
+                soap_version)
+        except pyxb.UnrecognizedContentError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                str(e),
+                soap_version)
+        except pyxb.SimpleFacetValueError as e:
+            status_code = 400
+            result = self.create_exception_report(
+                "NoApplicableCode",
+                str(e),
+                soap_version)
         return result, status_code, response_headers
 
     def authenticate_request(self, request_element, soap_version):
         """
         Authenticate an OSEO request.
 
-        Request authentication can be customized according to the 
+        Verify that the incoming request is made by a valid user.
+        PyOSEO uses SOAP-WSS UsernameToken Profile v1.0 authentication. The
+        specification is available at:
+
+        https://www.oasis-open.org/committees/download.php/16782/wss-v1.1-spec-os-UsernameTokenProfile.pdf
+
+        Request authentication can be customized according to the
         needs of each ordering server. This method plugs into that by
         trying to load an external authentication class.
 
-        The python path to the authentication class must be defined in
-        the :data:`~pyoseo.settings.OSEOSERVER_AUTHENTICATION_CLASS`
-        setting.
+        There are two auth scenarios:
 
-        Authentication classes must provide the method:
+        * A returning user
+        * A new user
 
-        authenticate_request(request_element, soap_version)
+        The actual authentication is done by a custom class. This class
+        is specified for each OseoGroup instance in its `authentication_class`
+        attribute.
 
-        This method must return a two-value tuple with the username and 
-        password of the successfully authenticated user. If the authentication
-        is not successful, the method must raise an exception.
+        The custom authentication class must provide the following API:
 
-        :arg request_element: The full request object
-        :type request_element: lxml.etree.Element
-        :arg soap_version: The SOAP version in use
-        :type soap_version: str or None
-        :return: The end user that is responsible for this request and the
-                 user's password
-        :rtype: (oseoserver.models.OseoUser, str)
+        .. py:function:: authenticate_request(user_name, password, **kwargs)
+
+        .. py:function:: is_user(user_name, password, **kwargs)
         """
 
-        auth_class = getattr(
-            django_settings, 'OSEOSERVER_AUTHENTICATION_CLASS', None)
-        if auth_class is not None:
-            try:
-                instance = utilities.import_class(auth_class)
-                user_name, password = instance.authenticate_request(
-                    request_element,
-                    soap_version
-                )
-            except errors.OseoError as err:
-                 # this error is handled by the calling method
-                raise
-            except Exception as err:
-                # other errors are re-raised as InvalidSettings
-                logger.error('exception class: {}'.format(
-                             err.__class__.__name__))
-                logger.error('exception args: {}'.format(err.args))
-                raise errors.InvalidSettingsError('Invalid authentication '
-                                                  'class')
-            logger.info('User {} authenticated successfully'.format(user_name))
-        else:
-            user_name = self.DEFAULT_USER_NAME
-            password = 'dummy_password'
-            logger.warning('No authentication in use')
+        auth = UsernameTokenAuthentication()
+        user_name, password, extra = auth.get_details(request_element,
+                                                      soap_version)
+        logger.debug("user_name: {}".format(user_name))
+        logger.debug("password: {}".format(password))
+        logger.debug("extra: {}".format(extra))
         try:
-            oseo_user = models.OseoUser.objects.get(user__username=user_name)
-        except ObjectDoesNotExist:
-            # create a new user, but don't store the password in the database
-            user = models.User.objects.create_user(user_name, password=None)
-            oseo_user = user.oseouser
-        return oseo_user, password
+            user = models.OseoUser.objects.get(user__username=user_name)
+            auth_class = user.oseo_group.authentication_class
+        except models.OseoUser.DoesNotExist:
+            user = self.add_user(user_name, password, **extra)
+            auth_class = user.oseo_group.authentication_class
+        try:
+            instance = utilities.import_class(auth_class)
+            authenticated = instance.authenticate_request(user_name, password,
+                                                          **extra)
+            if not authenticated:
+                text = "Invalid or missing identity information"
+                raise errors.OseoError("AuthenticationFailed", text,
+                                       locator="identity_token")
+        except errors.OseoError:
+            raise  # this error is handled by the calling method
+        except Exception as e:
+            # other errors are re-raised as InvalidSettings
+            logger.error('exception class: {}'.format(
+                         e.__class__.__name__))
+            logger.error('exception args: {}'.format(e.args))
+            raise errors.InvalidSettingsError('Invalid authentication '
+                                              'class')
+        logger.info('User {} authenticated successfully'.format(user_name))
+        return user
+
+    def add_user(self, user_name, password, **kwargs):
+        oseo_user = None
+        groups = models.OseoGroup.objects.all()
+        found_group = False
+        current = 0
+        while not found_group and current < len(groups):
+            current_group = groups[current]
+            custom_auth = utilities.import_class(
+                current_group.authentication_class)
+            if custom_auth.is_user(user_name, password, **kwargs):
+                found_group = True
+                user = models.User.objects.create_user(user_name,
+                                                       password=None)
+                oseo_user = models.OseoUser.objects.get(user=user)
+                oseo_user.oseo_group = current_group
+                oseo_user.save()
+            current += 1
+        return oseo_user
 
     def create_exception_report(self, code, text, soap_version, locator=None):
         """
@@ -242,14 +316,14 @@ class OseoServer(object):
             exception.locator = locator
         exception.append(text)
         exception_report = ows_bindings.ExceptionReport(
-                version=self._oseo_version)
+            version=self.OSEO_VERSION)
         exception_report.append(exception)
         if soap_version is not None:
             soap_code = self._exception_codes[code]
             result = self._wrap_soap_fault(exception_report, soap_code,
                                            soap_version)
         else:
-            result = exception_report.toxml(encoding=self._encoding)
+            result = exception_report.toxml(encoding=self.ENCODING)
         return result
 
     def _is_soap(self, request_element):
@@ -282,14 +356,15 @@ class OseoServer(object):
         :return: The instance generated by pyxb
         """
 
-        document = etree.tostring(xml, encoding=self._encoding,
+        document = etree.tostring(xml, encoding=self.ENCODING,
                                   pretty_print=True)
         oseo_request = oseo.CreateFromDocument(document)
         return oseo_request
 
-    def _get_operation(self, class_name):
-        op = self._OPERATION_CLASSES[class_name]
-        return utilities.import_class(op)
+    def _get_operation(self, pyxb_request):
+        oseo_op = pyxb_request.toDOM().firstChild.tagName.partition(":")[-1]
+        op = self.OPERATION_CLASSES[oseo_op]
+        return utilities.import_class(op), oseo_op
 
     def _get_soap_data(self, element, soap_version):
         """
@@ -326,14 +401,14 @@ class OseoServer(object):
             soap_env_ns['soap'] = self._namespaces['soap1.1']
         soap_env = etree.Element('{%s}Envelope' % soap_env_ns['soap'],
                                  nsmap=soap_env_ns)
-        soap_body = etree.SubElement(soap_env, '{%s}Body' % \
+        soap_body = etree.SubElement(soap_env, '{%s}Body' %
                                      soap_env_ns['soap'])
 
-        response_string = response.toxml(encoding=self._encoding)
-        response_string = response_string.encode(self._encoding)
+        response_string = response.toxml(encoding=self.ENCODING)
+        response_string = response_string.encode(self.ENCODING)
         response_element = etree.fromstring(response_string)
         soap_body.append(response_element)
-        return etree.tostring(soap_env, encoding=self._encoding,
+        return etree.tostring(soap_env, encoding=self.ENCODING,
                               pretty_print=True)
 
     def _wrap_soap_fault(self, exception_report, soap_code, soap_version):
@@ -350,8 +425,8 @@ class OseoServer(object):
         code_msg = 'soap:{}'.format(soap_code.capitalize())
         reason_msg = '{} exception was encountered'.format(
             soap_code.capitalize())
-        exception_string = exception_report.toxml(encoding=self._encoding)
-        exception_string = exception_string.encode(self._encoding)
+        exception_string = exception_report.toxml(encoding=self.ENCODING)
+        exception_string = exception_string.encode(self.ENCODING)
         exception_element = etree.fromstring(exception_string)
         soap_env_ns = {
             'ows': self._namespaces['ows'],
@@ -389,5 +464,61 @@ class OseoServer(object):
             fault_actor.text = ''
             detail = etree.SubElement(soap_fault, 'detail')
             detail.append(exception_element)
-        return etree.tostring(soap_env, encoding=self._encoding,
+        return etree.tostring(soap_env, encoding=self.ENCODING,
                               pretty_print=True)
+
+    def dispatch_order(self, order, force=False, **kwargs):
+        """Dispatch an order for processing in the async queue."""
+
+        if force:
+            order.status = models.CustomizableItem.ACCEPTED
+        if order.status == models.CustomizableItem.SUBMITTED:
+            utilities.send_moderation_email(order)
+        elif order.status == models.CustomizableItem.ACCEPTED:
+            logger.debug("sending order {} to processing queue...".format(
+                order.id))
+            if order.order_type.name == models.Order.PRODUCT_ORDER:
+                tasks.process_product_order.apply_async((order.id,))
+            elif order.order_type.name == models.Order.SUBSCRIPTION_ORDER:
+                tasks.process_subscription_order.apply_async((order.id, kwargs))
+
+    def process_subscriptions(self, current_timeslot):
+        for s in models.SubscriptionOrder.objects.filter(active=True):
+            self.dispatch_order(s, current_timeslot=current_timeslot)
+
+    def process_product_orders(self):
+        for order in models.ProductOrder.objects.filter(
+                status=models.CustomizableItem.ACCEPTED):
+            self.dispatch_order(order)
+
+    def reprocess_order(self, order_id):
+        order = models.Order.objects.get(id=order_id)
+        self.dispatch_order(order, force=True)
+
+    def moderate_order(self, order, approved, rejection_details=""):
+        """
+        Decide on approval of an order.
+
+        The OSEO standard does not really define any moderation workflow
+        for orders. As such, none of the defined statuses fits exactly with
+        this process. We are abusing the CANCELLED status for this.
+
+        :param order:
+        :param approved:
+        :param rejection_details:
+        :return:
+        """
+        if approved:
+            order.status = models.CustomizableItem.ACCEPTED
+            order.additional_status_info = ("Order has been approved and is "
+                                            "waiting in the processing queue")
+        else:
+            order.status = models.CustomizableItem.CANCELLED
+            if rejection_details != "":
+                order.additional_status_info = rejection_details
+            else:
+                order.additional_status_info = ("Order request has been "
+                                                "rejected by the "
+                                                "administrators.")
+        order.save()
+        self.dispatch_order(order)

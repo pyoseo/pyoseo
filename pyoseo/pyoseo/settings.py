@@ -19,18 +19,6 @@ from celery.schedules import crontab
 
 # pyoseo oseoserver options
 OSEOSERVER_MASSIVE_ORDER_REFERENCE = 'Massive order'
-OSEOSERVER_ORDER_DELETION_THRESHOLD = 5 #: in days
-OSEOSERVER_ONLINE_DATA_ACCESS_HTTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
-OSEOSERVER_ONLINE_DATA_ACCESS_FTP_PROTOCOL_ROOT_DIR = '/home/ftpuser'
-
-# these settings should be redefined in a settings_local file
-OSEOSERVER_AUTHENTICATION_CLASS = None
-OSEOSERVER_PROCESSING_CLASS = None
-OSEOSERVER_MAIL_ACCOUNT = None
-OSEOSERVER_MAIL_ACCOUNT_PASSWORD = None
-OSEOSERVER_MAIL_SERVER = None
-OSEOSERVER_MAIL_SERVER_PORT = None
-OSEOSERVER_ADMIN_MAILS = None
 
 # pyoseo celery options
 CELERY_RESULT_BACKEND = 'redis://'
@@ -45,15 +33,29 @@ CELERY_DISABLE_RATE_LIMITS = True
 
 # pyoseo-beat schedule for executing periodic tasks
 CELERYBEAT_SCHEDULE = {
-    'monitor_ftp' : {
-        'task': 'oseoserver.tasks.monitor_ftp_downloads',
-        'schedule': crontab(hour=9, minute=30),  # execute daily at 09:30
-    },
-    'clean_old_orders' : {
-        'task': 'oseoserver.tasks.delete_old_orders',
+    'delete_expired_order_items' : {
+        'task': 'oseoserver.tasks.delete_expired_order_items',
         'schedule': crontab(hour=10, minute=30),  # execute daily at 10:30
     },
+    'delete_failed_orders' : {
+        'task': 'oseoserver.tasks.delete_failed_orders',
+        'schedule': crontab(hour=11, minute=30),  # execute daily at 11:30
+    },
 }
+
+# mail settings
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 25
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+
+# settings for django-mail-queue
+MAILQUEUE_CELERY = True
+
+# settings for django-sendfile
+SENDFILE_BACKEND = "sendfile.backends.xsendfile"
 
 
 def find_or_create_secret_key():
@@ -91,13 +93,18 @@ TEMPLATE_DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
+    #'grappelli.dashboard',
+    'grappelli',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'oseoserver',
+    'actstream',
+    'mailqueue',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -107,6 +114,11 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+)
+
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.contrib.auth.context_processors.auth',
+    'django.core.context_processors.request',
 )
 
 ROOT_URLCONF = 'pyoseo.urls'
@@ -141,6 +153,16 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'sitestatic')
 STATIC_URL = '/static/'
+
+SITE_ID = 1
+
+# settings for django-activity-stream
+# the default settings are fine, they are commented here just for the record
+# ACTSTREAM_SETTINGS = {
+#     "MANAGER": "actstreams.manager.ActionManager",
+#     "FETCH_RELATIONS": True,
+#     "USE_JSONFIELD": False,
+# }
 
 # Logging
 LOGGING = {

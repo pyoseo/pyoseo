@@ -10,7 +10,7 @@
         <xs:restriction base="xs:string">
             <xs:enumeration value="HDF5" />
             <xs:enumeration value="NetCDF" />
-            <xs:enumeration value="GEOTIFF" />
+            <xs:enumeration value="GeoTiff" />
         </xs:restriction>
     </xs:simpleType>
     <xs:element name='rescaleValues' type='ipma:RescaleValuesType'></xs:element>
@@ -18,8 +18,13 @@
         <xs:restriction base="xs:boolean">
         </xs:restriction>
     </xs:simpleType>
-    <xs:element name='projection' type='ipma:ProjectionType'></xs:element>
-    <xs:simpleType name='ProjectionType'>
+    <xs:element name='MapProjection' type='ipma:MapProjectionType'></xs:element>
+    <xs:simpleType name='MapProjectionType'>
+        <xs:restriction base="xs:string">
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:element name='RegionOfInterest' type='ipma:RegionOfInterestType'></xs:element>
+    <xs:simpleType name='RegionOfInterestType'>
         <xs:restriction base="xs:string">
         </xs:restriction>
     </xs:simpleType>

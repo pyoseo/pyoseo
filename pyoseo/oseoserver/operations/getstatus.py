@@ -1,4 +1,4 @@
-# Copyright 2014 Ricardo Garcia Silva
+# Copyright 2015 Ricardo Garcia Silva
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -26,9 +26,13 @@ import pyxb.bundles.opengis.oseo_1_0 as oseo
 from oseoserver import models
 from oseoserver import errors
 from oseoserver.operations.base import OseoOperation
+from oseoserver.server import OseoServer
 
 
 class GetStatus(OseoOperation):
+
+    SUCCESS = "success"
+    FULL_PRESENTATION = "full"
 
     def __call__(self, request, user, **kwargs):
         """
@@ -47,25 +51,25 @@ class GetStatus(OseoOperation):
 
         status_code = 200
         records = []
-        if request.orderId is not None: #  'order retrieve' type of request
+        if request.orderId is not None:  # 'order retrieve' type of request
             try:
                 order = models.Order.objects.get(id=int(request.orderId))
-                if self._is_user_authorized(user, order):
+                if self._user_is_authorized(user, order):
                     records.append(order)
                 else:
                     raise errors.OseoError('AuthorizationFailed',
                                            'The client is not authorized to '
                                            'call the operation',
                                            locator='orderId')
-            except (ObjectDoesNotExist, ValueError):
+            except (models.Order.DoesNotExist, ValueError):
                 raise errors.OseoError('InvalidOrderIdentifier',
                                        'Invalid value for order',
                                        locator=request.orderId)
-        else: # 'order search' type of request
+        else:  # 'order search' type of request
             records = self._find_orders(request, user)
         response = self._generate_get_status_response(records,
                                                       request.presentation)
-        return response, status_code
+        return response, status_code, None
 
     def _generate_get_status_response(self, records, presentation):
         """
@@ -78,14 +82,15 @@ class GetStatus(OseoOperation):
         """
 
         response = oseo.GetStatusResponse()
-        response.status='success'
+        response.status = self.SUCCESS
         for r in records:
             om = oseo.CommonOrderMonitorSpecification()
-            if r.order_type.name in(models.OrderType.PRODUCT_ORDER,
-                    models.OrderType.MASSIVE_ORDER):
+            if r.order_type.name == models.Order.MASSIVE_ORDER:
                 om.orderType = models.OrderType.PRODUCT_ORDER
-            elif r.order_type.name == models.OrderType.SUBSCRIPTION_ORDER:
-                om.orderType = models.Order.SUBSCRIPTION_ORDER
+                om.orderReference = OseoServer.MASSIVE_ORDER_REFERENCE
+            else:
+                om.orderType = r.order_type.name
+                om.orderReference = self._n(r.reference)
             om.orderId = str(r.id)
             om.orderStatusInfo = oseo.StatusType(
                 status=r.status,
@@ -94,7 +99,6 @@ class GetStatus(OseoOperation):
                     r.mission_specific_status_info)
             )
             om.orderDateTime = r.status_changed_on
-            om.orderReference = self._n(r.reference)
             om.orderRemark = self._n(r.remark)
             try:
                 del_info = oseo.DeliveryInformationType()
@@ -147,7 +151,7 @@ class GetStatus(OseoOperation):
                             oa.user_password)
                     del_info.onlineAddress[-1].path = self._n(oa.path)
                 om.deliveryInformation = del_info
-            except ObjectDoesNotExist:
+            except models.DeliveryInformation.DoesNotExist:
                 pass
             try:
                 inv_add = oseo.DeliveryAddressType()
@@ -170,52 +174,42 @@ class GetStatus(OseoOperation):
                 inv_add.facsimileTelephoneNumber = self._n(
                         r.invoice_address.fax)
                 om.invoiceAddress = inv_add
-            except ObjectDoesNotExist:
+            except models.InvoiceAddress.DoesNotExist:
                 pass
             om.packaging = self._n(r.packaging)
             # add any 'option' elements
             om.deliveryOptions = self._get_delivery_options(r)
             om.priority = self._n(r.priority)
-            if presentation == 'full':
-                if r.order_type.name == models.OrderType.PRODUCT_ORDER:
-                    for batch in r.batches.all():
-                        for oi in batch.order_items.all():
-                            sit = oseo.CommonOrderStatusItemType()
-                            # TODO
-                            # add the other optional elements
-                            sit.itemId = str(oi.item_id)
-                            # oi.identifier is guaranteed to be non empty for
-                            # normal product orders
-                            sit.productId = oi.identifier
-                            sit.productOrderOptionsId = oi.option_group.name
-                            sit.orderItemRemark = self._n(oi.remark)
-                            sit.collectionId = self._n(oi.collection_id)
-                            # add any 'option' elements that may be present
-                            # add any 'sceneSelection' elements that may be present
-                            sit.deliveryOptions = self._get_delivery_options(oi)
-                            # add any 'payment' elements that may be present
-                            # add any 'extension' elements that may be present
-                            sit.orderItemStatusInfo = oseo.StatusType()
-                            sit.orderItemStatusInfo.status = oi.status
-                            sit.orderItemStatusInfo.additionalStatusInfo = \
-                                    self._n(oi.additional_status_info)
-                            sit.orderItemStatusInfo.missionSpecificStatusInfo=\
-                                    self._n(oi.mission_specific_status_info)
-                            om.orderItem.append(sit)
+            if presentation == self.FULL_PRESENTATION:
+                if r.order_type.name == models.Order.PRODUCT_ORDER:
+                    batch = r.batches.get()
+                    for oi in batch.order_items.all():
+                        sit = oseo.CommonOrderStatusItemType()
+                        # TODO - add the other optional elements
+                        sit.itemId = str(oi.item_id)
+                        # oi.identifier is guaranteed to be non empty for
+                        # normal product orders
+                        sit.productId = oi.identifier
+                        sit.productOrderOptionsId = "Options for {} {}".format(
+                            oi.collection.name, r.order_type.name)
+                        sit.orderItemRemark = self._n(oi.remark)
+                        sit.collectionId = self._n(oi.collection_id)
+                        # add any 'option' elements that may be present
+                        # add any 'sceneSelection' elements that may be present
+                        sit.deliveryOptions = self._get_delivery_options(oi)
+                        # add any 'payment' elements that may be present
+                        # add any 'extension' elements that may be present
+                        sit.orderItemStatusInfo = oseo.StatusType()
+                        sit.orderItemStatusInfo.status = oi.status
+                        sit.orderItemStatusInfo.additionalStatusInfo = \
+                                self._n(oi.additional_status_info)
+                        sit.orderItemStatusInfo.missionSpecificStatusInfo=\
+                                self._n(oi.mission_specific_status_info)
+                        om.orderItem.append(sit)
                 else:
                     raise NotImplementedError
             response.orderMonitorSpecification.append(om)
         return response
-
-    def _is_user_authorized(self, user, order):
-        """
-        Test if a user is allowed to check on the status of an order
-        """
-
-        result = False
-        if order.user == user:
-            result = True
-        return result
 
     def _find_orders(self, request, user):
         """
@@ -243,3 +237,38 @@ class GetStatus(OseoOperation):
         if any(statuses):
             records = records.filter(status__in=statuses)
         return records
+
+    def _get_delivery_options(self, db_item):
+        """
+        Return the delivery options for an input database item.
+
+        :arg db_item: the database record model that has the delivery options
+        :type db_item: pyoseo.models.CustomizableItem
+        :return: A pyxb object with the delivery options
+        """
+
+        try:
+            do = db_item.selected_delivery_option
+            dot = oseo.DeliveryOptionsType()
+            try:
+                oda = do.option.onlinedataaccess
+                dot.onlineDataAccess = pyxb.BIND()
+                dot.onlineDataAccess.protocol = oda.protocol
+            except models.OnlineDataAccess.DoesNotExist:
+                try:
+                    odd = do.option.onlinedatadelivery
+                    dot.onlineDataDelivery = pyxb.BIND()
+                    dot.onlineDataDelivery.protocol = odd.protocol
+                except models.OnlineDataDelivery.DoesNotExist:
+                    md = do.option.mediadelivery
+                    dot.mediaDelivery = pyxb.BIND()
+                    dot.mediaDelivery.packageMedium = md.package_medium
+                    dot.mediaDelivery.shippingInstructions = self._n(
+                        md.shipping_instructions)
+            dot.numberOfCopies = self._n(do.copies)
+            dot.productAnnotation = self._n(do.annotation)
+            dot.specialInstructions = self._n(do.special_instructions)
+        except models.SelectedDeliveryOption.DoesNotExist:
+            dot = None
+        return dot
+

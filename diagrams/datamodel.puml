@@ -1,0 +1,341 @@
+@startuml
+
+title PyOseo data model
+
+enum PACKAGING {
+    BZIP2
+    +ZIP
+    +TAR
+    +TAR_GZ
+}
+
+enum PRIORITY {
+    STANDARD
+    FAST_TRACK
+}
+
+enum ORDER_TYPE {
+    PRODUCT_ORDER
+    MASSIVE_ORDER
+    SUBSCRIPTION_ORDER
+    TASKING_ORDER
+}
+
+enum STATUS {
+    SUBMITTED
+    ACCEPTED
+    IN_PRODUCTION
+    SUSPENDED
+    CANCELLED
+    COMPLETED
+    FAILED
+    TERMINATED
+    DOWNLOADED
+}
+
+enum DELIVERY_PROTOCOL {
+    FTP
+    SFTP
+    FTPS
+    P2P
+    WCS
+    WMS
+    E_MAIL
+    DDS
+    HTTP
+    HTTPS
+}
+
+enum PACKAGE_MEDIUM {
+    NTP
+    DAT
+    EXABYTE
+    CD_ROM
+    DLT
+    D1
+    DVD
+    BD
+    LTO
+    LTO2
+    LTO4
+}
+
+enum SHIPPING_CHOICE {
+    EACH_READY
+    ALL_READY
+    OTHER
+}
+
+class AbstractDeliveryAddress {
+    +first_name: String
+    +last_name: String
+    +company_ref: String
+    +street_address: String
+    +city: String
+    +state: String
+    +postal_code: String
+    +country: String
+    +post_box: String
+    +telephone: String
+    +fax: String
+}
+
+class AbstractOption {
+    +name: String
+    +description: String
+}
+
+class AbstractOptionChoice {
+    +value: String
+}
+
+class Batch {
+    +order: Order
+    +created_on: DateTime
+    +updated_on: DateTime
+    +completed_on: DateTime
+    +status()
+    +price()
+}
+
+class Collection {
+    +collection_id: String
+    +short_name: String
+    +product_price: Decimal
+    +catalogue_endpoint: String
+    +item_preparation_class: String
+}
+
+class CustomizableItem {
+    +status: STATUS
+    +additional_status_info: String
+    +mission_specific_status_info: String
+    +created_on: Datetime
+    +completed_on: Datetime
+    +status_changed_on: Datetime
+    +remark: String
+}
+
+class DeliveryInformation {
+    +order: Order
+}
+
+class DeliveryOption {
+    +delivery_fee: Decimal
+    +child_instance()
+}
+
+class InvoiceAddress {
+    +order: Order
+}
+
+class MassiveOrderConfiguration {
+}
+
+class MediaDelivery {
+    +package_medium: PACKAGE_MEDIUM
+    +shipping_instructions: SHIPPING_CHOICE
+}
+
+class Option {
+}
+
+class OptionChoice {
+    +option: Option
+}
+
+class OnlineDataAccess {
+    +protocol: DELIVERY_PROTOCOL
+}
+
+class OnlineDataDelivery {
+    +protocol: DELIVERY_PROTOCOL
+}
+
+class OnlineAddress {
+    +delivery_information: DeliveryInformation
+    +protocol: String
+    +server_address: String
+    +user_name: String
+    +user_password: String
+    +path: String
+}
+
+class OrderConfiguration {
+    +collection: Collection
+    +enabled: Boolean
+    +automatic_approval: Boolean
+    +order_processing_fee: Decimal
+}
+
+class Order {
+    +user: OseoUser
+    +order_type: ORDER_TYPE
+    +last_describe_result_access_request: DateTime
+    +reference: String
+    +packaging: PACKAGING
+    +priority: PRIORITY
+    +status_notification: String
+
+    +show_batches()
+}
+
+class OrderItem {
+    +batch: Batch
+    +collection: Collection
+    +item_id: String
+}
+
+
+class ProductOrderItem {
+    +identifier: String
+    +file_name: String
+    +downloads: Integer
+}
+
+class MassiveOrderItem {
+    +identifier: String
+    +file_name: String
+}
+
+class SubscriptionOrderItem {
+}
+
+class TaskingOrderItem {
+    +tasking_id: String
+}
+
+class OseoUser {
+    +user: User
+    +oseo_group: OseoGroup
+    +disk_quota: Integer
+    +order_availability_days: String
+    +delete_downloaded_order_files: Boolean
+}
+
+class OseoGroup {
+    +name: String
+    +authentication_class: String
+}
+
+class PaymentOption {
+}
+
+class ProductOrderConfiguration {
+}
+
+class SceneSelectionOption {
+}
+
+class SceneSelectionOptionChoice {
+    +scene_selection_option: SceneSelectionOption
+}
+
+class SelectedOption {
+    +customizable_item: CustomizableItem
+    +option: Option
+    +value: String
+}
+
+class SelectedPaymentOption {
+    +order_item: OrderItem
+    +option: PaymentOption
+}
+
+class SelectedSceneSelectionOption {
+    +order_item: OrderItem
+    +option: SceneSelectionOption
+    +value: String
+}
+
+class SelectedDeliveryOption {
+    +customizable_item: CustomizableItem
+    +option: DeliveryOption
+    +copies: Integer
+    +annotation: String
+    +special_instructions: String
+}
+
+class SubscriptionOrderConfiguration {
+}
+
+class TaskingOrderConfiguration {
+}
+
+AbstractOption <|-- Option
+AbstractOption <|-- SceneSelectionOption
+AbstractOptionChoice <|-- OptionChoice
+AbstractOptionChoice <|-- SceneSelectionOptionChoice
+Option "1" *-- "*" OptionChoice
+AbstractOption <|-- PaymentOption
+DeliveryOption <|-- MediaDelivery
+DeliveryOption <|-- OnlineDataAccess
+DeliveryOption <|-- OnlineDataDelivery
+OrderConfiguration <|-- ProductOrderConfiguration
+OrderConfiguration <|-- MassiveOrderConfiguration
+OrderConfiguration <|-- SubscriptionOrderConfiguration
+OrderConfiguration <|-- TaskingOrderConfiguration
+CustomizableItem <|-- Order
+CustomizableItem <|-- OrderItem
+SelectedDeliveryOption "1" --* "1" CustomizableItem
+SelectedOption "*" --* "1" CustomizableItem
+Option "1" -- "*" SelectedOption
+DeliveryOption "1" -- "*" SelectedDeliveryOption
+DeliveryInformation "1" *-- "*" OnlineAddress
+AbstractDeliveryAddress <|-- DeliveryInformation
+AbstractDeliveryAddress <|-- InvoiceAddress
+DeliveryInformation "0..1" --* "1" Order
+InvoiceAddress "0..1" --* "1" Order
+OseoUser "1" o-- "*" Order : places >
+OseoUser "*" --o "1" OseoGroup : belongs >
+OrderItem "1..*" -* "1" Batch
+Batch "1..*" -o "1" Order
+Collection "1" -o "*" OrderItem
+Collection "*" -- "*" OseoGroup : authorized <
+SelectedSceneSelectionOption "*" --* "1" OrderItem
+SelectedPaymentOption "0..1" --* OrderItem
+PaymentOption -- SelectedPaymentOption
+SceneSelectionOption -- SelectedSceneSelectionOption
+OrderConfiguration "*" -- "*" Option
+OrderConfiguration "*" -- "*" DeliveryOption
+OrderConfiguration "*" -- "*" PaymentOption
+OrderConfiguration "*" -- "*" SceneSelectionOption
+'Collection "1" *-- "1" ProductOrderConfiguration
+'Collection "1" *-- "1" MassiveOrderConfiguration
+'Collection "1" *-- "1" SubscriptionOrderConfiguration
+'Collection "1" *-- "1" TaskingOrderConfiguration
+ProductOrderConfiguration "1" --* "1" Collection
+MassiveOrderConfiguration "1" --* "1" Collection
+SubscriptionOrderConfiguration "1" --* "1" Collection
+TaskingOrderConfiguration "1" --* "1" Collection
+OrderItem <|-- ProductOrderItem
+OrderItem <|-- MassiveOrderItem
+OrderItem <|-- SubscriptionOrderItem
+OrderItem <|-- TaskingOrderItem
+
+'note bottom of SelectedOption
+'note as N1
+'- If the customizable_item is an OrderItem, each selected_option must be
+'  present in the item's collection_configuration for the type of order
+'  being requested.
+'
+'- If the customizable_item is an Order, the selected_option is not
+'  constrained. When processing orders, only valid options according to each
+'  order_item's collection and the order_type are applied.
+'end note
+'
+'N1 .. CustomizableItem
+'SelectedOption .. N1
+'
+'note top of SelectedDeliveryOption
+'If the customizable_item is an Order, each selected_delivery_option must
+'be present in the item's collection_configuration.
+'end note
+
+'hide class fields
+'hide class methods
+hide empty fields
+hide empty methods
+hide circle
+
+@enduml
