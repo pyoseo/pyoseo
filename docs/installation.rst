@@ -293,7 +293,7 @@ Celery installation and configuration requires the following:
    execution queue. Celerybeat is a process that allows running tasks
    periodically. Pyoseo needs both queued and periodic tasks.
    To allow the celery daemon processes to start at boot, we need to install
-   these processes enbaling them to run as services.
+   these processes enabling them to run as services.
 
    * Place a copy of the pyoseo-worker sysv init script in `/etc/init.d`,
      and give it executable permissions.
