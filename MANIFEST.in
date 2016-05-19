@@ -1,7 +1,0 @@
-include COPYING
-include README.rst
-include requirements.txt
-recursive-include docs *
-recursive-include samples *
-recursive-include diagrams *
-recursive-include scripts *

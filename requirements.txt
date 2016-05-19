@@ -11,3 +11,5 @@
 --index-url https://pypi.python.org/simple/
 
 --editable .
+
+gunicorn
