@@ -1,3 +1,9 @@
+# environment variables
+environment.sh
+
+# local sqlite databases
+pyoseo/db.sqlite3
+
 *.pyc
 
 *.un~
@@ -7,4 +13,3 @@
 
 docs/_build/*
 
-environment.sh

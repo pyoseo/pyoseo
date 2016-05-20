@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
+import pathlib2
+
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -22,7 +24,7 @@ def get_environment_variable(var_name):
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = str(pathlib2.Path(__file__).parents[2])
 
 
 # Quick-start development settings - unsuitable for production
