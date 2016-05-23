@@ -42,12 +42,20 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'grappelli',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # required by oseoserver
+    'mailqueue',  # required by oseoserver
+    'oseoserver',
+    # actstream is required by oseoserver and is placed last as per
+    # the advice at:
+    # http://django-activity-stream.readthedocs.io/en/latest/installation.html
+    'actstream',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -130,3 +138,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
+
+SITE_ID = 1
+
+MAILQUEUE_CELERY = True
+
+SENDFILE_BACKEND = "sendfile.backends.simple"
+
+OSEOSERVER_AUTHENTICATION_CLASS = ""
+OSEOSERVER_PROCESSING_CLASS = "oseoserver.orderpreparation.ExampleOrderProcessor"
+OSEOSERVER_OPTIONS_CLASS = ""

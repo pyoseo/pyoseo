@@ -8,4 +8,7 @@
 ##--editable git+https://ricardogsilva@bitbucket.org/ipmagio/giosystem-csw.git#egg=giosystemcsw
 
 Django==1.9.6
+django-grappelli==2.8.1
+django-mail-queue==2.2.2
+django-sendfile==0.3.10
 pathlib2==2.1.0
