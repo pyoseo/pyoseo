@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     # actstream is required by oseoserver and is placed last as per
     # the advice at:
     # http://django-activity-stream.readthedocs.io/en/latest/installation.html
-    'actstream',
+    #'actstream',
 ]
 
 MIDDLEWARE_CLASSES = [
