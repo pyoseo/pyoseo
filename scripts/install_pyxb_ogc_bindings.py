@@ -4,6 +4,7 @@ binding classes.
 """
 
 import argparse
+import logging
 import os
 import shlex
 import shutil
@@ -13,12 +14,22 @@ import tempfile
 
 import pathlib2
 
+try:
+    from pyxb.bundles import opengis
+    PYXB_AVAILABLE = True
+except ImportError as err:
+    PYXB_AVAILABLE = False
+
+
+logger = logging.getLogger(__name__)
+
 
 def main(download_dir):
     download_command = "pip download {} --dest {}".format(
         _get_declared_pyxb_version(),
         str(download_dir)
     )
+    logger.debug("download_command: {}".format(download_command))
     subprocess.check_call(shlex.split(download_command))
     for sub_path in download_dir.iterdir():
         if sub_path.is_file() and "PYXB" in sub_path.name.upper():
@@ -52,13 +63,28 @@ def _untar_file(path, destination_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage=__doc__)
-    temporary_dir = pathlib2.Path(tempfile.mkdtemp())
-    try:
-        main(temporary_dir)
-    except Exception as err:
-        print(err)
+    parser.add_argument("--verbose", "-v", action="store_true")
+    parser.add_argument("--force", "-f", action="store_true",
+                        help="Reinstall PyXB even if it is already "
+                             "installed with the OGC bindings")
+    args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.WARNING)
+    if not PYXB_AVAILABLE or args.force:
+        logger.debug("Installing PyXB with the OGC bindings...")
+        temporary_dir = pathlib2.Path(tempfile.mkdtemp())
+        try:
+            main(temporary_dir)
+        except Exception as err:
+            print(err)
+        else:
+            print("Successfully installed PyXB with the opengis bundle!")
+        finally:
+            shutil.rmtree(str(temporary_dir))
     else:
-        print("Successfully installed PyXB with the opengis bundle!")
-    finally:
-        shutil.rmtree(str(temporary_dir))
+        logger.debug("PyXB is already installed with the OGC bindings. "
+                     "Use the -f flag if you want to force re-installation.")
+
+
+
 
