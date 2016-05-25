@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # required by oseoserver
+    #'django.contrib.sites',  # required by oseoserver
     'mailqueue',  # required by oseoserver
     'oseoserver',
     # actstream is required by oseoserver and is placed last as per
@@ -139,12 +139,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-SITE_ID = 1
+#SITE_ID = 1
 
 MAILQUEUE_CELERY = True
 
 SENDFILE_BACKEND = "sendfile.backends.simple"
-
-OSEOSERVER_AUTHENTICATION_CLASS = ""
-OSEOSERVER_PROCESSING_CLASS = "oseoserver.orderpreparation.ExampleOrderProcessor"
-OSEOSERVER_OPTIONS_CLASS = ""
