@@ -5,7 +5,9 @@ from pyxb.bundles.wssplat import soap12
 from pyxb.bundles.wssplat import wsse
 import requests
 
-@pytest.mark.functional
+pytestmark = pytest.mark.functional
+
+
 class TestGetCapabilities(object):
 
     @pytest.mark.skip()
