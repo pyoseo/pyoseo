@@ -7,7 +7,7 @@ EMAIL_HOST_USER = "ricardo.silva@ipma.pt"
 SENDFILE_BACKEND = "sendfile.backends.development"
 
 OSEOSERVER_PRODUCT_ORDER = {
-    "enabled": False,
+    "enabled": True,
     "automatic_approval": False,
     "notify_creation": True,
     "item_processor": "oseoserver.orderpreparation.exampleorderprocessor."
@@ -37,7 +37,7 @@ OSEOSERVER_COLLECTIONS = [
         "product_price": 0,
         "generation_frequency": "Once per hour",
         "product_order": {
-            "enabled": False,
+            "enabled": True,
             "order_processing_fee": 0,
             "options": ["dummy option",],
             "online_data_access_options": ["http",],

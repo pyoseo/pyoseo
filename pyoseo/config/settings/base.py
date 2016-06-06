@@ -10,9 +10,9 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
-import pathlib2
-
 from django.core.exceptions import ImproperlyConfigured
+from celery.schedules import crontab
+import pathlib2
 
 
 def get_environment_variable(var_name):
@@ -141,6 +141,51 @@ STATIC_URL = '/static/'
 
 #SITE_ID = 1
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "%(levelname)s %(message)s",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "DEBUG"
+        }
+    },
+    "loggers": {
+        "oseoserver": {
+            "handlers": ["console"],
+            "level": "DEBUG"
+        }
+    }
+}
+
+CELERY_RESULT_BACKEND = "redis://"
+CELERY_TASK_RESULT_EXPIRES = 18000  # 5 hours
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_REDIRECT_STDOUTS = True
+CELERY_HIJACK_ROOT_LOGGER = False
+CELERY_IGNORE_RESULT = False
+CELERY_DISABLE_RATE_LIMITS = True
+
+CELERYBEAT_SCHEDULE = {
+    "delete_expired_order_items": {
+        "task": "oseoserver.tasks.delete_expired_order_items",
+        "schedule": crontab(hour=10, minute=30)  # execute daily at 10h30
+    },
+    "delete_failed_orders": {
+        "task": "oseoserver.tasks.delete_failed_orders",
+        "schedule": crontab(hour=11, minute=30)  # execute daily at 11h30
+    },
+}
+
 MAILQUEUE_CELERY = True
 
 SENDFILE_BACKEND = "sendfile.backends.simple"
+

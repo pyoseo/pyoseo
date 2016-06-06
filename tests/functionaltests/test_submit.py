@@ -10,6 +10,10 @@ pytestmark = pytest.mark.functional
 
 class Testsubmit(object):
 
+    # write a test product ordering disabled at the general level
+
+    # write a test product ordering disabled at the collection level
+
     def test_submit_product_order_http_access(self, pyoseo_server_url,
                                               pyoseo_server_user,
                                               pyoseo_server_password,
@@ -58,5 +62,6 @@ class Testsubmit(object):
         response_data = response.text
         print("response_data: {}".format(response_data))
         soap_response_env = soap12.CreateFromDocument(response_data)
-        caps = soap_response_env.Body.wildcardElements()[0]
-        print("caps type: {}".format(type(caps)))
+        submit_ack = soap_response_env.Body.wildcardElements()[0]
+        print("submit_ack type: {}".format(type(submit_ack)))
+        assert submit_ack._element().name().localName() == "SubmitAck"

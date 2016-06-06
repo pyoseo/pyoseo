@@ -36,6 +36,7 @@ class TestGetCapabilities(object):
         soap_response_env = soap12.CreateFromDocument(response_data)
         caps = soap_response_env.Body.wildcardElements()[0]
         print("caps type: {}".format(type(caps)))
+        assert caps._element().name().localName() == "Capabilities"
 
     @pytest.mark.skip()
     def test_get_capabilities_no_auth_soap11(self):
