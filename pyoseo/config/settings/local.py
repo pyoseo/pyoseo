@@ -8,7 +8,7 @@ SENDFILE_BACKEND = "sendfile.backends.development"
 
 OSEOSERVER_PRODUCT_ORDER = {
     "enabled": True,
-    "automatic_approval": False,
+    "automatic_approval": True,
     "notify_creation": True,
     "item_processor": "oseoserver.orderpreparation.exampleorderprocessor."
                       "ExampleOrderProcessor",
@@ -25,8 +25,14 @@ OSEOSERVER_PROCESSING_OPTIONS = [
 ]
 
 OSEOSERVER_ONLINE_DATA_ACCESS_OPTIONS = [
-    "http",
-    "ftp",
+    {
+        "protocol":"http",
+        "fee": 0,
+    },
+    {
+        "protocol":"ftp",
+        "fee": 0,
+    }
 ]
 
 OSEOSERVER_COLLECTIONS = [

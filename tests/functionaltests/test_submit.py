@@ -57,8 +57,7 @@ class Testsubmit(object):
             Body=BIND(submit)
         )
         request_data = soap_request_env.toxml(encoding="utf-8")
-        url = "{}/oseo/".format(pyoseo_server_url)
-        response = requests.post(url, data=request_data)
+        response = requests.post(pyoseo_server_url, data=request_data)
         response_data = response.text
         print("response_data: {}".format(response_data))
         soap_response_env = soap12.CreateFromDocument(response_data)
