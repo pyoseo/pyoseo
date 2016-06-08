@@ -49,13 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #'django.contrib.sites',  # required by oseoserver
     'mailqueue',  # required by oseoserver
     'oseoserver',
-    # actstream is required by oseoserver and is placed last as per
-    # the advice at:
-    # http://django-activity-stream.readthedocs.io/en/latest/installation.html
-    #'actstream',
 ]
 
 MIDDLEWARE_CLASSES = [
