@@ -15,7 +15,7 @@ class TestGetCapabilities(object):
         # will fail because presently our auth scheme requires SOAP
         pass
 
-    def test_default_get_capabilities(self, pyoseo_server_url,
+    def test_default_get_capabilities(self, pyoseo_remote_server,
                                       pyoseo_server_user,
                                       pyoseo_server_password):
         get_caps = oseo.GetCapabilities(service="OS")
@@ -29,7 +29,7 @@ class TestGetCapabilities(object):
             Body=BIND(get_caps)
         )
         request_data = soap_request_env.toxml(encoding="utf-8")
-        response = requests.post(pyoseo_server_url, data=request_data)
+        response = requests.post(pyoseo_remote_server, data=request_data)
         response_data = response.text
         print("response_data: {}".format(response_data))
         soap_response_env = soap12.CreateFromDocument(response_data)

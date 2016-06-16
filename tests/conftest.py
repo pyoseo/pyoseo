@@ -1,7 +1,7 @@
 """pytest configuration file."""
 
+from django.core.urlresolvers import reverse
 import pytest
-from pytest_django.fixtures import live_server
 
 
 def pytest_configure(config):
@@ -47,12 +47,10 @@ def pyoseo_server_password(request):
 
 
 @pytest.fixture
-def pyoseo_server_url(request):
-    server_url = request.config.getoption("--pyoseo-server-url")
-    if server_url is not None:
-        result = server_url
-    else:
-        server = live_server(request=request)
-        result = server.url
-    return result
+def pyoseo_remote_server(request):
+    return request.config.getoption("--pyoseo-server-url")
 
+
+@pytest.fixture
+def pyoseo_local_server(request, settings, live_server, transactional_db):
+    settings.DEBUG = True

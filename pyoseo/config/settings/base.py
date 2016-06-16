@@ -15,12 +15,12 @@ from celery.schedules import crontab
 import pathlib2
 
 
-def get_environment_variable(var_name):
-    try:
-        return os.environ[var_name]
-    except KeyError:
+def get_environment_variable(var_name, mandatory=False):
+    value = os.getenv(var_name)
+    if value is None and mandatory:
         error_msg = "Set the {0} environment variable".format(var_name)
         raise ImproperlyConfigured(error_msg)
+    return value
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -31,7 +31,7 @@ BASE_DIR = str(pathlib2.Path(__file__).parents[2])
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = get_environment_variable("SECRET_KEY")
+SECRET_KEY = get_environment_variable("SECRET_KEY", mandatory=True)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -94,6 +94,13 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+
+custom_auth_backend = os.getenv("PYOSEO_AUTHENTICATION_BACKEND")
+if custom_auth_backend is not None:
+    AUTHENTICATION_BACKENDS = [
+        "django.contrib.auth.backends.ModelBackend",
+        custom_auth_backend,
+    ]
 
 
 # Password validation
@@ -158,6 +165,15 @@ LOGGING = {
         }
     }
 }
+
+for mail_setting in ("EMAIL_HOST",
+                     "EMAIL_PORT",
+                     "EMAIL_HOST_USER",
+                     "EMAIL_HOST_PASSWORD"):
+    value = get_environment_variable(mail_setting)
+    if value is not None:
+        globals()[mail_setting] = value
+
 
 CELERY_RESULT_BACKEND = "redis://"
 CELERY_TASK_RESULT_EXPIRES = 18000  # 5 hours

@@ -3,15 +3,18 @@ from __future__ import absolute_import
 from .base import *
 
 DEBUG = True
-EMAIL_HOST_USER = "ricardo.silva@ipma.pt"
 SENDFILE_BACKEND = "sendfile.backends.development"
+
+LOGGING["loggers"]["giosystemordering"] = {
+    "handlers": ["console"],
+    "level": "DEBUG",
+}
 
 OSEOSERVER_PRODUCT_ORDER = {
     "enabled": True,
     "automatic_approval": True,
     "notify_creation": True,
-    "item_processor": "oseoserver.orderpreparation.exampleorderprocessor."
-                      "ExampleOrderProcessor",
+    "item_processor": "giosystemordering.orderprocessor.OrderProcessor",
     "item_availability_days": 10,
 }
 
@@ -47,6 +50,23 @@ OSEOSERVER_COLLECTIONS = [
             "order_processing_fee": 0,
             "options": ["dummy option",],
             "online_data_access_options": ["http",],
+            "online_data_delivery_options": [],
+            "media_delivery_options": [],
+            "payment_options": [],
+            "scene_selection_options": [],
+        },
+    },
+    {
+        "name": "lst",
+        "catalogue_endpoint": "http://geoland2.meteo.pt/csw",
+        "collection_identifier": "urn:cgls:global:lst_v1_0.045degree",
+        "product_price": 0,
+        "generation_frequency": "Once per hour",
+        "product_order": {
+            "enabled": True,
+            "order_processing_fee": 0,
+            "options": ["dummy option",],
+            "online_data_access_options": ["http", "ftp"],
             "online_data_delivery_options": [],
             "media_delivery_options": [],
             "payment_options": [],
