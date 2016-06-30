@@ -38030,7 +38030,7 @@ organization or individual.</documentation>
             <ns:orderItem>
                <ns:itemId>item_05</ns:itemId>
                <ns:productId>
-                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010440_GLOBE_GEO_V1.2</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010400_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
          </ns:orderSpecification>
@@ -38051,14 +38051,6 @@ organization or individual.</documentation>
          <ns:orderSpecification>
             <ns:orderReference>Some random reference</ns:orderReference>
             <ns:orderRemark>A remark mind you</ns:orderRemark>
-            <ns:option>
-               <ns:ParameterData>
-                  <ns:encoding>XMLEncoding</ns:encoding>
-                  <ns:values>
-                     <Format>GeoTiff</Format>
-                  </ns:values>
-               </ns:ParameterData>
-            </ns:option>
             <ns:deliveryOptions>
                <ns:onlineDataAccess>
                   <ns:protocol>http</ns:protocol>
@@ -38072,38 +38064,36 @@ organization or individual.</documentation>
                   <ns:ParameterData>
                      <ns:encoding>XMLEncoding</ns:encoding>
                      <ns:values>
-                        <Format>GeoTiff</Format>
-                        <MapProjection>LAT_LONG</MapProjection>
                         <RegionOfInterest>Outra</RegionOfInterest>
                      </ns:values>
                   </ns:ParameterData>
                </ns:option>
                <ns:productId>
-                  <ns:identifier>01729024-8dba-11e3-b102-0019995d2a58</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010000_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
             <ns:orderItem>
                <ns:itemId>item_02</ns:itemId>
                <ns:productId>
-                  <ns:identifier>96aa298c-c9d7-11e3-89f2-0019995d2a58</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010100_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
             <ns:orderItem>
                <ns:itemId>item_03</ns:itemId>
                <ns:productId>
-                  <ns:identifier>ca6c6afa-c9f0-11e3-89f2-0019995d2a58</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010200_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
             <ns:orderItem>
                <ns:itemId>item_04</ns:itemId>
                <ns:productId>
-                  <ns:identifier>1f9cca80-c9f9-11e3-89f2-0019995d2a58</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010300_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
             <ns:orderItem>
                <ns:itemId>item_05</ns:itemId>
                <ns:productId>
-                  <ns:identifier>00c808c2-ca03-11e3-89f2-0019995d2a58</ns:identifier>
+                  <ns:identifier>urn:cgls:global:lst_v1_0.045degree:LST_201606010400_GLOBE_GEO_V1.2</ns:identifier>
                </ns:productId>
             </ns:orderItem>
          </ns:orderSpecification>
@@ -38634,7 +38624,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
          </ns1:AcceptLanguages>
       </ns:GetCapabilities>
    </soapenv:Body>
-</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="GetCapabilities"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>165</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property></con:properties></con:testSuite><con:testSuite name="product order"><con:settings/><con:runType>SEQUENTIAL</con:runType><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess no options and no packaging" searchProperties="true" id="db96c430-5292-4b65-8323-adb8bca9ea3f"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+</soapenv:Envelope>]]></con:request><con:assertion type="SOAP Response" name="SOAP Response"/><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="GetCapabilities"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>213</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property></con:properties></con:testSuite><con:testSuite name="product order"><con:settings/><con:runType>SEQUENTIAL</con:runType><con:testCase failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="onlinedataaccess no options and no packaging" searchProperties="true" id="db96c430-5292-4b65-8323-adb8bca9ea3f"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@max_rows">1000</con:setting><con:setting id="com.eviware.soapui.impl.wsdl.panels.testcase.JTestRunLog$OptionsForm@errors_only">false</con:setting></con:settings><con:testStep type="request" name="Submit"><con:settings/><con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:interface>OSEO_V100_ServicePortBinding</con:interface><con:operation>Submit</con:operation><con:request name="Submit" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType=""><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>http://localhost:8000/oseo/</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://www.opengis.net/oseo/1.0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
    <soapenv:Header>
       <wsse:Security>
          <wsse:UsernameToken>
