@@ -20,11 +20,29 @@ OSEOSERVER_PRODUCT_ORDER = {
 
 OSEOSERVER_PROCESSING_OPTIONS = [
     {
-        "name": "dummy option",
-        "description": "A dummy option",
+        "name": "MapProjection",
+        "description": "Change the coordinate system of the order item",
         "multiple_entries": False,
         "choices": ["first", "second"],
-    }
+    },
+    {
+        "name": "Format",
+        "description": "Change the file format of the order item",
+        "multiple_entries": False,
+        "choices": ["first", "second"],
+    },
+    {
+        "name": "RegionOfInterest",
+        "description": "Specify a region of interest for cropping the order item",
+        "multiple_entries": False,
+        "choices": ["first", "second"],
+    },
+    {
+        "name": "Bands",
+        "description": "Subset the order item with only the chosen bands",
+        "multiple_entries": True,
+        "choices": ["first", "second"],
+    },
 ]
 
 OSEOSERVER_ONLINE_DATA_ACCESS_OPTIONS = [
@@ -65,7 +83,7 @@ OSEOSERVER_COLLECTIONS = [
         "product_order": {
             "enabled": True,
             "order_processing_fee": 0,
-            "options": ["dummy option",],
+            "options": ["Bands", "RegionOfInterest",],
             "online_data_access_options": ["http", "ftp"],
             "online_data_delivery_options": [],
             "media_delivery_options": [],

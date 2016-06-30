@@ -175,16 +175,6 @@ for mail_setting in ("EMAIL_HOST",
         globals()[mail_setting] = value
 
 
-admin_mails = get_environment_variable("ADMINS")
-if admin_mails is not None:
-    entries = []
-    for mail_address in admin_mails.split():
-        admin_name = mail_address.partition("@")[0].replace(".", " ")
-        entries.append((admin_name, mail_address))
-    ADMINS = entries
-
-
-
 CELERY_SEND_TASK_ERROR_EMAILS = True
 SERVER_EMAIL = globals().get("EMAIL_HOST_USER", "")
 CELERY_RESULT_BACKEND = "redis://"
