@@ -12,4 +12,7 @@ pyoseo/db.sqlite3
 .idea/*
 
 docs/_build/*
-
+.cache/**
+.coverage
+pyoseo/pyoseo.egg-info/**
+pytestdebug.log

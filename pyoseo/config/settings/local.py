@@ -35,7 +35,6 @@ OSEOSERVER_PROCESSING_OPTIONS = [
         "name": "RegionOfInterest",
         "description": "Specify a region of interest for cropping the order item",
         "multiple_entries": False,
-        "choices": ["first", "second"],
     },
     {
         "name": "Bands",
