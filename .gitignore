@@ -1,6 +1,9 @@
 # environment variables
 environment.sh
 
+# static files
+pyoseo/static/**
+
 # local sqlite databases
 pyoseo/db.sqlite3
 
