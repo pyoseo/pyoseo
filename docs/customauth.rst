@@ -59,7 +59,7 @@ check for the presence of a user and password in the SOAP headers of a request
 
        def authenticate_request(request_element, soap_version):
             if soap_version is None:
-                raise errors.NonSoapRequestError('%s requires requests to use '
+                raise errors.InvalidSoapVersionError('%s requires requests to use '
                                                  'the SOAP protocol' %
                                                  self.__class__.__name__)
             soap_ns_map = {

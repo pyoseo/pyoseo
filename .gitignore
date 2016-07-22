@@ -1,18 +1,21 @@
-dist/*
-*.egg-info/*
-pyoseo/*.egg-info/*
+# environment variables
+environment.sh
+
+# static files
+pyoseo/static/**
+
+# local sqlite databases
 pyoseo/db.sqlite3
+
 *.pyc
+
 *.un~
 *.swp
-venv/*
-*~
 *.autosave
-src/*
-pyoseo/sitestatic/*
-settings_local.py
-docs/_build/*
-*.bak.*
-secret_key.py
 .idea/*
-celerybeat-schedule
+
+docs/_build/*
+.cache/**
+.coverage
+pyoseo/pyoseo.egg-info/**
+pytestdebug.log

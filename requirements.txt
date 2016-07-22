@@ -4,10 +4,12 @@
 #requests==2.0.0
 #celery==3.1.9
 #librabbitmq
-#Django==1.6.2
 #--editable git+https://ricardogsilva@bitbucket.org/ipmagio/giosystem-core.git#egg=giosystemcore
 ##--editable git+https://ricardogsilva@bitbucket.org/ipmagio/giosystem-csw.git#egg=giosystemcsw
 
---index-url https://pypi.python.org/simple/
-
---editable .
+Django==1.9.6
+django-grappelli==2.8.1
+django-mail-queue==2.2.2
+django-sendfile==0.3.10
+gunicorn==19.6.0
+pathlib2==2.1.0

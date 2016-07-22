@@ -3,85 +3,23 @@ Installing pyoseo
 pyoseo
 ------
 
-Installing pyoseo requires following these instructions:
-
 1. Install some system-wide dependencies:
 
    .. code:: bash
 
-      sudo apt-get install apache2 rabbitmq-server redis-server python-dev \
-          python-virtualenv python-virtualenvwrapper
+      sudo apt-get install rabbitmq-server redis-server python-dev
 
-#. Configure virtualenvwrapper. Choose a directory to hold your python
-   virtualenvs (here we suggest ~/venvs) and another for your code. Finally
-   add some extra lines to your bashrc, in order to setup virtualenvwrapper.
+
+#. Install pyoseo by pulling from the git repository:
 
    .. code:: bash
 
-      mkdir ~/venvs
-      mkdir ~/dev
-      echo 'export WORKON_HOME=$HOME/.venvs' >> ~/.bashrc
-      echo 'export PROJECT_HOME=$HOME/dev' >> ~/.bashrc
-      echo 'export PIP_DOWNLOAD_CACHE=$HOME/.pip-downloads' >> ~/.bashrc
-      echo 'source /usr/local/bin/virtualenvwrapper.sh' >> ~/.bashrc
-
-#. Reload your `.bashrc`
-
-   .. code:: bash
-
-      source ~/.bashrc
-
-#. Create a virtualenv for pyoseo. The first time you create it, it gets
-   automatically activated (When you want to work on it later on, remember
-   to activate it yourself)
-
-   .. code:: bash
-
-   mkvirtualenv pyoseo
-   # workon pyoseo
-
-#. Install the Pyxb python package. Pyoseo requires that the OGC schemas be
-   compiled with pyxb. This requires editing some pyxb scripts before
-   installation:
-
-   .. code:: bash
-
-      pip install --no-install pyxb
-      cd $VIRTUAL_ENV/build/pyxb
-      export PYXB_ROOT=$(pwd)
-      pyxb/bundles/opengis/scripts/genbind
-      pip install --no-download pyxb
-      cd -
-
-#. install pyoseo itself, using a combination of git and pip:
-
-   .. code:: bash
-
-      cd $PROJECT_HOME
       git clone https://github.com/ricardogsilva/pyoseo.git
-      pip install --editable pyoseo
+      pip install --requirements pyoseo/requirements.txt
 
-#. Create a settings_local.py file with your local settings, including
-   sensitive data
+#. Generate the following environment variables:
 
-   .. code:: bash
-
-      cd venv/src/pyoseo/pyoseo/pyoseo
-      touch settings_local.py
-
-   The contents of this file should be, for example:
-
-   .. code:: python
-
-      STATIC_URL = '/giosystem/ordering/static/'
-      DEBUG = False
-      ALLOWED_HOSTS = ['.<yourdomainname>',]
-      OSEOSERVER_AUTHENTICATION_CLASS = 'python.path.to.auth.class'
-      OSEOSERVER_PROCESSING_CLASS = 'python.path.to.order.processing.class'
-      OSEOSERVER_OPTIONS_CLASS = 'python.path.to.options.class'
-
-   Add any other settings that you may need, for example, for the
-   authentication module
+   * `SECRET_KEY`
 
 #. Create the django database structure and also a superuser for the django
    administration backend
@@ -89,8 +27,8 @@ Installing pyoseo requires following these instructions:
    .. code:: bash
 
       cd $PROJECT_HOME/pyoseo/pyoseo
-      python manage.py migrate
-      python manage.py createsuperuser
+      python manage.py migrate --settings=config.settings.local
+      python manage.py createsuperuser --settings=config.settings.local
 
 #. Setup the default pyoseo values by running the `pyoseodefaults` management
    script.
@@ -106,43 +44,6 @@ Installing pyoseo requires following these instructions:
 
       python manage.py collectstatic --noinput --verbosity=0
 
-#. Configure an apache2 virtual host for serving the site
-
-   .. code:: bash
-
-      sudo vim /etc/apache2/sites-available/giosystem.conf
-
-   Add the following lines inside the `VirtualHost` directive::
-
-       # settings for the ordering server (preview)
-       Alias /giosystem/ordering/static /home/geo6/giosystem/venv/src/pyoseo/pyoseo/sitestatic/
-
-       <Directory /home/geo6/giosystem/venv/src/pyoseo/pyoseo/sitestatic/>
-           Order deny,allow
-           Allow from all
-       </Directory>
-
-       WSGIDaemonProcess giosystem_ordering user=geo6 group=geo6 processes=1 
-       threads=1 display-name='%{GROUP}' 
-       python-path=/home/geo6/giosystem/venv/lib/python2.7/site-packages:/home/geo6/giosystem/venv/src/pyoseo/pyoseo
-       WSGIProcessGroup giosystem_ordering
-       WSGIScriptAlias /giosystem/ordering /home/geo6/giosystem/venv/src/pyoseo/pyoseo/pyoseo/wsgi.py
-
-       <Location /giosystem/ordering>
-           WSGIProcessGroup giosystem_ordering
-       </Location>
-
-       <Directory /home/geo6/giosystem/venv/src/pyoseo/pyoseo/pyoseo>
-           <Files wsgi.py>
-               Order deny,allow
-               Allow from all
-           </Files>
-       </Directory>
-
-#. The server should now be available on your host. Test it by visiting the
-   admin section. Access:
-
-       http://yourserver/giosystem/ordering/admin/
 
 Installing other components
 ---------------------------
