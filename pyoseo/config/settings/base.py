@@ -95,14 +95,6 @@ DATABASES = {
     }
 }
 
-custom_auth_backend = os.getenv("PYOSEO_AUTHENTICATION_BACKEND")
-if custom_auth_backend is not None:
-    AUTHENTICATION_BACKENDS = [
-        "django.contrib.auth.backends.ModelBackend",
-        custom_auth_backend,
-    ]
-
-
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
 
