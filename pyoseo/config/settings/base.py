@@ -19,8 +19,8 @@ def get_environment_variable(var_name, mandatory=False):
     value = os.getenv(var_name)
     if value is None and mandatory:
         error_msg = "Set the {0} environment variable".format(var_name)
-        raise ImproperlyConfigured(error_msg)
-    return value
+        #raise ImproperlyConfigured(error_msg)
+    return value or "Could not set {0}".format(var_name)
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
