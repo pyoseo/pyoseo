@@ -1,3 +1,0 @@
-<GetOptions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/oseo/1.0" xsi:schemaLocation="http://www.opengis.net/oseo/1.0 http://schemas.opengis.net/oseo/1.0/oseo.xsd" service="OS" version="1.0.0">
-	<collectionId>364a3048-d012-11e1-9678-0019995d2a56</collectionId>
-</GetOptions>
