@@ -38789,7 +38789,7 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
             <ns:orderRemark>A remark mind you</ns:orderRemark>
             <ns:deliveryOptions>
                <ns:onlineDataAccess>
-                  <ns:protocol>http</ns:protocol>
+                  <ns:protocol>${#TestSuite#submitDeliveryProtocol}</ns:protocol>
                </ns:onlineDataAccess>
             </ns:deliveryOptions>
             <ns:priority>STANDARD</ns:priority>
@@ -38802,8 +38802,8 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
                      <ns:values>
                         <RegionOfInterest>
                            <gml:boundingBox srsDimension="2" srsName="EPSG:4326">
-                              <gml:lowerCorner>-72.04951477050781 -19.931224822998047</gml:lowerCorner>
-                              <gml:upperCorner>-60.165061950683594 -8.046767234802246</gml:upperCorner>
+                              <gml:lowerCorner>-11 26</gml:lowerCorner>
+                              <gml:upperCorner>8 46</gml:upperCorner>
                            </gml:boundingBox>
                         </RegionOfInterest>
                      </ns:values>
@@ -38835,8 +38835,8 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
                      <ns:values>
                         <RegionOfInterest>
                            <gml:boundingBox srsDimension="2" srsName="EPSG:4326">
-                              <gml:lowerCorner>-72.04951477050781 -19.931224822998047</gml:lowerCorner>
-                              <gml:upperCorner>-60.165061950683594 -8.046767234802246</gml:upperCorner>
+                              <gml:lowerCorner>-11 26</gml:lowerCorner>
+                              <gml:upperCorner>8 46</gml:upperCorner>
                            </gml:boundingBox>
                         </RegionOfInterest>
                         <Bands>LST Q_FLAGS</Bands>
@@ -38867,8 +38867,8 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
                      <ns:values>
                         <RegionOfInterest>
                            <gml:boundingBox srsDimension="2" srsName="EPSG:4326">
-                              <gml:lowerCorner>-72.04951477050781 -19.931224822998047</gml:lowerCorner>
-                              <gml:upperCorner>-60.165061950683594 -8.046767234802246</gml:upperCorner>
+                              <gml:lowerCorner>-11 26</gml:lowerCorner>
+                              <gml:upperCorner>8 46</gml:upperCorner>
                            </gml:boundingBox>
                         </RegionOfInterest>
                      </ns:values>
@@ -38876,6 +38876,25 @@ testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript>
                </ns:option>
                <ns:productId>
                   <ns:identifier>urn:cgls:global:lst10_v1_0.045degree:LST10_20160301_GLOBE_GEO_V1.0</ns:identifier>
+               </ns:productId>
+            </ns:orderItem>
+            <ns:orderItem>
+               <ns:itemId>item_07</ns:itemId>
+               <ns:option>
+                  <ns:ParameterData>
+                     <ns:encoding>XMLEncoding</ns:encoding>
+                     <ns:values>
+                        <RegionOfInterest>
+                           <gml:boundingBox srsDimension="2" srsName="EPSG:4326">
+                              <gml:lowerCorner>-11 26</gml:lowerCorner>
+                              <gml:upperCorner>8 46</gml:upperCorner>
+                           </gml:boundingBox>
+                        </RegionOfInterest>
+                     </ns:values>
+                  </ns:ParameterData>
+               </ns:option>
+               <ns:productId>
+                  <ns:identifier>urn:cgls:global:lst10s_v1_0.045degree:LST10S_20160221_GLOBE_GEO_V1.0</ns:identifier>
                </ns:productId>
             </ns:orderItem>
          </ns:orderSpecification>
@@ -39237,7 +39256,7 @@ declare namespace ows='http://www.opengis.net/ows/2.0';
 declare namespace ns1='http://www.opengis.net/oseo/1.0';
 declare namespace ows='http://www.opengis.net/ows/2.0';
 //ns1:DescribeResultAccessResponse/ns1:status[1]</path><content>success</content><allowWildcards>false</allowWildcards><ignoreNamspaceDifferences>false</ignoreNamspaceDifferences><ignoreComments>false</ignoreComments></con:configuration></con:assertion><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="DescribeResultAccess"/><con:wsrmConfig version="1.2"/></con:request></con:config></con:testStep><con:setupScript>testCase.testSuite.setPropertyValue("currentOrderId", "");
-testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>353</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>additionalStatusInfo</con:name><con:value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">Item item_04 - Item processed 
+testCase.testSuite.setPropertyValue("currentOrderstatus", "");</con:setupScript><con:tearDownScript>log.info("I am done!")</con:tearDownScript><con:properties/></con:testCase><con:properties><con:property><con:name>currentOrderId</con:name><con:value>376</con:value></con:property><con:property><con:name>currentOrderStatus</con:name><con:value>Completed</con:value></con:property><con:property><con:name>additionalStatusInfo</con:name><con:value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">Item item_04 - Item processed 
 
 Item item_01 - Item processed 
 
